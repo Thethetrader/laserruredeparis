@@ -1,6 +1,10 @@
+'use client';
+
 import Image from "next/image";
+import { useState } from "react";
 
 export default function Home() {
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -129,11 +133,39 @@ export default function Home() {
       </section>
 
       {/* Qui sommes-nous Section */}
-      <section id="about" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20 md:mt-[100vh]">
+      <section id="about" className="py-2 md:py-16 bg-white relative z-20 scroll-mt-20 md:mt-[100vh]">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-5xl font-bold text-center mb-8 text-blue-800">Qui sommes-nous ?</h2>
-            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
+            {/* Mobile: Accordéon */}
+            <button 
+              onClick={() => setIsAboutOpen(!isAboutOpen)}
+              className="md:hidden w-full flex flex-col items-center gap-2 text-3xl font-bold mb-4 text-blue-800"
+            >
+              <span>Qui sommes-nous ?</span>
+              <svg 
+                className={`w-6 h-6 transition-transform duration-300 ${isAboutOpen ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* Desktop: Titre normal */}
+            <h2 className="hidden md:block text-3xl md:text-5xl font-bold text-center mb-8 text-blue-800">Qui sommes-nous ?</h2>
+            
+            {/* Contenu avec animation */}
+            <div className={`prose prose-lg max-w-none text-gray-700 space-y-4 md:block transition-all duration-500 ease-in-out overflow-hidden ${
+              isAboutOpen 
+                ? 'max-h-[2000px] opacity-100 pt-4 md:pt-0' 
+                : 'max-h-0 opacity-0 md:max-h-none md:opacity-100'
+            }`}>
+              {isAboutOpen && (
+                <>
+                  <div className="md:hidden border-t border-gray-300 mb-4"></div>
+                </>
+              )}
               <p className="text-base md:text-xl leading-relaxed">
                 Basée entre Paris et la Seine-Saint-Denis, La Serrure est une entreprise de serrurerie artisanale spécialisée dans le dépannage rapide et les interventions d'urgence. Nous mettons notre savoir-faire au service des particuliers et des professionnels pour l'ouverture de portes claquées, le remplacement de serrures, la pose de verrous ou encore le blindage de portes.
               </p>
@@ -149,7 +181,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-8 md:py-16 bg-white relative z-20">
+      <section id="services" className="pt-2 pb-8 md:py-16 bg-white relative z-20">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 text-blue-800">Nos prestations & tarifs</h2>
           <p className="text-base md:text-xl text-center mb-6 md:mb-12 text-gray-700">Tarifs transparents et intervention rapide pour tous vos besoins de serrurerie</p>
@@ -515,62 +547,82 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 relative z-20" style={{backgroundColor: '#1a1e29'}}>
+      <footer className="bg-gray-900 text-white py-3 relative z-20" style={{backgroundColor: '#1a1e29'}}>
         <div className="container mx-auto px-4">
           {/* Upper Section - Three Columns */}
-          <div className="grid md:grid-cols-3 gap-12 mb-8">
+          <div className="grid md:grid-cols-3 gap-8 md:gap-12 mb-8">
             {/* Left Column: Contact */}
             <div>
-              <h3 className="text-xl font-bold mb-4">Contactez-nous</h3>
-              <div className="space-y-3">
-                <a href="tel:+33664784213" className="flex items-center gap-2 hover:underline">
-                  <svg className="w-5 h-5" style={{color: '#f59e0b'}} fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                  </svg>
-                  <span>06 64 78 42 13</span>
+              <h3 className="text-xl font-bold mb-6 text-orange-400">Contactez-nous</h3>
+              <div className="space-y-4">
+                <a href="tel:+33664784213" className="flex items-center gap-3 hover:text-orange-400 transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                    </svg>
+                  </div>
+                  <span className="font-medium">06 64 78 42 13</span>
                 </a>
-                <div className="flex items-center gap-2">
-                  <span style={{color: '#f59e0b'}} className="text-xl">✉️</span>
-                  <span>la.serrure.93@gmail.com</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span style={{color: '#f59e0b'}} className="text-xl">📍</span>
-                  <span>Paris (75) & Seine-Saint-Denis (93)</span>
+                <a href="mailto:la.serrure.93@gmail.com" className="flex items-center gap-3 hover:text-orange-400 transition-colors group">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium">la.serrure.93@gmail.com</span>
+                </a>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium">Paris (75) & Seine-Saint-Denis (93)</span>
                 </div>
               </div>
             </div>
 
             {/* Middle Column: Hours */}
             <div>
-              <h3 className="text-xl font-bold mb-4">Horaires</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span style={{color: '#f59e0b'}} className="text-xl">🕐</span>
-                  <span>Tous les jours</span>
+              <h3 className="text-xl font-bold mb-6 text-orange-400">Horaires</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="font-medium">Tous les jours</span>
                 </div>
-                <p style={{color: '#f59e0b'}} className="text-2xl font-bold">24h/24</p>
-                <p>Y compris week-ends et jours fériés</p>
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 inline-block">
+                  <p className="text-3xl font-bold text-white">24h/24</p>
+                </div>
+                <p className="text-gray-400">Y compris week-ends et jours fériés</p>
               </div>
             </div>
 
             {/* Right Column: Logo and Slogan */}
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-4xl">🔑</span>
-                <div className="flex flex-col">
-                  <span className="text-2xl font-bold" style={{color: '#f59e0b'}}>LA</span>
-                  <span className="text-2xl font-bold" style={{color: '#f59e0b'}}>SERRURE DE PARIS</span>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-60 h-60 md:w-72 md:h-72 relative">
+                  <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
                 </div>
               </div>
-              <p className="text-sm">Votre serrurier de confiance à Paris & Seine-Saint-Denis</p>
+              <p className="text-gray-400 text-sm leading-relaxed">Votre serrurier de confiance à Paris & Seine-Saint-Denis</p>
             </div>
           </div>
 
           {/* Bottom Section */}
-          <div className="border-t border-gray-700 pt-6 flex justify-between items-center">
-            <p className="text-sm">SARL La Serrure de Paris - Siret : 123 456 789 00012</p>
-            <button className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition">
-              <span className="text-xl">↑</span>
+          <div className="border-t border-gray-700 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-gray-400">SARL La Serrure de Paris - Siret : 123 456 789 00012</p>
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 hover:from-orange-500 hover:to-orange-600 flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-110"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
             </button>
           </div>
         </div>
