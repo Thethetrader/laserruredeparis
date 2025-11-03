@@ -84,7 +84,7 @@ export default function Home() {
             
             {/* Subtitle */}
             <p className="text-sm md:text-xl text-gray-700 mb-4 max-w-3xl mx-auto">
-              Serrurier Paris & Seine-Saint-Denis – Dépannage en Urgence 7j/7 | La Serrure
+              Serrurier Paris & Seine-Saint-Denis – Dépannage en&nbsp;Urgence 7j/7 | La Serrure
             </p>
             
             {/* Tagline */}
