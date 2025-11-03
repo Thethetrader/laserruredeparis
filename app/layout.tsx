@@ -15,9 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "La Serrure de Paris - Serrurier Paris & Seine-Saint-Denis",
   description: "Service d'urgence serrurier 24h/24 à Paris et en Seine-Saint-Denis. Intervention rapide en moins de 30 minutes. Devis gratuit, tarifs transparents.",
-  icons: {
-    icon: '/favicon.png',
-  },
 };
 
 export default function RootLayout({
