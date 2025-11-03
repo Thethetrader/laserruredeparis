@@ -7,13 +7,8 @@ export default function Home() {
       <header className="bg-white border-t border-black fixed top-0 left-0 right-0 z-30">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-200 rounded relative">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <path d="M 50 10 L 50 30 M 45 25 L 55 25" stroke="#8B4513" strokeWidth="4" fill="none"/>
-                <rect x="20" y="30" width="60" height="40" rx="3" fill="#8B4513"/>
-                <circle cx="50" cy="50" r="15" fill="none" stroke="white" strokeWidth="4"/>
-                <rect x="45" y="70" width="10" height="20" rx="2" fill="#8B4513"/>
-              </svg>
+            <div className="w-12 h-12 relative">
+              <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
             </div>
           </div>
           <nav className="hidden md:flex gap-4 items-center">
@@ -70,18 +65,10 @@ export default function Home() {
         {/* Content */}
         <div className="relative z-10 container mx-auto px-4 py-10 md:py-20">
           <div className="max-w-4xl mx-auto text-center">
-            {/* Logo and Name */}
-            <div className="mb-8 mt-32 md:mt-0 flex justify-center items-center gap-2 md:gap-4">
-              <div className="text-4xl md:text-7xl font-normal" style={{color: '#ff8c00'}}>🔑</div>
-              <div className="flex flex-col">
-                <div className="hidden md:flex md:flex-col">
-                  <h1 className="text-6xl font-bold" style={{color: '#ff8c00'}}>LA</h1>
-                  <h1 className="text-6xl font-bold" style={{color: '#ff8c00'}}>SERRURE DE PARIS</h1>
-                </div>
-                <div className="md:hidden flex flex-col">
-                  <h1 className="text-3xl font-bold" style={{color: '#ff8c00'}}>LA SERRURE</h1>
-                  <h1 className="text-3xl font-bold" style={{color: '#ff8c00'}}>DE PARIS</h1>
-                </div>
+            {/* Logo */}
+            <div className="mb-8 mt-32 md:mt-0 flex justify-center items-center">
+              <div className="relative w-48 h-48 md:w-96 md:h-96">
+                <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
               </div>
             </div>
             

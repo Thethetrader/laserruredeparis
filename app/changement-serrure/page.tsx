@@ -1,6 +1,6 @@
 import Image from 'next/image';
 
-export default function OuverturePorte() {
+export default function ChangementSerrure() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
@@ -67,14 +67,14 @@ export default function OuverturePorte() {
                 Intervention rapide 7j/7
               </span>
               <h1 className="text-4xl md:text-5xl font-bold text-blue-800 mb-6 leading-tight">
-                Ouverture de porte à Paris & Seine-Saint-Denis
+                Changement de serrure à Paris & Seine-Saint-Denis
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-orange-500 rounded-full mb-6"></div>
             </div>
             
             <div className="prose prose-lg max-w-none text-gray-700 space-y-4 bg-gradient-to-br from-blue-50 to-amber-25 p-8 rounded-xl border-l-4 border-blue-600">
               <p className="text-xl leading-relaxed">
-                Vous êtes bloqué à l'extérieur de chez vous ou de votre local professionnel ? La Serrure intervient rapidement à Paris et en Seine-Saint-Denis pour tout type de porte, claquée ou fermée à clé. Avec un service non surtaxé, nos artisans garantissent une intervention propre, sécurisée et efficace, sans endommager votre porte si c'est simple.
+                Votre serrure est usée, cassée ou a été endommagée suite à une effraction ? La Serrure intervient rapidement à Paris et en Seine-Saint-Denis pour remplacer vos serrures avec du matériel de qualité, adapté à vos besoins et à votre budget. Nos artisans garantissent une intervention propre et sécurisée, pour votre tranquillité d'esprit.
               </p>
             </div>
           </div>
@@ -83,43 +83,35 @@ export default function OuverturePorte() {
           <section className="mb-16 bg-gradient-to-br from-blue-50 to-amber-25 p-8 rounded-2xl shadow-lg border border-blue-100">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">🔓</span>
+                <span className="text-2xl">🔧</span>
               </div>
-              <h2 className="text-2xl font-bold text-blue-800">Pourquoi faire appel à un professionnel pour l'ouverture de porte ?</h2>
+              <h2 className="text-2xl font-bold text-blue-800">Pourquoi faire appel à un professionnel pour le changement de serrure ?</h2>
             </div>
             
             <p className="text-gray-700 mb-8 text-lg">
-              Tenter d'ouvrir une porte soi-même peut provoquer des dégâts irréversibles sur la serrure ou sur l'encadrement. Faire appel à un serrurier professionnel permet de :
+              Changer une serrure peut sembler simple, mais un mauvais montage peut compromettre la sécurité de votre domicile ou de votre local professionnel. Faire appel à un serrurier professionnel permet de :
             </p>
             
             <ul className="space-y-4 text-gray-700">
               <li className="flex items-start gap-3">
                 <span className="text-blue-600 mt-1">✓</span>
-                <span>Préserver votre porte et votre serrure grâce à des techniques adaptées</span>
+                <span>Garantir une installation correcte et sécurisée</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-blue-600 mt-1">✓</span>
-                <span>Garantir une ouverture en toute sécurité, même en cas de porte blindée</span>
+                <span>Bénéficier d'un matériel adapté à vos besoins et à votre budget</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-blue-600 mt-1">✓</span>
-                <span>Bénéficier d'un tarif personnalisé pour restaurer la sécurité de votre domicile ou local professionnel</span>
+                <span>Éviter tout dommage à votre porte ou à votre serrure</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-blue-600 mt-1">✓</span>
-                <span>Éviter les coûts supplémentaires liés à des réparations et cas de non-réparation</span>
+                <span>Profiter d'un diagnostic clair et de conseils personnalisés</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-blue-600 mt-1">✓</span>
-                <span>Profiter de l'expérience d'un artisan formé aux dernières techniques et outils professionnels</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-blue-600 mt-1">✓</span>
-                <span>Obtenir un service fiable et garanti, avec un devis clair et transparent, intervenir même dans les situations complexes : serrures haut de gamme, portes blindées récentes, etc.</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-blue-600 mt-1">✓</span>
-                <span>Préserver la confidentialité et la sécurité de votre logement ou local</span>
+                <span>Assurer une intervention rapide et efficace par un artisan expérimenté</span>
               </li>
             </ul>
           </section>
@@ -131,60 +123,22 @@ export default function OuverturePorte() {
               <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-orange-500 rounded-full mx-auto"></div>
             </div>
             
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Service 1 */}
+            <p className="text-gray-700 mb-8 text-lg text-center max-w-3xl mx-auto">
+              Nous remplaçons vos serrures dans toutes les situations courantes : usure normale, casse ou après effraction. Chaque intervention est réalisée avec soin, pour que votre installation soit fiable et sécurisée.
+            </p>
+            
+            <div className="grid md:grid-cols-1 gap-8 max-w-2xl mx-auto">
+              {/* Service */}
               <div className="bg-white border-l-4 border-orange-500 rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
                 <div className="relative h-48 w-full">
-                  <Image src="/1.jpeg" alt="Ouverture de porte claquée" fill className="object-cover" />
+                  <Image src="/5.webp" alt="Changement de serrure" fill className="object-cover" />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-blue-800 mb-3">Ouverture de porte claquée</h3>
+                  <h3 className="text-xl font-bold text-blue-800 mb-3">Changement de serrure</h3>
                   <p className="text-gray-700 mb-4">
-                    Nous intervenons pour ouvrir les portes claquées, avec des techniques précises qui préservent votre serrure. Idéal en cas d'oubli de vos clés ou de fermeture accidentelle.
+                    Nous remplaçons vos serrures simples ou classiques avec du matériel de qualité, adapté à votre porte et à vos besoins.
                   </p>
-                  <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">90 €</p>
-                </div>
-              </div>
-
-              {/* Service 2 */}
-              <div className="bg-white border-l-4 border-orange-500 rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
-                <div className="relative h-48 w-full">
-                  <Image src="/2.jpeg" alt="Ouverture de porte blindée claquée" fill className="object-cover" />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-blue-800 mb-3">Ouverture de porte blindée claquée</h3>
-                  <p className="text-gray-700 mb-4">
-                    Même une porte blindée peut être ouverte sans dommage grâce à nos outils spécialisés et à l'expertise de nos artisans. Nous assurons une intervention rapide tout en respectant votre sécurité.
-                  </p>
-                  <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">120 €</p>
-                </div>
-              </div>
-
-              {/* Service 3 */}
-              <div className="bg-white border-l-4 border-orange-500 rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
-                <div className="relative h-48 w-full">
-                  <Image src="/3.webp" alt="Ouverture de porte simple fermée à clé" fill className="object-cover" />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-blue-800 mb-3">Ouverture de porte simple fermée à clé</h3>
-                  <p className="text-gray-700 mb-4">
-                    Clé perdue, serrure endommagée ou porte verrouillée ? Nous réalisons l'ouverture sans destruction, avec un diagnostic clair de l'état de votre serrure.
-                  </p>
-                  <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">130 €</p>
-                </div>
-              </div>
-
-              {/* Service 4 */}
-              <div className="bg-white border-l-4 border-orange-500 rounded-lg shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
-                <div className="relative h-48 w-full">
-                  <Image src="/4.webp" alt="Ouverture de porte blindée fermée à clé" fill className="object-cover" />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-blue-800 mb-3">Ouverture de porte blindée fermée à clé</h3>
-                  <p className="text-gray-700 mb-4">
-                    Les portes blindées demandent un savoir-faire particulier. Nos serruriers utilisent des méthodes professionnelles pour intervenir rapidement tout en garantissant la sécurité maximale de votre logement ou local professionnel.
-                  </p>
-                  <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">170 €</p>
+                  <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">À partir de 80 €</p>
                 </div>
               </div>
             </div>
@@ -192,7 +146,7 @@ export default function OuverturePorte() {
 
           {/* CTA Section */}
           <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-2xl p-8 text-center">
-            <h2 className="text-3xl font-bold mb-4">Besoin d'une ouverture de porte ?</h2>
+            <h2 className="text-3xl font-bold mb-4">Besoin d'un changement de serrure ?</h2>
             <p className="text-xl mb-8">Intervention rapide 7j/7 à Paris et en Seine-Saint-Denis</p>
             <div className="flex flex-col md:flex-row gap-4 justify-center">
               <a href="tel:+33664784213" className="bg-white text-blue-700 px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition inline-flex items-center justify-center gap-3">
@@ -425,4 +379,3 @@ export default function OuverturePorte() {
     </div>
   );
 }
-
