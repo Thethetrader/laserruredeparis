@@ -127,7 +127,7 @@ export default function Home() {
       </section>
 
       {/* Qui sommes-nous Section */}
-      <section id="about" className="py-8 md:py-16 bg-white relative z-20" style={{marginTop: '100vh'}}>
+      <section id="about" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20" style={{marginTop: '100vh'}}>
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold text-center mb-8 text-blue-800">Qui sommes-nous ?</h2>
@@ -378,7 +378,7 @@ export default function Home() {
       </section>
 
       {/* Zone d'intervention Section */}
-      <section className="py-8 md:py-16 bg-white relative z-20">
+      <section id="zone" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4 text-blue-800">Zone d'intervention</h2>
           <p className="text-base md:text-xl text-center text-gray-700 mb-6 md:mb-12 max-w-3xl mx-auto">
@@ -479,7 +479,7 @@ export default function Home() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-8 md:py-16 bg-white relative z-20">
+      <section id="contact" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-6 md:mb-12 text-blue-800">Contactez-nous</h2>
           <div className="max-w-2xl mx-auto">
