@@ -67,9 +67,13 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             {/* Logo */}
             <div className="mb-8 mt-32 md:mt-0 flex justify-center items-center">
-              <div className="relative w-48 h-48 md:w-96 md:h-96">
-                <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
-              </div>
+              <Image 
+                src="/LOGOPNG.png" 
+                alt="Logo La Serrure de Paris" 
+                width={384}
+                height={384}
+                className="w-48 h-48 md:w-96 md:h-96 object-contain"
+              />
             </div>
             
             {/* Subtitle */}
@@ -122,8 +126,28 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Qui sommes-nous Section */}
+      <section id="about" className="py-8 md:py-16 bg-white relative z-20" style={{marginTop: '100vh'}}>
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-bold text-center mb-8 text-blue-800">Qui sommes-nous ?</h2>
+            <div className="prose prose-lg max-w-none text-gray-700 space-y-4">
+              <p className="text-base md:text-xl leading-relaxed">
+                Basée entre Paris et la Seine-Saint-Denis, La Serrure est une entreprise de serrurerie artisanale spécialisée dans le dépannage rapide et les interventions d'urgence. Nous mettons notre savoir-faire au service des particuliers et des professionnels pour l'ouverture de portes claquées, le remplacement de serrures, la pose de verrous ou encore le blindage de portes.
+              </p>
+              <p className="text-base md:text-xl leading-relaxed">
+                Notre priorité : votre sécurité et votre tranquillité. Avec des interventions en moins de 30 minutes et des tarifs toujours annoncés à l'avance, nous garantissons un service honnête, efficace et sans mauvaise surprise.
+              </p>
+              <p className="text-base md:text-xl leading-relaxed">
+                Que vous soyez à Paris (75), Montreuil, Pantin, Saint-Denis ou dans une commune voisine, vous pouvez compter sur un artisan serrurier de confiance, disponible 7j/7, y compris les week-ends et jours fériés.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Services Section */}
-      <section id="services" className="py-8 md:py-16 bg-white relative z-20" style={{marginTop: '100vh'}}>
+      <section id="services" className="py-8 md:py-16 bg-white relative z-20">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-5xl font-bold text-center mb-4 text-blue-800">Nos prestations & tarifs</h2>
           <p className="text-base md:text-xl text-center mb-6 md:mb-12 text-gray-700">Tarifs transparents et intervention rapide pour tous vos besoins de serrurerie</p>
