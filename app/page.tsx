@@ -7,9 +7,11 @@ export default function Home() {
       <header className="bg-white border-t border-black fixed top-0 left-0 right-0 z-30">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 relative">
-              <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
-            </div>
+            <a href="/" className="block">
+              <div className="w-20 h-20 md:w-24 md:h-24 relative">
+                <Image src="/LOGOPNG.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
+              </div>
+            </a>
           </div>
           <nav className="hidden md:flex gap-4 items-center">
             <div className="relative group">
@@ -53,7 +55,7 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="fixed top-0 left-0 w-full min-h-screen flex items-center justify-center z-10">
+      <section className="relative md:fixed top-0 left-0 w-full min-h-screen flex items-center justify-center z-10">
         {/* Background Image with sepia effect */}
         <div className="absolute inset-0 bg-gray-200">
           <div className="absolute inset-0">
@@ -66,8 +68,8 @@ export default function Home() {
         <div className="relative z-10 container mx-auto px-4 py-10 md:py-20">
           <div className="max-w-4xl mx-auto text-center">
             {/* Logo */}
-            <div className="mb-8 mt-32 md:mt-0 flex justify-center items-center">
-              <Image 
+            <div className="mb-8 md:mt-0 flex justify-center items-center">
+        <Image
                 src="/LOGOPNG.png" 
                 alt="Logo La Serrure de Paris" 
                 width={384}
@@ -127,7 +129,7 @@ export default function Home() {
       </section>
 
       {/* Qui sommes-nous Section */}
-      <section id="about" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20" style={{marginTop: '100vh'}}>
+      <section id="about" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20 md:mt-[100vh]">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold text-center mb-8 text-blue-800">Qui sommes-nous ?</h2>
