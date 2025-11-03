@@ -17,33 +17,42 @@ export default function Home() {
             </div>
           </div>
           <nav className="hidden md:flex gap-4 items-center">
-            <a href="#services" className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 font-medium">
-              <span className="text-xl">🔧</span>
-              <span>Prestations</span>
+            <div className="relative group">
+              <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                Nos Services
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
+                </svg>
+              </button>
+              <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <a href="/ouverture-porte" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-t-lg">
+                  Ouverture de porte
+                </a>
+                <a href="/changement-serrure" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-b-lg">
+                  Changement de serrure
+                </a>
+              </div>
+            </div>
+            <a href="#about" className="text-gray-700 hover:text-blue-600">
+              À propos
             </a>
-            <a href="#about" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
-              <span className="text-xl">👥</span>
-              <span>À propos</span>
+            <a href="#zone" className="text-gray-700 hover:text-blue-600">
+              Zone d'intervention
             </a>
-            <a href="#zone" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
-              <span className="text-xl">📍</span>
-              <span>Zone d'intervention</span>
-            </a>
-            <a href="#contact" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
-              <span className="text-xl">💬</span>
-              <span>Contact</span>
+            <a href="#contact" className="text-gray-700 hover:text-blue-600">
+              Contact
             </a>
           </nav>
           <div className="flex gap-3">
-            <button className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{backgroundColor: '#10b981'}}>
+            <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
               <span className="text-xl">💬</span>
-            </button>
-            <button className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{backgroundColor: '#f59e0b'}}>
+            </a>
+            <a href="tel:+33664784213" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
               <span className="hidden md:inline">Appeler maintenant</span>
-            </button>
+            </a>
           </div>
         </div>
       </header>
@@ -76,26 +85,26 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Tagline */}
-            <p className="text-lg md:text-3xl font-semibold text-gray-800 mb-4">
-              Votre serrurier de confiance à Paris & en Seine-Saint-Denis
+            {/* Subtitle */}
+            <p className="text-sm md:text-xl text-gray-700 mb-4 max-w-3xl mx-auto">
+              Serrurier Paris & Seine-Saint-Denis – Dépannage en Urgence 7j/7 | La Serrure
             </p>
             
-            {/* Description */}
-            <p className="text-base md:text-2xl text-gray-700 mb-12">
-              Intervention rapide, tarifs clairs, honnêteté garantie.
+            {/* Tagline */}
+            <p className="text-base md:text-2xl font-semibold text-gray-800 mb-4">
+              La Serrure, serrurier à Paris et en Seine-Saint-Denis, intervient 7j/7 pour vos urgences : ouverture de porte, changement de serrure, dépannage rapide et tarifs transparents.
             </p>
             
             {/* Buttons */}
             <div className="flex flex-col gap-4 items-center mb-10">
               {/* Top row: Orange and White buttons side by side */}
               <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-start">
-                <button className="text-white px-6 py-3 md:px-10 md:py-5 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-xl transition shadow-lg" style={{backgroundColor: '#f59e0b'}}>
+                <a href="tel:+33664784213" className="text-white px-6 py-3 md:px-10 md:py-5 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-xl transition shadow-lg" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
                   <svg className="w-5 h-5 md:w-7 md:h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                 </svg>
                   <span>06 64 78 42 13</span>
-                </button>
+                </a>
                 <button className="bg-white border-4 border-blue-600 text-blue-600 px-6 py-3 md:px-10 md:py-5 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-xl hover:bg-blue-50 transition shadow-lg">
                   <span>Nos prestations</span>
                   <span className="text-2xl">→</span>
@@ -104,10 +113,10 @@ export default function Home() {
               
               {/* Bottom: Green button centered */}
               <div className="flex justify-center w-full">
-                <button className="text-white px-6 py-3 md:px-10 md:py-5 rounded-xl flex items-center gap-3 font-bold text-base md:text-xl transition shadow-lg" style={{backgroundColor: '#10b981'}}>
+                <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white px-6 py-3 md:px-10 md:py-5 rounded-xl flex items-center gap-3 font-bold text-base md:text-xl transition shadow-lg" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
                   <span className="text-2xl md:text-3xl">💬</span>
                   <span>Contacter sur WhatsApp</span>
-                </button>
+                </a>
               </div>
             </div>
             
@@ -140,12 +149,13 @@ export default function Home() {
               <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-2xl font-bold mb-3 text-blue-800">Ouverture de porte claquée</h3>
                 <p className="text-gray-700 mb-4 flex-grow">Vous êtes sorti en oubliant vos clés ? Pas de panique. Nous intervenons rapidement pour ouvrir la porte sans l'endommager.</p>
-                <button className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
+                <a href="#services" className="text-blue-700 hover:underline mb-4 inline-block">En savoir plus →</a>
+                <a href="tel:+33664784213" className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
                   <span>Nous contacter</span>
-                </button>
+                </a>
               </div>
             </div>
             <div className="bg-amber-25 border border-gray-200 rounded-lg overflow-hidden shadow-lg relative flex flex-col h-full transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -156,12 +166,13 @@ export default function Home() {
               <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-2xl font-bold mb-3 text-blue-800">Ouverture de porte blindée claquée</h3>
                 <p className="text-gray-700 mb-4 flex-grow">Même en cas de porte blindée claquée, notre équipement permet une ouverture fine, sans destruction.</p>
-                <button className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
+                <a href="#services" className="text-blue-700 hover:underline mb-4 inline-block">En savoir plus →</a>
+                <a href="tel:+33664784213" className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
                   <span>Nous contacter</span>
-                </button>
+                </a>
               </div>
             </div>
             <div className="bg-amber-25 border border-gray-200 rounded-lg overflow-hidden shadow-lg relative flex flex-col h-full transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -172,12 +183,13 @@ export default function Home() {
               <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-2xl font-bold mb-3 text-blue-800">Ouverture de porte simple fermée à clé</h3>
                 <p className="text-gray-700 mb-4 flex-grow">Clé perdue ? Porte verrouillée ? Nous débloquons l'accès de manière propre, avec explication claire.</p>
-                <button className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
+                <a href="#services" className="text-blue-700 hover:underline mb-4 inline-block">En savoir plus →</a>
+                <a href="tel:+33664784213" className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
                   <span>Nous contacter</span>
-                </button>
+                </a>
               </div>
             </div>
             <div className="bg-amber-25 border border-gray-200 rounded-lg overflow-hidden shadow-lg relative flex flex-col h-full transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -188,12 +200,13 @@ export default function Home() {
               <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-2xl font-bold mb-3 text-blue-800">Ouverture de porte blindée fermée à clé</h3>
                 <p className="text-gray-700 mb-4 flex-grow">Une situation délicate qui demande du matériel spécialisé et du savoir-faire. Sécurité maximale, intervention nette.</p>
-                <button className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
+                <a href="#services" className="text-blue-700 hover:underline mb-4 inline-block">En savoir plus →</a>
+                <a href="tel:+33664784213" className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
                   <span>Nous contacter</span>
-                </button>
+                </a>
               </div>
             </div>
             <div className="bg-amber-25 border border-gray-200 rounded-lg overflow-hidden shadow-lg relative flex flex-col h-full transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -204,12 +217,13 @@ export default function Home() {
               <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-2xl font-bold mb-3 text-blue-800">Changement de serrure</h3>
                 <p className="text-gray-700 mb-4 flex-grow">Serrure usée, cassée ou après effraction : nous remplaçons par du matériel de qualité, compatible avec vos besoins et votre budget.</p>
-                <button className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
+                <a href="#services" className="text-blue-700 hover:underline mb-4 inline-block">En savoir plus →</a>
+                <a href="tel:+33664784213" className="w-full bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold hover:bg-blue-600 transition mt-auto">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
                   <span>Nous contacter</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -219,7 +233,7 @@ export default function Home() {
       {/* Emergency Service Section */}
       <section className="py-16 bg-gray-50 relative z-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto bg-blue-700 text-white rounded-2xl shadow-xl p-4 md:p-8">
+          <div className="max-w-5xl mx-auto text-white rounded-2xl shadow-xl p-4 md:p-8" style={{background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)'}}>
             {/* Top Section */}
             <div className="text-center mb-4 md:mb-8">
               <h2 className="text-xl md:text-3xl font-bold mb-4 flex items-center justify-center gap-3">
@@ -429,16 +443,16 @@ export default function Home() {
 
             {/* Call to Action Buttons */}
             <div className="space-y-4 mb-6 md:mb-8 max-w-xs mx-auto">
-              <button className="w-full text-white px-6 py-3 md:px-8 md:py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-lg transition shadow-lg" style={{backgroundColor: '#f59e0b'}}>
+              <a href="tel:+33664784213" className="w-full text-white px-6 py-3 md:px-8 md:py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-lg transition shadow-lg" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
                 <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                 </svg>
                 <span>06 64 78 42 13</span>
-              </button>
-              <button className="w-full text-white px-6 py-3 md:px-8 md:py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-lg transition shadow-lg" style={{backgroundColor: '#10b981'}}>
+              </a>
+              <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="w-full text-white px-6 py-3 md:px-8 md:py-4 rounded-xl flex items-center justify-center gap-3 font-bold text-base md:text-lg transition shadow-lg" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
                 <span className="text-xl md:text-2xl">💬</span>
                 <span>Contacter sur WhatsApp</span>
-              </button>
+              </a>
             </div>
 
             {/* Service Promises */}
@@ -481,7 +495,7 @@ export default function Home() {
             </form>
             <div className="mt-12 text-center">
               <p className="text-xl font-bold mb-2 text-blue-800">Ou appelez-nous directement</p>
-              <p className="text-3xl font-bold text-blue-800">06 64 78 42 13</p>
+              <a href="tel:+33664784213" className="text-3xl font-bold text-blue-800 hover:underline">06 64 78 42 13</a>
             </div>
           </div>
         </div>
@@ -496,12 +510,12 @@ export default function Home() {
             <div>
               <h3 className="text-xl font-bold mb-4">Contactez-nous</h3>
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
+                <a href="tel:+33664784213" className="flex items-center gap-2 hover:underline">
                   <svg className="w-5 h-5" style={{color: '#f59e0b'}} fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                   </svg>
                   <span>06 64 78 42 13</span>
-                </div>
+                </a>
                 <div className="flex items-center gap-2">
                   <span style={{color: '#f59e0b'}} className="text-xl">✉️</span>
                   <span>la.serrure.93@gmail.com</span>
