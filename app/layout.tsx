@@ -19,6 +19,18 @@ export const metadata: Metadata = {
     icon: '/favicon.png',
     apple: '/favicon.png',
   },
+  openGraph: {
+    title: "La Serrure de Paris - Serrurier Paris & Seine-Saint-Denis",
+    description: "Service d'urgence serrurier 24h/24 à Paris et en Seine-Saint-Denis. Intervention rapide en moins de 30 minutes.",
+    images: ['/LOGOPNG.png'],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "La Serrure de Paris - Serrurier Paris & Seine-Saint-Denis",
+    description: "Service d'urgence serrurier 24h/24 à Paris et en Seine-Saint-Denis. Intervention rapide en moins de 30 minutes.",
+    images: ['/LOGOPNG.png'],
+  },
 };
 
 export default function RootLayout({
