@@ -447,7 +447,7 @@ export default function Home() {
                 <span className="text-2xl md:text-4xl">🕐</span>
                 <div className="text-left">
                   <p className="text-lg md:text-2xl font-bold">Disponible 7j/7</p>
-                  <p className="text-base md:text-xl">Tous les jours de 8h à 22h</p>
+                  <p className="text-base md:text-xl">24h/24</p>
                 </div>
               </div>
             </div>
