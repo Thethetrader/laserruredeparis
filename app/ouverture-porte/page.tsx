@@ -1,67 +1,151 @@
+'use client';
+
 import Image from 'next/image';
+import { useState } from 'react';
 
 export default function OuverturePorte() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="bg-white border-t border-black fixed top-0 left-0 right-0 z-30">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-200 rounded relative">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <path d="M 50 10 L 50 30 M 45 25 L 55 25" stroke="#8B4513" strokeWidth="4" fill="none"/>
-                <rect x="20" y="30" width="60" height="40" rx="3" fill="#8B4513"/>
-                <circle cx="50" cy="50" r="15" fill="none" stroke="white" strokeWidth="4"/>
-                <rect x="45" y="70" width="10" height="20" rx="2" fill="#8B4513"/>
+            <a href="/" className="block md:hidden w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-            </div>
+            </a>
+            <a href="/" className="block">
+              <div className="w-20 h-20 md:w-24 md:h-24 relative">
+                <Image src="/logofinal.png" alt="Logo La Serrure de Paris" fill className="object-contain" />
+              </div>
+            </a>
           </div>
           <nav className="hidden md:flex gap-4 items-center">
             <div className="relative group">
-              <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+              <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium text-base flex items-center gap-2">
                 Nos Services
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
                 </svg>
               </button>
               <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <a href="/ouverture-porte" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-t-lg">
+                <a href="/ouverture-porte" className="block px-4 py-3 text-base text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-t-lg">
                   Ouverture de porte
                 </a>
-                <a href="/changement-serrure" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-b-lg">
+                <a href="/changement-serrure" className="block px-4 py-3 text-base text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-b-lg">
                   Changement de serrure
                 </a>
               </div>
             </div>
-            <a href="/#about" className="text-gray-700 hover:text-blue-600">
+            <a href="/#about" className="text-base text-gray-700 hover:text-blue-600">
               À propos
             </a>
-            <a href="/#zone" className="text-gray-700 hover:text-blue-600">
+            <a href="/#zone" className="text-base text-gray-700 hover:text-blue-600">
               Zone d'intervention
             </a>
-            <a href="/#contact" className="text-gray-700 hover:text-blue-600">
+            <a href="/#contact" className="text-base text-gray-700 hover:text-blue-600">
               Contact
             </a>
           </nav>
-          <div className="flex gap-3">
-            <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
+          <div className="flex gap-3 items-center">
+            <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 rounded-lg flex items-center justify-center gap-2 transition" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
               <span className="text-xl">💬</span>
             </a>
-            <a href="tel:+33664784213" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
+            <a href="tel:+33664784213" className="text-white w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 rounded-lg flex items-center justify-center gap-2 transition" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
-              <span className="hidden md:inline">Appeler maintenant</span>
+              <span className="hidden md:inline text-base">Appeler maintenant</span>
             </a>
+            
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden w-10 h-10 flex items-center justify-center"
+              aria-label="Toggle menu"
+            >
+              <div className="flex flex-col gap-1.5">
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+              </div>
+            </button>
           </div>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        <div className={`md:hidden absolute top-full left-0 right-0 bg-gradient-to-b from-white to-gray-50 border-t-2 border-orange-200 shadow-2xl z-50 transition-all duration-500 ease-out overflow-hidden ${
+          isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <nav className="container mx-auto px-6 py-8 flex flex-col gap-1">
+            {/* Services Section */}
+            <div className="flex flex-col gap-3 mb-6">
+              <p className="text-base font-extrabold text-orange-500 uppercase tracking-[0.2em] mb-4 px-3 letter-spacing-wider">Nos Services</p>
+              <a 
+                href="/ouverture-porte" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-base border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="text-2xl mr-3">🔑</span>
+                <span className="tracking-wide">Ouverture de porte</span>
+              </a>
+              <a 
+                href="/changement-serrure" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-base border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="text-2xl mr-3">🔧</span>
+                <span className="tracking-wide">Changement de serrure</span>
+              </a>
+            </div>
+            
+            {/* Divider */}
+            <div className="border-t-2 border-gray-200 my-4"></div>
+            
+            {/* Other Links */}
+            <a 
+              href="/" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span className="text-2xl mr-3">🏠</span>
+              Accueil
+            </a>
+            <a 
+              href="/#about" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span className="text-2xl mr-3">ℹ️</span>
+              À propos
+            </a>
+            <a 
+              href="/#zone" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span className="text-2xl mr-3">📍</span>
+              Zone d'intervention
+            </a>
+            <a 
+              href="/#contact" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <span className="text-2xl mr-3">📞</span>
+              Contact
+            </a>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="pb-16">
+      <main className="pb-16 pt-32 md:pt-36">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Hero Section */}
-          <div className="mb-16 pt-12">
+          <div className="mb-16">
             <div className="mb-6">
               <span className="inline-block bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
                 Intervention rapide 7j/7
@@ -359,7 +443,7 @@ export default function OuverturePorte() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4 text-blue-800">Zone d'intervention</h2>
           <p className="text-base md:text-xl text-center text-gray-700 mb-8 md:mb-12 max-w-3xl mx-auto">
-            Nous intervenons rapidement dans tout Paris (75) et la Seine-Saint-Denis (93)
+            Nous intervenons rapidement dans toute l'Île de France
           </p>
 
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
@@ -373,7 +457,7 @@ export default function OuverturePorte() {
                   <svg className="w-8 h-8 md:w-10 md:h-10" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
-                  <h3 className="text-2xl md:text-3xl font-bold">Paris (75) & Seine-Saint-Denis (93)</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold">Île de France</h3>
                 </div>
                 <p className="text-lg md:text-xl mb-8">Intervention rapide dans toute la zone</p>
               </div>

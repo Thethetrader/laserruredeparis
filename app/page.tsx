@@ -20,28 +20,28 @@ export default function Home() {
           </div>
           <nav className="hidden md:flex gap-4 items-center">
             <div className="relative group">
-              <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+              <button className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium text-base flex items-center gap-2">
                 Nos Services
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
                 </svg>
               </button>
               <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <a href="/ouverture-porte" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-t-lg">
+                <a href="/ouverture-porte" className="block px-4 py-3 text-base text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-t-lg">
                   Ouverture de porte
                 </a>
-                <a href="/changement-serrure" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-b-lg">
+                <a href="/changement-serrure" className="block px-4 py-3 text-base text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-b-lg">
                   Changement de serrure
                 </a>
               </div>
             </div>
-            <a href="#about" className="text-gray-700 hover:text-blue-600">
+            <a href="#about" className="text-base text-gray-700 hover:text-blue-600">
               À propos
             </a>
-            <a href="#zone" className="text-gray-700 hover:text-blue-600">
+            <a href="#zone" className="text-base text-gray-700 hover:text-blue-600">
               Zone d'intervention
             </a>
-            <a href="#contact" className="text-gray-700 hover:text-blue-600">
+            <a href="#contact" className="text-base text-gray-700 hover:text-blue-600">
               Contact
             </a>
           </nav>
@@ -53,7 +53,7 @@ export default function Home() {
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
-              <span className="hidden md:inline">Appeler maintenant</span>
+              <span className="hidden md:inline text-base">Appeler maintenant</span>
             </a>
             
             {/* Mobile Menu Button */}
@@ -78,10 +78,10 @@ export default function Home() {
           <nav className="container mx-auto px-6 py-8 flex flex-col gap-1">
             {/* Services Section */}
             <div className="flex flex-col gap-3 mb-6">
-              <p className="text-[10px] font-extrabold text-orange-500 uppercase tracking-[0.2em] mb-4 px-3 letter-spacing-wider">Nos Services</p>
+              <p className="text-base font-extrabold text-orange-500 uppercase tracking-[0.2em] mb-4 px-3 letter-spacing-wider">Nos Services</p>
               <a 
                 href="/ouverture-porte" 
-                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-lg border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-base border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span className="text-2xl mr-3">🔑</span>
@@ -89,7 +89,7 @@ export default function Home() {
               </a>
               <a 
                 href="/changement-serrure" 
-                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-lg border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-base border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span className="text-2xl mr-3">🔧</span>
@@ -106,6 +106,7 @@ export default function Home() {
               className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
               onClick={() => setIsMobileMenuOpen(false)}
             >
+              <span className="text-2xl mr-3">ℹ️</span>
               À propos
             </a>
             <a 
@@ -113,6 +114,7 @@ export default function Home() {
               className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
               onClick={() => setIsMobileMenuOpen(false)}
             >
+              <span className="text-2xl mr-3">📍</span>
               Zone d'intervention
             </a>
             <a 
@@ -120,6 +122,7 @@ export default function Home() {
               className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
               onClick={() => setIsMobileMenuOpen(false)}
             >
+              <span className="text-2xl mr-3">📞</span>
               Contact
             </a>
           </nav>
@@ -149,11 +152,6 @@ export default function Home() {
                 className="w-48 h-48 md:w-96 md:h-96 object-contain"
               />
             </div>
-            
-            {/* Subtitle */}
-            <p className="text-sm md:text-xl text-gray-700 mb-4 max-w-3xl mx-auto">
-              Serrurier Paris & Seine-Saint-Denis – Dépannage en&nbsp;Urgence 7j/7 | La Serrure
-            </p>
             
             {/* Tagline */}
             <p className="text-base md:text-2xl font-semibold text-gray-800 mb-4">
@@ -484,7 +482,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-4 text-blue-800">Zone d'intervention</h2>
           <p className="text-base md:text-xl text-center text-gray-700 mb-6 md:mb-12 max-w-3xl mx-auto">
-            Nous intervenons rapidement dans tout Paris (75) et la Seine-Saint-Denis (93)
+            Nous intervenons rapidement dans toute l'Île de France
           </p>
 
           <div className="grid md:grid-cols-2 gap-4 md:gap-8">
@@ -499,7 +497,7 @@ export default function Home() {
               {/* Content */}
               <div className="relative z-10 text-white">
                 <div className="text-4xl md:text-6xl mb-4" style={{color: '#f59e0b'}}>📍</div>
-                <h3 className="text-xl md:text-3xl font-bold mb-2">Paris (75) & Seine-Saint-Denis (93)</h3>
+                <h3 className="text-xl md:text-3xl font-bold mb-2">Île de France</h3>
                 <p className="text-base md:text-xl mb-4 md:mb-6">Intervention rapide dans toute la zone</p>
                 <div className="px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-xl md:text-3xl mb-4 inline-flex items-center justify-center" style={{backgroundColor: '#f59e0b', opacity: 0.9}}>
                   &lt; 30 min
@@ -537,7 +535,7 @@ export default function Home() {
       </section>
 
       {/* Need Locksmith Now Section */}
-      <section className="py-8 md:py-16 bg-blue-700 text-white relative z-20">
+      <section id="contact" className="py-8 md:py-16 bg-blue-700 text-white relative z-20 scroll-mt-20">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-2xl md:text-4xl font-bold mb-4">Besoin d'un serrurier maintenant ?</h2>
@@ -581,7 +579,7 @@ export default function Home() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20 hidden md:block">
+      <section id="contact-form" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20 hidden md:block">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-6 md:mb-12 text-blue-800">Contactez-nous</h2>
           <div className="max-w-2xl mx-auto">
