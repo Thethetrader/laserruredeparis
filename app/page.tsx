@@ -5,6 +5,7 @@ import { useState } from "react";
 
 export default function Home() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -44,17 +45,84 @@ export default function Home() {
               Contact
             </a>
           </nav>
-          <div className="flex gap-3">
-            <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
+          <div className="flex gap-3 items-center">
+            <a href="https://wa.me/33664784213" target="_blank" rel="noopener noreferrer" className="text-white w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 rounded-lg flex items-center justify-center gap-2 transition" style={{background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)'}}>
               <span className="text-xl">💬</span>
             </a>
-            <a href="tel:+33664784213" className="text-white px-4 py-2 rounded-lg flex items-center gap-2 transition" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
+            <a href="tel:+33664784213" className="text-white w-10 h-10 md:w-auto md:h-auto md:px-4 md:py-2 rounded-lg flex items-center justify-center gap-2 transition" style={{background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #fb923c 100%)'}}>
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
               </svg>
               <span className="hidden md:inline">Appeler maintenant</span>
             </a>
+            
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden w-10 h-10 flex items-center justify-center"
+              aria-label="Toggle menu"
+            >
+              <div className="flex flex-col gap-1.5">
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+              </div>
+            </button>
           </div>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        <div className={`md:hidden absolute top-full left-0 right-0 bg-gradient-to-b from-white to-gray-50 border-t-2 border-orange-200 shadow-2xl z-50 transition-all duration-500 ease-out overflow-hidden ${
+          isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <nav className="container mx-auto px-6 py-8 flex flex-col gap-1">
+            {/* Services Section */}
+            <div className="flex flex-col gap-3 mb-6">
+              <p className="text-[10px] font-extrabold text-orange-500 uppercase tracking-[0.2em] mb-4 px-3 letter-spacing-wider">Nos Services</p>
+              <a 
+                href="/ouverture-porte" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-lg border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="text-2xl mr-3">🔑</span>
+                <span className="tracking-wide">Ouverture de porte</span>
+              </a>
+              <a 
+                href="/changement-serrure" 
+                className="group text-gray-900 hover:text-orange-600 bg-white hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 px-6 py-5 rounded-2xl transition-all duration-300 font-bold text-lg border-2 border-transparent hover:border-orange-300 hover:shadow-lg transform hover:scale-[1.02]" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="text-2xl mr-3">🔧</span>
+                <span className="tracking-wide">Changement de serrure</span>
+              </a>
+            </div>
+            
+            {/* Divider */}
+            <div className="border-t-2 border-gray-200 my-4"></div>
+            
+            {/* Other Links */}
+            <a 
+              href="#about" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              À propos
+            </a>
+            <a 
+              href="#zone" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Zone d'intervention
+            </a>
+            <a 
+              href="#contact" 
+              className="text-gray-800 hover:text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base tracking-wide border-2 border-transparent hover:border-blue-200 hover:shadow-md" 
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Contact
+            </a>
+          </nav>
         </div>
       </header>
 
@@ -513,7 +581,7 @@ export default function Home() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20">
+      <section id="contact" className="py-8 md:py-16 bg-white relative z-20 scroll-mt-20 hidden md:block">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl md:text-4xl font-bold text-center mb-6 md:mb-12 text-blue-800">Contactez-nous</h2>
           <div className="max-w-2xl mx-auto">
