@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,37 +10,99 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { EnvelopeSimple, Heart, House } from '@phosphor-icons/react'
+import { Eye, EyeSlash, House } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 const schema = z.object({
   email: z.string().email('Adresse email invalide'),
+  password: z.string().min(6, 'Au moins 6 caractères'),
 })
 
 type FormData = z.infer<typeof schema>
 
-export default function LoginPage() {
-  const [sent, setSent] = useState(false)
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
+function LoginForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') ?? '/dashboard'
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [showPassword, setShowPassword] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
-  const email = watch('email')
 
   async function onSubmit(data: FormData) {
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: data.email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-      },
-    })
-    if (error) {
-      console.error('Supabase auth error:', error)
-      toast.error(`Erreur : ${error.message}`)
-      return
+
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+      if (error) {
+        toast.error(
+          error.message === 'Invalid login credentials'
+            ? 'Email ou mot de passe incorrect'
+            : error.message
+        )
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profile } = await (supabase as any).from('profiles').select('couple_id').eq('id', user.id).single()
+        router.push(profile?.couple_id ? redirectTo : '/onboarding')
+      }
+    } else {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      })
+      if (error) {
+        toast.error(
+          error.message.includes('already registered')
+            ? 'Cet email est déjà utilisé. Essayez de vous connecter.'
+            : error.message
+        )
+        return
+      }
+      if (authData.session) {
+        router.push('/onboarding')
+      } else {
+        setEmailSent(true)
+      }
     }
-    setSent(true)
+  }
+
+  if (emailSent) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-sm space-y-4 text-center"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-[#e07a5f]/10 flex items-center justify-center mx-auto">
+            <span className="text-2xl">📬</span>
+          </div>
+          <h2 className="text-2xl font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
+            Vérifie ta boîte mail
+          </h2>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Un lien de confirmation a été envoyé. Clique dessus pour activer ton compte, puis reviens te connecter.
+          </p>
+          <Button
+            variant="outline"
+            className="rounded-2xl w-full"
+            onClick={() => { setEmailSent(false); setMode('login') }}
+          >
+            Retour à la connexion
+          </Button>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -65,64 +128,75 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {!sent ? (
-            <>
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
-                  Bon retour
-                </h1>
-                <p className="text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed max-w-[65ch]">
-                  Gérez vos finances à deux sans prise de tête. Entre le lien magique dans ta boîte mail.
-                </p>
-              </div>
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
+              {mode === 'login' ? 'Bon retour' : 'Créer un compte'}
+            </h1>
+            <p className="text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
+              {mode === 'login'
+                ? 'Connectez-vous à votre espace partagé.'
+                : 'Rejoignez ONKHALASS pour gérer vos finances à deux.'}
+            </p>
+          </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-zinc-600 dark:text-zinc-400">Adresse email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="toi@exemple.fr"
-                    autoComplete="email"
-                    className="rounded-2xl h-12"
-                    {...register('email')}
-                  />
-                  {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
-                </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-zinc-600 dark:text-zinc-400">Adresse email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="toi@exemple.fr"
+                autoComplete="email"
+                className="rounded-2xl h-12"
+                {...register('email')}
+              />
+              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+            </div>
 
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full h-12 rounded-2xl bg-[#e07a5f] hover:bg-[#d06a4f] text-white font-semibold gap-2 active:scale-[0.98] transition-transform"
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-zinc-600 dark:text-zinc-400">Mot de passe</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  className="rounded-2xl h-12 pr-12"
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
                 >
-                  <EnvelopeSimple size={18} />
-                  {isSubmitting ? 'Envoi en cours…' : 'Recevoir le lien magique'}
-                </Button>
-              </form>
-            </>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="space-y-4"
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full h-12 rounded-2xl bg-[#e07a5f] hover:bg-[#d06a4f] text-white font-semibold active:scale-[0.98] transition-transform"
             >
-              <div className="w-14 h-14 rounded-2xl bg-[#e07a5f]/10 flex items-center justify-center">
-                <EnvelopeSimple size={28} className="text-[#e07a5f]" weight="duotone" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-zinc-800 dark:text-zinc-100">
-                  Vérifie ta boîte mail
-                </h2>
-                <p className="text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed">
-                  Un lien de connexion a été envoyé à <strong>{email}</strong>. Clique dessus pour accéder à l'application.
-                </p>
-              </div>
-            </motion.div>
-          )}
+              {isSubmitting ? 'Chargement…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+            </Button>
+          </form>
+
+          <p className="text-center text-sm text-zinc-500">
+            {mode === 'login' ? "Pas encore de compte ? " : "Déjà un compte ? "}
+            <button
+              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              className="text-[#e07a5f] font-medium hover:underline"
+            >
+              {mode === 'login' ? 'Créer un compte' : 'Se connecter'}
+            </button>
+          </p>
         </motion.div>
       </div>
 
-      {/* Right — decorative (hidden on mobile) */}
+      {/* Right — decorative */}
       <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-[#e07a5f]/10 to-[#f2cc8f]/10 dark:from-[#e07a5f]/5 dark:to-[#f2cc8f]/5">
         <div className="text-center space-y-4 px-12">
           <div className="text-6xl font-semibold tracking-tighter text-zinc-200 dark:text-zinc-800 select-none">
@@ -134,5 +208,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
