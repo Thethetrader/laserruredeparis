@@ -126,10 +126,10 @@ function Hero() {
 
 // ─── Problems ─────────────────────────────────────────────────────────
 const PAINS = [
-  "« C'est encore moi qui ai payé les courses ce mois ? »",
-  "« On a oublié de répartir le loyer de janvier. »",
-  "« Tu me dois combien déjà — 80 € ou 120 ? »",
-  "« Je sais même pas combien on dépense par mois. »",
+  "« Je fais quoi de mon argent à la fin du mois ? »",
+  "« On avait pas prévu assez pour les vacances. »",
+  "« C'est toujours moi qui paie tout. »",
+  "« On dépense trop mais on sait pas où. »",
 ]
 
 function Problems() {
