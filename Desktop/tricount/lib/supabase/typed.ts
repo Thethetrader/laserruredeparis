@@ -6,8 +6,10 @@ import type { Couple, CoupleInvite } from './types'
 type AnySupabase = any
 
 export async function insertCouple(sb: AnySupabase, values: { name: string; currency?: string }): Promise<{ data: Couple | null; error: Error | null }> {
-  const result = await sb.from('couples').insert(values).select().single()
-  return result as { data: Couple | null; error: Error | null }
+  const id = crypto.randomUUID()
+  const { error } = await sb.from('couples').insert({ id, ...values })
+  if (error) return { data: null, error }
+  return { data: { id, name: values.name, currency: values.currency ?? 'EUR', created_at: new Date().toISOString() } as Couple, error: null }
 }
 
 export async function insertCoupleMember(sb: AnySupabase, values: {
