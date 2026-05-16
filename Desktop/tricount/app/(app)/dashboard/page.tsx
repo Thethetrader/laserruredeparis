@@ -311,6 +311,7 @@ export default function DashboardPage() {
                   spent={cat.spent}
                   budget={cat.budget}
                   currency={currency}
+                  inline
                 />
               </motion.div>
             ))}
