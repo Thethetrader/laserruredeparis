@@ -5,18 +5,18 @@ import { usePathname } from 'next/navigation'
 import {
   House,
   CurrencyEur,
-  ClockCounterClockwise,
+  ChartBar,
   PiggyBank,
-  TrendUp,
+  ClockCounterClockwise,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 
 const nav = [
   { href: '/dashboard', icon: House, label: 'Accueil' },
   { href: '/expenses', icon: CurrencyEur, label: 'Dépenses' },
-  { href: '/history', icon: ClockCounterClockwise, label: 'Historique' },
+  { href: '/budget', icon: ChartBar, label: 'Budget' },
   { href: '/savings', icon: PiggyBank, label: 'Épargne' },
-  { href: '/trends', icon: TrendUp, label: 'Tendances' },
+  { href: '/history', icon: ClockCounterClockwise, label: 'Historique' },
 ]
 
 export function BottomNav() {
