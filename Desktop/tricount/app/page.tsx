@@ -64,7 +64,7 @@ function Hero() {
             <em className="italic font-normal" style={{ color: TERRA }}>enfin clair.</em>
           </h1>
           <p className="text-lg text-white/60 max-w-sm mx-auto leading-relaxed">
-            Moins dépenser. Plus épargner. Ensemble, sans friction.
+            Mieux dépenser. Plus épargner. Ensemble.
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
