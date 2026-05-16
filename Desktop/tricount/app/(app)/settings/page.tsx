@@ -45,10 +45,17 @@ export default function SettingsPage() {
 
   async function onProfilePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !profile?.id) return
+    if (!file) return
+    let userId = profile?.id
+    if (!userId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: { user } } = await (createClient() as any).auth.getUser()
+      userId = user?.id
+    }
+    if (!userId) return
     try {
       const dataUrl = await fileToDataUrl(file, 400)
-      setMemberAvatar(profile.id, dataUrl)
+      setMemberAvatar(userId, dataUrl)
       toast.success('Photo de profil mise à jour')
     } catch { toast.error('Erreur lors du chargement') }
     e.target.value = ''
@@ -131,9 +138,19 @@ export default function SettingsPage() {
   }
 
   async function addCategory() {
-    if (!newCatName.trim() || !couple) return
+    if (!newCatName.trim()) return
+    let coupleId = couple?.id
+    if (!coupleId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createClient() as any
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: p } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+      coupleId = p?.couple_id
+    }
+    if (!coupleId) { toast.error('Aucun couple trouvé'); return }
     try {
-      await upsertCategory.mutateAsync({ couple_id: couple.id, name: newCatName.trim(), color: newCatColor, icon: 'Tag' })
+      await upsertCategory.mutateAsync({ couple_id: coupleId, name: newCatName.trim(), color: newCatColor, icon: 'Tag' })
       setNewCatName('')
       toast.success('Catégorie ajoutée')
     } catch { toast.error('Erreur') }
