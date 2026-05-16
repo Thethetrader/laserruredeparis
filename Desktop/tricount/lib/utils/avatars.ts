@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { CoupleMember } from '@/lib/supabase/types'
 
 const STORAGE_PREFIX = 'monbudget:avatar:'
 const COUPLE_KEY = 'monbudget:couple-cover'
@@ -32,12 +34,48 @@ export function setCoupleCover(dataUrl: string | null) {
 
 export function useMemberAvatar(userId: string | null | undefined): string | null {
   const [url, setUrl] = useState<string | null>(null)
+  const qc = useQueryClient()
+
   useEffect(() => {
-    setUrl(getMemberAvatar(userId))
+    if (!userId) return
+
+    // Try localStorage first (fast), then fall back to Supabase data
+    const local = getMemberAvatar(userId)
+    if (local) {
+      setUrl(local)
+    } else {
+      const members = qc.getQueryData<CoupleMember[]>(['couple-members'])
+      const member = members?.find(m => m.user_id === userId)
+      if (member?.avatar_url) {
+        // Seed localStorage from DB so it's available offline
+        setMemberAvatar(userId, member.avatar_url)
+        setUrl(member.avatar_url)
+      } else {
+        setUrl(null)
+      }
+    }
+
     const handler = () => setUrl(getMemberAvatar(userId))
     window.addEventListener(EVT, handler)
-    return () => window.removeEventListener(EVT, handler)
-  }, [userId])
+
+    // Also update when couple-members query refreshes
+    const unsubscribe = qc.getQueryCache().subscribe((event) => {
+      if (event.query.queryKey[0] === 'couple-members' && event.type === 'updated') {
+        const members = qc.getQueryData<CoupleMember[]>(['couple-members'])
+        const member = members?.find(m => m.user_id === userId)
+        if (member?.avatar_url) {
+          setMemberAvatar(userId, member.avatar_url)
+          setUrl(member.avatar_url)
+        }
+      }
+    })
+
+    return () => {
+      window.removeEventListener(EVT, handler)
+      unsubscribe()
+    }
+  }, [userId, qc])
+
   return url
 }
 

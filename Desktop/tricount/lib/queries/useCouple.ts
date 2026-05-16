@@ -74,6 +74,22 @@ export function useSettlements() {
   })
 }
 
+export function useUpdateMemberAvatar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, avatarUrl }: { userId: string; avatarUrl: string | null }) => {
+      if (DEV) return
+      const supabase = sb()
+      const { error } = await supabase
+        .from('couple_members')
+        .update({ avatar_url: avatarUrl })
+        .eq('user_id', userId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple-members'] }),
+  })
+}
+
 export function useCreateSettlement() {
   const qc = useQueryClient()
   return useMutation({

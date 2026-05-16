@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useCouple, useCoupleMembers, useProfile } from '@/lib/queries/useCouple'
+import { useCouple, useCoupleMembers, useProfile, useUpdateMemberAvatar } from '@/lib/queries/useCouple'
 import { useCategories, useUpsertCategory, useArchiveCategory } from '@/lib/queries/useCategories'
 import { useAllExpenses } from '@/lib/queries/useExpenses'
 import { Button } from '@/components/ui/button'
@@ -58,6 +58,7 @@ export default function SettingsPage() {
   const [rDay, setRDay] = useState(1)
   const [rSplit, setRSplit] = useState<'equal' | 'payer_only'>('equal')
   const [savingRecurring, setSavingRecurring] = useState(false)
+  const updateMemberAvatar = useUpdateMemberAvatar()
 
   async function onProfilePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -72,6 +73,7 @@ export default function SettingsPage() {
     try {
       const dataUrl = await fileToDataUrl(file, 400)
       setMemberAvatar(userId, dataUrl)
+      await updateMemberAvatar.mutateAsync({ userId, avatarUrl: dataUrl })
       toast.success('Photo de profil mise à jour')
     } catch { toast.error('Erreur lors du chargement') }
     e.target.value = ''
@@ -273,7 +275,7 @@ export default function SettingsPage() {
           </div>
           {profile?.id && getMemberAvatar(profile.id) && (
             <button
-              onClick={() => { setMemberAvatar(profile.id, null); toast.success('Photo retirée') }}
+              onClick={() => { setMemberAvatar(profile.id, null); updateMemberAvatar.mutate({ userId: profile.id, avatarUrl: null }); toast.success('Photo retirée') }}
               className="text-xs text-red-500 hover:underline self-start mt-1"
             >
               Retirer
