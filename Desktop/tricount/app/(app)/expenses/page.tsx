@@ -8,6 +8,7 @@ import { ExpenseCard } from '@/components/ExpenseCard'
 import { AddExpenseModal } from '@/components/AddExpenseModal'
 import { useExpenses, useDeleteExpense } from '@/lib/queries/useExpenses'
 import { useCouple, useCoupleMembers } from '@/lib/queries/useCouple'
+import { useRecurringExpenses, useAutoFillMonth } from '@/lib/queries/useRecurringExpenses'
 import { useCategories } from '@/lib/queries/useCategories'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
@@ -30,11 +31,28 @@ export default function ExpensesPage() {
   const { data: members = [] } = useCoupleMembers()
   const { data: expenses = [], isLoading } = useExpenses(month)
   const { data: categories = [] } = useCategories()
+  const { data: recurringExpenses = [] } = useRecurringExpenses()
   const deleteExpense = useDeleteExpense()
+  const autoFill = useAutoFillMonth()
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null))
   }, [])
+
+  const currentMonth = format(new Date(), 'yyyy-MM')
+  useEffect(() => {
+    if (!couple || members.length === 0 || recurringExpenses.length === 0) return
+    if (month !== currentMonth) return
+    autoFill.mutate(
+      { month, coupleId: couple.id, currency: couple.currency, members, recurringExpenses },
+      {
+        onSuccess: (count) => {
+          if (count > 0) toast.success(`${count} charge${count > 1 ? 's' : ''} fixe${count > 1 ? 's' : ''} ajoutée${count > 1 ? 's' : ''}`)
+        },
+      }
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month, couple?.id, members.length, recurringExpenses.length])
 
   const filtered = useMemo(() => {
     return (expenses as (Expense & { expense_shares: ExpenseShare[] })[]).filter(e => {

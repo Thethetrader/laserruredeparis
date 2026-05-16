@@ -11,12 +11,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MemberAvatar } from '@/components/MemberAvatar'
 import { toast } from 'sonner'
-import { SignOut, Plus, Trash, PencilSimple, Camera, LinkSimple, Copy, CheckCircle } from '@phosphor-icons/react'
+import { SignOut, Plus, Trash, PencilSimple, Camera, LinkSimple, Copy, CheckCircle, ArrowsClockwise, ToggleLeft, ToggleRight } from '@phosphor-icons/react'
 import { fileToDataUrl, getMemberAvatar, setMemberAvatar, useCoupleCover, setCoupleCover } from '@/lib/utils/avatars'
 import { useRef } from 'react'
 import { formatShortDate } from '@/lib/utils/format'
 import type { Expense } from '@/lib/supabase/types'
 import { useQueryClient } from '@tanstack/react-query'
+import { useRecurringExpenses, useCreateRecurring, useUpdateRecurring, useDeleteRecurring } from '@/lib/queries/useRecurringExpenses'
+import { formatCurrency } from '@/lib/utils/format'
 
 const COLORS = ['#e07a5f', '#81b29a', '#3d405b', '#f2cc8f', '#457b9d', '#e63946', '#2a9d8f']
 
@@ -31,6 +33,11 @@ export default function SettingsPage() {
   const upsertCategory = useUpsertCategory()
   const archiveCategory = useArchiveCategory()
 
+  const { data: recurringList = [] } = useRecurringExpenses()
+  const createRecurring = useCreateRecurring()
+  const updateRecurring = useUpdateRecurring()
+  const deleteRecurring = useDeleteRecurring()
+
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [color, setColor] = useState(profile?.color ?? COLORS[0])
   const [savingProfile, setSavingProfile] = useState(false)
@@ -42,6 +49,15 @@ export default function SettingsPage() {
   const profilePhotoRef = useRef<HTMLInputElement>(null)
   const couplePhotoRef = useRef<HTMLInputElement>(null)
   const coupleCover = useCoupleCover()
+
+  const [showRecurringForm, setShowRecurringForm] = useState(false)
+  const [rDesc, setRDesc] = useState('')
+  const [rAmount, setRAmount] = useState('')
+  const [rCategoryId, setRCategoryId] = useState('')
+  const [rPaidBy, setRPaidBy] = useState('')
+  const [rDay, setRDay] = useState(1)
+  const [rSplit, setRSplit] = useState<'equal' | 'payer_only'>('equal')
+  const [savingRecurring, setSavingRecurring] = useState(false)
 
   async function onProfilePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -76,6 +92,7 @@ export default function SettingsPage() {
     if (profile) {
       setDisplayName(profile.display_name ?? '')
       setColor(profile.color ?? COLORS[0])
+      if (!rPaidBy) setRPaidBy(profile.id)
     }
   }, [profile])
 
@@ -154,6 +171,43 @@ export default function SettingsPage() {
       setNewCatName('')
       toast.success('Catégorie ajoutée')
     } catch { toast.error('Erreur') }
+  }
+
+  async function addRecurring() {
+    if (!rDesc.trim() || !rAmount) return
+    const amount = parseFloat(rAmount.replace(',', '.'))
+    if (isNaN(amount) || amount <= 0) { toast.error('Montant invalide'); return }
+    let coupleId = couple?.id
+    let paidBy = rPaidBy
+    if (!coupleId || !paidBy) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createClient() as any
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      if (!paidBy) paidBy = user.id
+      if (!coupleId) {
+        const { data: p } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+        coupleId = p?.couple_id
+      }
+    }
+    if (!coupleId) { toast.error('Aucun couple trouvé'); return }
+    setSavingRecurring(true)
+    try {
+      await createRecurring.mutateAsync({
+        couple_id: coupleId,
+        description: rDesc.trim(),
+        amount,
+        category_id: rCategoryId || null,
+        paid_by: paidBy,
+        day_of_month: rDay,
+        split_mode: rSplit,
+        is_active: true,
+      })
+      setRDesc(''); setRAmount(''); setRCategoryId(''); setRDay(1); setRSplit('equal')
+      setShowRecurringForm(false)
+      toast.success('Charge fixe ajoutée')
+    } catch { toast.error('Erreur') }
+    setSavingRecurring(false)
   }
 
   function exportCSV() {
@@ -313,6 +367,128 @@ export default function SettingsPage() {
           )}
         </section>
       )}
+
+      {/* Recurring charges */}
+      <section className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-200/50 dark:border-zinc-800 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Charges fixes mensuelles</h2>
+          <button
+            onClick={() => setShowRecurringForm(v => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-[#e07a5f] hover:text-[#d06a4f]"
+          >
+            <Plus size={14} weight="bold" />
+            Ajouter
+          </button>
+        </div>
+
+        {recurringList.length === 0 && !showRecurringForm && (
+          <p className="text-xs text-zinc-400">Loyer, abonnements… ajoutez vos charges récurrentes pour les remplir automatiquement chaque mois.</p>
+        )}
+
+        {/* Existing list */}
+        <div className="space-y-2">
+          {recurringList.map(r => {
+            const cat = categories.find(c => c.id === r.category_id)
+            const payer = members.find(m => m.user_id === r.paid_by)
+            return (
+              <div key={r.id} className={`flex items-center gap-2 py-1 ${!r.is_active ? 'opacity-40' : ''}`}>
+                <ArrowsClockwise size={14} className="text-zinc-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate">{r.description}</p>
+                  <p className="text-xs text-zinc-400">
+                    {formatCurrency(r.amount, couple?.currency ?? 'EUR')} · le {r.day_of_month}
+                    {cat ? ` · ${cat.name}` : ''}
+                    {payer ? ` · ${payer.display_name}` : ''}
+                    {r.split_mode === 'equal' ? ' · 50/50' : ' · seul'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => updateRecurring.mutate({ id: r.id, values: { is_active: !r.is_active } })}
+                  className={`p-1 rounded-lg transition-colors flex-shrink-0 ${r.is_active ? 'text-green-500 hover:bg-green-50' : 'text-zinc-300 hover:bg-zinc-100'}`}
+                  title={r.is_active ? 'Désactiver' : 'Activer'}
+                >
+                  {r.is_active ? <ToggleRight size={18} weight="fill" /> : <ToggleLeft size={18} />}
+                </button>
+                <button
+                  onClick={() => deleteRecurring.mutate(r.id)}
+                  className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-zinc-300 hover:text-red-400 transition-colors flex-shrink-0"
+                >
+                  <Trash size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Add form */}
+        {showRecurringForm && (
+          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="col-span-2">
+                <Input
+                  placeholder="Description (ex: Loyer)"
+                  className="rounded-2xl text-sm"
+                  value={rDesc}
+                  onChange={e => setRDesc(e.target.value)}
+                />
+              </div>
+              <Input
+                placeholder="Montant"
+                inputMode="decimal"
+                className="rounded-2xl text-sm"
+                value={rAmount}
+                onChange={e => setRAmount(e.target.value)}
+              />
+              <input
+                type="number"
+                min={1}
+                max={28}
+                className="h-10 px-3 rounded-2xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Jour (1-28)"
+                value={rDay}
+                onChange={e => setRDay(Math.min(28, Math.max(1, Number(e.target.value))))}
+              />
+            </div>
+            <select
+              className="w-full h-10 px-3 rounded-2xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              value={rCategoryId}
+              onChange={e => setRCategoryId(e.target.value)}
+            >
+              <option value="">Catégorie (optionnel)</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {members.length > 0 && (
+              <select
+                className="w-full h-10 px-3 rounded-2xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                value={rPaidBy}
+                onChange={e => setRPaidBy(e.target.value)}
+              >
+                {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name} paie</option>)}
+              </select>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRSplit('equal')}
+                className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${rSplit === 'equal' ? 'bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent' : 'border-zinc-200 text-zinc-500'}`}
+              >
+                Partagé 50/50
+              </button>
+              <button
+                onClick={() => setRSplit('payer_only')}
+                className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${rSplit === 'payer_only' ? 'bg-zinc-800 dark:bg-zinc-100 text-white dark:text-zinc-900 border-transparent' : 'border-zinc-200 text-zinc-500'}`}
+              >
+                Payeur seul
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowRecurringForm(false)} className="flex-1 rounded-2xl text-sm">Annuler</Button>
+              <Button onClick={addRecurring} disabled={savingRecurring} className="flex-1 rounded-2xl bg-[#e07a5f] hover:bg-[#d06a4f] text-white text-sm">
+                {savingRecurring ? 'Ajout…' : 'Ajouter'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Export */}
       <section className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-200/50 dark:border-zinc-800 space-y-3">

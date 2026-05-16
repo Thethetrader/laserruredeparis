@@ -91,6 +91,41 @@ export type Database = {
         }
         Update: { amount?: number }
       }
+      recurring_expenses: {
+        Row: {
+          id: string
+          couple_id: string
+          description: string
+          amount: number
+          category_id: string | null
+          paid_by: string
+          day_of_month: number
+          split_mode: 'equal' | 'payer_only'
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          couple_id: string
+          description: string
+          amount: number
+          category_id?: string | null
+          paid_by: string
+          day_of_month?: number
+          split_mode?: 'equal' | 'payer_only'
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          description?: string
+          amount?: number
+          category_id?: string | null
+          paid_by?: string
+          day_of_month?: number
+          split_mode?: 'equal' | 'payer_only'
+          is_active?: boolean
+        }
+      }
       expenses: {
         Row: {
           id: string
@@ -102,6 +137,7 @@ export type Database = {
           description: string
           spent_at: string
           receipt_url: string | null
+          recurring_expense_id: string | null
           created_at: string
           updated_at: string
         }
@@ -115,6 +151,7 @@ export type Database = {
           description: string
           spent_at: string
           receipt_url?: string | null
+          recurring_expense_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -126,6 +163,7 @@ export type Database = {
           description?: string
           spent_at?: string
           receipt_url?: string | null
+          recurring_expense_id?: string | null
           updated_at?: string
         }
       }
@@ -267,6 +305,7 @@ export type SavingsPot = Tables<'savings_pots'>
 export type SavingsTransaction = Tables<'savings_transactions'>
 export type Settlement = Tables<'settlements'>
 export type Profile = Tables<'profiles'>
+export type RecurringExpense = Tables<'recurring_expenses'>
 
 export type ExpenseWithShares = Expense & { expense_shares: ExpenseShare[] }
 export type CategoryWithBudget = Category & {

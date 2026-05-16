@@ -58,7 +58,7 @@ export function useCreateExpense() {
       expense,
       shares,
     }: {
-      expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>
+      expense: Omit<Expense, 'id' | 'created_at' | 'updated_at' | 'recurring_expense_id'> & { recurring_expense_id?: string | null }
       shares: { user_id: string; share_amount: number }[]
     }) => {
       if (DEV) return { ...expense, id: 'exp-new-' + Date.now(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as Expense
