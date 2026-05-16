@@ -64,7 +64,7 @@ function Hero() {
             <em className="italic font-normal" style={{ color: TERRA }}>enfin clair.</em>
           </h1>
           <p className="text-lg text-white/60 max-w-sm mx-auto leading-relaxed">
-            Dépenses partagées, charges fixes, épargne commune — tout en un.
+            Dépenses partagées, charges fixes, épargne commune. Tout en un.
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
@@ -77,7 +77,7 @@ function Hero() {
             </Link>
             <a
               href="#screens"
-              className="h-12 px-7 rounded-full font-medium transition-all hover:-translate-y-0.5"
+              className="h-12 px-7 rounded-full font-medium transition-all hover:-translate-y-0.5 flex items-center justify-center"
               style={{ color: 'white', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
             >
               Voir l'app
