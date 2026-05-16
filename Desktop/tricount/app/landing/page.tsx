@@ -91,12 +91,6 @@ function Hero() {
       />
       <div className="relative max-w-6xl mx-auto px-5 pt-12 pb-20 md:pt-20 md:pb-32 grid md:grid-cols-12 gap-10 md:gap-6 items-center">
         <div className="md:col-span-7 space-y-7">
-          <Reveal>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: SAGE + '20', color: SAGE }}>
-              <Sparkle size={12} weight="fill" />
-              Bientôt disponible · Liste d'attente ouverte
-            </div>
-          </Reveal>
           <Reveal delay={0.05}>
             <h1 className="text-[2.5rem] leading-[1.05] md:text-[4.25rem] md:leading-[1] tracking-tight font-semibold" style={{ color: INK, fontFamily: 'var(--font-instrument), Georgia, serif' }}>
               Le budget de votre couple, <em className="italic font-normal" style={{ color: TERRA }}>enfin clair.</em>
