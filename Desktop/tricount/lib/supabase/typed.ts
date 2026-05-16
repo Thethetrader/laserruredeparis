@@ -22,7 +22,8 @@ export async function insertCoupleMember(sb: AnySupabase, values: {
 export async function updateProfile(sb: AnySupabase, userId: string, values: {
   couple_id?: string | null; display_name?: string; color?: string
 }): Promise<{ error: Error | null }> {
-  const result = await sb.from('profiles').update(values).eq('id', userId)
+  // Use upsert so this works even if the profile row doesn't exist yet
+  const result = await sb.from('profiles').upsert({ id: userId, ...values }, { onConflict: 'id' })
   return result as { error: Error | null }
 }
 

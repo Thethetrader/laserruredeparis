@@ -2,7 +2,10 @@
 -- Helper: get the couple_id of the current user
 CREATE OR REPLACE FUNCTION get_my_couple_id()
 RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT couple_id FROM profiles WHERE id = auth.uid()
+  SELECT COALESCE(
+    (SELECT couple_id FROM profiles WHERE id = auth.uid() AND couple_id IS NOT NULL),
+    (SELECT couple_id FROM couple_members WHERE user_id = auth.uid() LIMIT 1)
+  )
 $$;
 
 -- Enable RLS on all tables
