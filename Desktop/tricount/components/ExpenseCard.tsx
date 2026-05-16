@@ -2,7 +2,7 @@
 
 import { formatCurrency, formatShortDate } from '@/lib/utils/format'
 import { MemberAvatar } from './MemberAvatar'
-import { Pencil, Trash } from '@phosphor-icons/react'
+import { Trash } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { Expense, Category, CoupleMember } from '@/lib/supabase/types'
 
@@ -19,7 +19,7 @@ export function ExpenseCard({ expense, category, paidByMember, onEdit, onDelete 
     <div className={cn(
       'flex items-center gap-3 py-3 px-4 rounded-2xl',
       'bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800',
-      'group'
+      ''
     )}>
       {/* Category icon */}
       <div
@@ -56,27 +56,14 @@ export function ExpenseCard({ expense, category, paidByMember, onEdit, onDelete 
       </div>
 
       {/* Actions */}
-      {(onEdit || onDelete) && (
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onEdit && (
-            <button
-              onClick={onEdit}
-              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 transition-colors active:scale-95"
-              aria-label="Modifier"
-            >
-              <Pencil size={14} />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-400 hover:text-red-500 transition-colors active:scale-95"
-              aria-label="Supprimer"
-            >
-              <Trash size={14} />
-            </button>
-          )}
-        </div>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-300 dark:text-zinc-600 hover:text-red-500 active:text-red-500 transition-colors active:scale-95 flex-shrink-0"
+          aria-label="Supprimer"
+        >
+          <Trash size={15} />
+        </button>
       )}
     </div>
   )
