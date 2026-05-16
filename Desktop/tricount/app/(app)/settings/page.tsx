@@ -90,14 +90,28 @@ export default function SettingsPage() {
   }
 
   async function generateInvite() {
-    if (!couple) return
     setInviteLoading(true)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const supabase = createClient() as any
+
+    let coupleId = couple?.id
+    if (!coupleId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setInviteLoading(false); return }
+      const { data: p } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+      coupleId = p?.couple_id
+    }
+
+    if (!coupleId) {
+      toast.error('Aucun couple trouvé')
+      setInviteLoading(false)
+      return
+    }
+
     const token = crypto.randomUUID()
     const expires = new Date()
     expires.setDate(expires.getDate() + 7)
-    await supabase.from('couple_invites').insert({ couple_id: couple.id, token, expires_at: expires.toISOString() })
+    await supabase.from('couple_invites').insert({ couple_id: coupleId, token, expires_at: expires.toISOString() })
     setInviteLink(`${window.location.origin}/invite/${token}`)
     setInviteLoading(false)
   }
@@ -273,7 +287,7 @@ export default function SettingsPage() {
           ) : (
             <Button
               onClick={generateInvite}
-              disabled={inviteLoading || coupleLoading || !couple}
+              disabled={inviteLoading}
               className="w-full rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-semibold"
             >
               <LinkSimple size={16} className="mr-2" />
