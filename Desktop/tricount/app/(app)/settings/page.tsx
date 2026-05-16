@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useCouple, useCoupleMembers, useProfile, useUpdateMemberAvatar } from '@/lib/queries/useCouple'
+import { useCouple, useCoupleMembers, useProfile, useUpdateMemberAvatar, useUpdateCoupleCover } from '@/lib/queries/useCouple'
 import { useCategories, useUpsertCategory, useArchiveCategory } from '@/lib/queries/useCategories'
 import { useAllExpenses } from '@/lib/queries/useExpenses'
 import { Button } from '@/components/ui/button'
@@ -59,6 +59,7 @@ export default function SettingsPage() {
   const [rSplit, setRSplit] = useState<'equal' | 'payer_only'>('equal')
   const [savingRecurring, setSavingRecurring] = useState(false)
   const updateMemberAvatar = useUpdateMemberAvatar()
+  const updateCoupleCover = useUpdateCoupleCover()
 
   async function onProfilePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -82,9 +83,11 @@ export default function SettingsPage() {
   async function onCouplePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!couple) return
     try {
       const dataUrl = await fileToDataUrl(file, 1200)
       setCoupleCover(dataUrl)
+      await updateCoupleCover.mutateAsync({ coupleId: couple.id, coverUrl: dataUrl })
       toast.success('Photo du couple mise à jour')
     } catch { toast.error('Erreur lors du chargement') }
     e.target.value = ''
@@ -252,7 +255,7 @@ export default function SettingsPage() {
         </div>
         <input ref={couplePhotoRef} type="file" accept="image/*" onChange={onCouplePhotoSelected} className="hidden" />
         {coupleCover && (
-          <button onClick={() => { setCoupleCover(null); toast.success('Photo retirée') }} className="text-xs text-red-500 hover:underline">
+          <button onClick={() => { setCoupleCover(null); if (couple) updateCoupleCover.mutate({ coupleId: couple.id, coverUrl: null }); toast.success('Photo retirée') }} className="text-xs text-red-500 hover:underline">
             Retirer la photo
           </button>
         )}

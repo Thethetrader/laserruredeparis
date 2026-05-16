@@ -74,6 +74,22 @@ export function useSettlements() {
   })
 }
 
+export function useUpdateCoupleCover() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ coupleId, coverUrl }: { coupleId: string; coverUrl: string | null }) => {
+      if (DEV) return
+      const supabase = sb()
+      const { error } = await supabase
+        .from('couples')
+        .update({ cover_url: coverUrl })
+        .eq('id', coupleId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['couple'] }),
+  })
+}
+
 export function useUpdateMemberAvatar() {
   const qc = useQueryClient()
   return useMutation({

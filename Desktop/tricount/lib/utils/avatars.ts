@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { CoupleMember } from '@/lib/supabase/types'
+import type { CoupleMember, Couple } from '@/lib/supabase/types'
 
 const STORAGE_PREFIX = 'monbudget:avatar:'
 const COUPLE_KEY = 'monbudget:couple-cover'
@@ -81,12 +81,41 @@ export function useMemberAvatar(userId: string | null | undefined): string | nul
 
 export function useCoupleCover(): string | null {
   const [url, setUrl] = useState<string | null>(null)
+  const qc = useQueryClient()
+
   useEffect(() => {
-    setUrl(getCoupleCover())
+    const local = getCoupleCover()
+    if (local) {
+      setUrl(local)
+    } else {
+      const couple = qc.getQueryData<Couple>(['couple'])
+      if (couple?.cover_url) {
+        setCoupleCover(couple.cover_url)
+        setUrl(couple.cover_url)
+      } else {
+        setUrl(null)
+      }
+    }
+
     const handler = () => setUrl(getCoupleCover())
     window.addEventListener(EVT, handler)
-    return () => window.removeEventListener(EVT, handler)
-  }, [])
+
+    const unsubscribe = qc.getQueryCache().subscribe((event) => {
+      if (event.query.queryKey[0] === 'couple' && event.type === 'updated') {
+        const couple = qc.getQueryData<Couple>(['couple'])
+        if (couple?.cover_url) {
+          setCoupleCover(couple.cover_url)
+          setUrl(couple.cover_url)
+        }
+      }
+    })
+
+    return () => {
+      window.removeEventListener(EVT, handler)
+      unsubscribe()
+    }
+  }, [qc])
+
   return url
 }
 

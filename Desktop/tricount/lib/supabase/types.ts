@@ -5,9 +5,9 @@ export type Database = {
     CompositeTypes: Record<string, never>
     Tables: {
       couples: {
-        Row: { id: string; name: string; currency: string; created_at: string }
-        Insert: { id?: string; name: string; currency?: string; created_at?: string }
-        Update: { id?: string; name?: string; currency?: string; created_at?: string }
+        Row: { id: string; name: string; currency: string; created_at: string; cover_url: string | null }
+        Insert: { id?: string; name: string; currency?: string; created_at?: string; cover_url?: string | null }
+        Update: { id?: string; name?: string; currency?: string; created_at?: string; cover_url?: string | null }
       }
       couple_members: {
         Row: {
