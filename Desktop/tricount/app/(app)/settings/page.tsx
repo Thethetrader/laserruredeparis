@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MemberAvatar } from '@/components/MemberAvatar'
 import { toast } from 'sonner'
-import { SignOut, Plus, Trash, PencilSimple, Camera } from '@phosphor-icons/react'
+import { SignOut, Plus, Trash, PencilSimple, Camera, LinkSimple, Copy, CheckCircle } from '@phosphor-icons/react'
 import { fileToDataUrl, getMemberAvatar, setMemberAvatar, useCoupleCover, setCoupleCover } from '@/lib/utils/avatars'
 import { useRef } from 'react'
 import { formatShortDate } from '@/lib/utils/format'
@@ -36,6 +36,9 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatColor, setNewCatColor] = useState('#8d99ae')
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
   const profilePhotoRef = useRef<HTMLInputElement>(null)
   const couplePhotoRef = useRef<HTMLInputElement>(null)
   const coupleCover = useCoupleCover()
@@ -84,6 +87,27 @@ export default function SettingsPage() {
     qc.invalidateQueries({ queryKey: ['profile'] })
     qc.invalidateQueries({ queryKey: ['couple-members'] })
     toast.success('Profil mis à jour')
+  }
+
+  async function generateInvite() {
+    if (!couple) return
+    setInviteLoading(true)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createClient() as any
+    const token = crypto.randomUUID()
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 7)
+    await supabase.from('couple_invites').insert({ couple_id: couple.id, token, expires_at: expires.toISOString() })
+    setInviteLink(`${window.location.origin}/invite/${token}`)
+    setInviteLoading(false)
+  }
+
+  async function copyInvite() {
+    if (!inviteLink) return
+    await navigator.clipboard.writeText(inviteLink)
+    setCopied(true)
+    toast.success('Lien copié !')
+    setTimeout(() => setCopied(false), 2000)
   }
 
   async function logout() {
@@ -226,6 +250,38 @@ export default function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      {/* Invite partner — only show if solo */}
+      {members.length < 2 && (
+        <section className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl p-5 border border-amber-200/50 dark:border-amber-900/50 space-y-3">
+          <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Inviter mon partenaire</h2>
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            Partagez ce lien à votre partenaire pour qu'il rejoigne votre espace commun.
+          </p>
+          {inviteLink ? (
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-amber-700 dark:text-amber-400 flex-1 break-all bg-amber-100 dark:bg-amber-900/30 rounded-xl px-3 py-2 font-mono">
+                {inviteLink}
+              </p>
+              <button
+                onClick={copyInvite}
+                className="p-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white transition-colors flex-shrink-0"
+              >
+                {copied ? <CheckCircle size={16} weight="bold" /> : <Copy size={16} />}
+              </button>
+            </div>
+          ) : (
+            <Button
+              onClick={generateInvite}
+              disabled={inviteLoading}
+              className="w-full rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+            >
+              <LinkSimple size={16} className="mr-2" />
+              {inviteLoading ? 'Génération…' : 'Générer un lien d\'invitation'}
+            </Button>
+          )}
+        </section>
+      )}
 
       {/* Export */}
       <section className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-zinc-200/50 dark:border-zinc-800 space-y-3">
