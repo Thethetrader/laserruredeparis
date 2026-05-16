@@ -53,9 +53,8 @@ export default function LoginPage() {
         >
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#e07a5f] flex items-center justify-center">
-              <Heart size={16} weight="fill" className="text-white" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.jpg" alt="ONKHALASS" className="w-8 h-8 rounded-xl object-cover" />
             <span className="font-semibold text-zinc-800 dark:text-zinc-100 tracking-tight">ONKHALASS</span>
           </div>
 

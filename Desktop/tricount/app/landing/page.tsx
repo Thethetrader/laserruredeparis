@@ -37,18 +37,11 @@ function Reveal({ children, delay = 0, y = 24, className = '' }: { children: Rea
 // ─── Logo ───────────────────────────────────────────────────────────
 function Logo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizes = { sm: 'text-base', md: 'text-lg', lg: 'text-2xl' }
+  const imgSize = size === 'lg' ? 44 : size === 'md' ? 32 : 24
   return (
     <div className="flex items-center gap-2 select-none">
-      <div
-        className="relative rounded-xl flex items-center justify-center shadow-sm"
-        style={{
-          background: `linear-gradient(135deg, ${TERRA}, ${TERRA_DARK})`,
-          width: size === 'lg' ? 44 : size === 'md' ? 32 : 24,
-          height: size === 'lg' ? 44 : size === 'md' ? 32 : 24,
-        }}
-      >
-        <CheckCircle size={size === 'lg' ? 22 : size === 'md' ? 16 : 12} weight="fill" className="text-white" />
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo.jpg" alt="ONKHALASS" width={imgSize} height={imgSize} className="rounded-xl object-cover shadow-sm" style={{ width: imgSize, height: imgSize }} />
       <span className={`font-bold tracking-[0.05em] ${sizes[size]}`} style={{ color: INK, fontFamily: 'var(--font-geist-sans), system-ui' }}>
         ONKHALASS
       </span>

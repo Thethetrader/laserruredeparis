@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   title: 'ONKHALASS',
   description: 'Gérez votre budget en couple, simplement.',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'ONKHALASS' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'OKLS' },
+  icons: {
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
