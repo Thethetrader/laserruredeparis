@@ -62,9 +62,15 @@ export function DashboardMock() {
   return (
     <PhoneFrame>
       <div className="pt-7 pb-12 px-0 flex flex-col gap-2.5 h-full overflow-hidden">
-        {/* Banner */}
-        <div className="relative h-[72px] overflow-hidden" style={{ background: `linear-gradient(135deg, ${TERRA} 0%, ${SAND} 50%, ${SAGE} 100%)` }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
+        {/* Banner with photo */}
+        <div className="relative h-[72px] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=580&h=144&fit=crop&crop=faces"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/55" />
           <div className="absolute top-2 right-2 p-1 rounded-lg bg-black/20">
             <Gear size={9} color="white" weight="bold" />
           </div>
@@ -73,11 +79,11 @@ export function DashboardMock() {
               <div className="w-5 h-5 rounded-lg bg-white/95 flex items-center justify-center">
                 <Heart size={10} weight="fill" color={TERRA} />
               </div>
-              <span className="text-white text-[11px] font-semibold drop-shadow-sm">Walid & Farah</span>
+              <span className="text-white text-[11px] font-semibold drop-shadow-sm">Yasmine & Rayan</span>
             </div>
             <div className="flex -space-x-1">
-              <MemberDot name="T" color={TERRA} />
-              <MemberDot name="M" color={SAGE} />
+              <MemberDot name="Y" color={TERRA} />
+              <MemberDot name="R" color={SAGE} />
             </div>
           </div>
         </div>

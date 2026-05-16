@@ -124,6 +124,65 @@ function Hero() {
   )
 }
 
+// ─── Problems ─────────────────────────────────────────────────────────
+const PAINS = [
+  "« C'est encore moi qui ai payé les courses ce mois ? »",
+  "« On a oublié de répartir le loyer de janvier. »",
+  "« Tu me dois combien déjà — 80 € ou 120 ? »",
+  "« Je sais même pas combien on dépense par mois. »",
+]
+
+function Problems() {
+  return (
+    <section style={{ background: '#fff' }} className="py-20 md:py-28 overflow-hidden">
+      <div className="max-w-4xl mx-auto px-5">
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-xs font-mono uppercase tracking-widest mb-10"
+          style={{ color: TERRA }}
+        >
+          Ça vous parle ?
+        </motion.p>
+
+        <div className="space-y-0 divide-y" style={{ borderColor: INK + '08' }}>
+          {PAINS.map((pain, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              className="py-6 md:py-7"
+            >
+              <p
+                className="text-2xl md:text-3xl font-medium italic leading-snug"
+                style={{ color: INK, fontFamily: 'var(--font-instrument), Georgia, serif' }}
+              >
+                {pain}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-10 flex items-center gap-3"
+        >
+          <div className="h-px flex-1" style={{ background: TERRA + '30' }} />
+          <p className="text-sm font-semibold" style={{ color: TERRA }}>ONKHALASS règle ça.</p>
+          <div className="h-px flex-1" style={{ background: TERRA + '30' }} />
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
 // ─── Screens strip ────────────────────────────────────────────────────
 const FEATURES = [
   { mock: <DashboardMock />, label: 'Vue d\'ensemble', sub: 'Budget, épargne, solde — tout visible en temps réel.' },
@@ -380,6 +439,7 @@ export default function LandingPage() {
   return (
     <div>
       <Hero />
+      <Problems />
       <Screens />
       <CTA />
       <Faq />
