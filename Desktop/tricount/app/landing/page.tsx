@@ -91,7 +91,7 @@ function Hero() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="text-lg md:text-xl text-zinc-600 leading-relaxed max-w-[60ch]">
-              Suivez vos dépenses à deux, programmez vos charges fixes, et soldez vos comptes chaque mois. À la fin : <span className="italic" style={{ color: TERRA }}>on khalass</span>.
+              Suivez vos dépenses à deux, programmez vos charges fixes, et soldez vos comptes chaque mois. À la fin : <span className="font-bold" style={{ color: TERRA }}>ONKHALASS</span>.
             </p>
           </Reveal>
           <Reveal delay={0.18}>
@@ -547,7 +547,7 @@ function Faq() {
     { q: "Mes données sont-elles privées ?", a: "Absolument. Vos données sont stockées en Europe, chiffrées au repos. Pas de revente, pas de pub, pas de croisement avec des tiers. Vous pouvez exporter ou supprimer votre compte à tout moment." },
     { q: "Ça marche sur iPhone et Android ?", a: "ONKHALASS est une PWA : installable depuis le navigateur sur iOS et Android comme une app native. Des apps iOS et Android natives sont prévues après la beta." },
     { q: "Faut-il que mon/ma partenaire ait un compte aussi ?", a: "Oui. Le couple comporte 2 comptes séparés mais reliés, pour que chacun voie en temps réel ce que l'autre saisit. Vous l'invitez par email en un clic depuis l'app." },
-    { q: "Comment fonctionnent les charges fixes récurrentes ?", a: "Vous créez une charge (Loyer 850 € le 1er, payé par Théo, 50/50). Chaque mois, ONKHALASS l'ajoute automatiquement comme une dépense normale. Vous pouvez l'ajuster ou la mettre en pause à tout moment." },
+    { q: "Comment fonctionnent les charges fixes récurrentes ?", a: "Vous créez une charge (Loyer 850 € le 1er, payé par Walid, 50/50). Chaque mois, ONKHALASS l'ajoute automatiquement comme une dépense normale. Vous pouvez l'ajuster ou la mettre en pause à tout moment." },
     { q: "Que se passe-t-il si on ne solde pas la dette d'un mois ?", a: "Rien de grave. La dette se reporte sur le mois suivant avec un indicateur visuel \"Solde reporté\" en haut du dashboard. L'historique reste consultable mois par mois pour comprendre exactement comment elle s'est constituée." },
     { q: "Peut-on importer depuis Tricount ou Excel ?", a: "L'import CSV depuis Excel/Sheets sera dispo à la sortie. L'import Tricount est prévu pour la v1.1 (mi-2026)." },
     { q: "Quand l'app sera-t-elle disponible ?", a: "La beta privée ouvre fin 2026 pour les premiers inscrits de la liste d'attente. Sortie publique début 2027. Inscrivez-vous pour être prévenu en premier." },

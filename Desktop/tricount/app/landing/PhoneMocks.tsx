@@ -73,7 +73,7 @@ export function DashboardMock() {
               <div className="w-5 h-5 rounded-lg bg-white/95 flex items-center justify-center">
                 <Heart size={10} weight="fill" color={TERRA} />
               </div>
-              <span className="text-white text-[11px] font-semibold drop-shadow-sm">Théo & Marie</span>
+              <span className="text-white text-[11px] font-semibold drop-shadow-sm">Walid & Farah</span>
             </div>
             <div className="flex -space-x-1">
               <MemberDot name="T" color={TERRA} />
@@ -93,7 +93,7 @@ export function DashboardMock() {
         <div className="mx-3 rounded-xl px-2 py-1.5 flex items-center justify-between" style={{ background: SAGE + '15', border: `1px solid ${SAGE}40` }}>
           <div className="flex flex-col">
             <span className="text-[6px] uppercase tracking-wider font-semibold text-zinc-400">Solde reporté</span>
-            <span className="text-[8px] text-zinc-600">Marie te doit</span>
+            <span className="text-[8px] text-zinc-600">Farah te doit</span>
           </div>
           <span className="font-mono text-[9px] font-semibold" style={{ color: SAGE }}>1 865,35 €</span>
         </div>
@@ -125,8 +125,8 @@ export function DashboardMock() {
         <div className="mx-3 space-y-1">
           <p className="text-[6px] uppercase tracking-wider font-semibold text-zinc-400">Qui a dépensé ce mois</p>
           {[
-            { name: 'Théo', color: TERRA, pct: 63 },
-            { name: 'Marie', color: SAGE, pct: 37 },
+            { name: 'Walid', color: TERRA, pct: 63 },
+            { name: 'Farah', color: SAGE, pct: 37 },
           ].map((m, i) => (
             <div key={m.name} className="space-y-0.5">
               <div className="flex items-center justify-between text-[7px]">
@@ -224,12 +224,12 @@ export function AddExpenseMock() {
             <p className="text-[7px] uppercase tracking-wider text-zinc-400 mb-1.5">Payé par</p>
             <div className="flex gap-2">
               <div className="flex-1 rounded-lg py-1.5 flex items-center justify-center gap-1 text-[8px] font-medium text-white" style={{ background: TERRA }}>
-                <MemberDot name="T" color="#fff" />
-                Théo
+                <MemberDot name="W" color="#fff" />
+                Walid
               </div>
               <div className="flex-1 rounded-lg py-1.5 flex items-center justify-center gap-1 text-[8px] text-zinc-500 bg-zinc-50">
-                <MemberDot name="M" color={SAGE} />
-                Marie
+                <MemberDot name="F" color={SAGE} />
+                Farah
               </div>
             </div>
           </div>
@@ -317,7 +317,7 @@ export function DebtMock() {
         <div className="text-center">
           <p className="text-[7px] uppercase tracking-wider text-zinc-400">Solde cumulé</p>
           <p className="text-2xl font-semibold font-mono" style={{ color: TERRA }}>{total.toLocaleString('fr-FR')} €</p>
-          <p className="text-[8px] text-zinc-500">Marie doit à Théo</p>
+          <p className="text-[8px] text-zinc-500">Farah doit à Walid</p>
         </div>
 
         <div className="rounded-2xl bg-white border border-zinc-200/60 p-2.5 space-y-2">
