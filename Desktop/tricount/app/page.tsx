@@ -283,18 +283,15 @@ function CTA() {
           Votre épargne commune,{' '}
           <em className="italic font-normal" style={{ color: SAND }}>enfin qui progresse.</em>
         </h2>
-        <p className="text-white/50">Optimisez vos dépenses, faites grossir vos projets. Accès beta limité.</p>
-        <WaitlistForm />
-        <p className="text-white/30 text-xs">Pas de spam. Une notif quand ta place est prête.</p>
-        <div className="pt-4">
-          <Link
-            href="/login"
-            className="text-sm underline underline-offset-4 transition-opacity hover:opacity-60"
-            style={{ color: 'rgba(255,255,255,0.4)' }}
-          >
-            J'ai déjà un compte →
-          </Link>
-        </div>
+        <p className="text-white/50">Optimisez vos dépenses, faites grossir vos projets.</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-2 h-12 px-8 rounded-full text-white font-semibold transition-transform hover:-translate-y-0.5 active:scale-95"
+          style={{ background: TERRA, boxShadow: `0 12px 35px -10px ${TERRA}90` }}
+        >
+          Se connecter
+          <ArrowRight size={16} weight="bold" />
+        </Link>
       </div>
     </section>
   )
