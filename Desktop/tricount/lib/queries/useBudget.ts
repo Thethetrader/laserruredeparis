@@ -46,6 +46,20 @@ export function useUpsertBudget() {
   })
 }
 
+export function useDeleteBudget() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, month }: { id: string; month: string }) => {
+      if (DEV) return
+      const supabase = sb()
+      const { error } = await supabase.from('monthly_budgets').delete().eq('id', id)
+      if (error) throw error
+      return month
+    },
+    onSuccess: (month) => { if (month) qc.invalidateQueries({ queryKey: ['budgets', month] }) },
+  })
+}
+
 export function useDuplicatePreviousMonth() {
   const qc = useQueryClient()
   return useMutation({
