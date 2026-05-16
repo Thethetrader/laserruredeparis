@@ -110,10 +110,10 @@ function Hero() {
           </Reveal>
           <Reveal delay={0.18}>
             <div className="flex flex-col sm:flex-row gap-3">
-              <a href="#cta" className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full text-white font-medium shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]" style={{ background: TERRA, boxShadow: `0 10px 30px -10px ${TERRA}80` }}>
-                Rejoindre la liste d'attente
+              <Link href="/login" className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full text-white font-medium shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]" style={{ background: TERRA, boxShadow: `0 10px 30px -10px ${TERRA}80` }}>
+                Se connecter
                 <ArrowRight size={16} weight="bold" />
-              </a>
+              </Link>
               <a href="#demo" className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium border-2 transition-transform hover:-translate-y-0.5 active:scale-[0.98]" style={{ color: INK, borderColor: INK + '20' }}>
                 Voir une démo
               </a>
@@ -692,11 +692,14 @@ function FinalCTA() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="text-lg text-white/70 max-w-xl mx-auto leading-relaxed">
-            Rejoignez la liste d'attente. Soyez parmi les premiers à recevoir l'accès beta.
+            Créez votre compte et commencez à gérer votre budget à deux.
           </p>
         </Reveal>
         <Reveal delay={0.15}>
-          <WaitlistForm />
+          <Link href="/login" className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-full text-white font-semibold shadow-lg transition-transform hover:-translate-y-0.5 active:scale-[0.98]" style={{ background: TERRA, boxShadow: `0 10px 30px -10px ${TERRA}80` }}>
+            Se connecter
+            <ArrowRight size={16} weight="bold" />
+          </Link>
         </Reveal>
       </div>
     </section>
