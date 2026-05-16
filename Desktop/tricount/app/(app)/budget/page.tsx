@@ -168,18 +168,14 @@ export default function BudgetPage() {
                     : 'border-zinc-200/50 dark:border-zinc-800'
                 }`}
               >
-                {/* Header row */}
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3">
+                  {/* Left: dot + name */}
                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat.color }} />
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex-1 truncate">{cat.name}</span>
-                  {isOver && (
-                    <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                      DÉPASSÉ
-                    </span>
-                  )}
-                  {/* Edit / set budget button */}
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 w-24 flex-shrink-0 truncate">{cat.name}</span>
+
+                  {/* Right: gauge + amounts */}
                   {isEditing ? (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-1 justify-end">
                       <input
                         type="number"
                         step="0.01"
@@ -194,62 +190,53 @@ export default function BudgetPage() {
                         }}
                         className="w-24 text-right text-sm font-mono border border-zinc-300 dark:border-zinc-600 rounded-xl px-2 py-1 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-[#e07a5f]/50"
                       />
-                      <button
-                        onClick={() => saveBudget(cat.id)}
-                        className="p-1.5 rounded-xl bg-[#e07a5f]/10 text-[#e07a5f] hover:bg-[#e07a5f]/20 transition-colors"
-                      >
+                      <button onClick={() => saveBudget(cat.id)} className="p-1.5 rounded-xl bg-[#e07a5f]/10 text-[#e07a5f] hover:bg-[#e07a5f]/20 transition-colors">
                         <Check size={14} />
                       </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors"
-                      >
+                      <button onClick={() => setEditingId(null)} className="p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors">
                         <X size={14} />
                       </button>
                     </div>
+                  ) : hasBudget ? (
+                    <button
+                      onClick={() => { setEditingId(cat.id); setEditValue(String(budget.amount)) }}
+                      className="flex-1 flex items-center gap-2 group"
+                    >
+                      {/* Gauge bar */}
+                      <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: statusColor }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.5, ease: 'easeOut' }}
+                        />
+                      </div>
+                      {/* Amounts */}
+                      <div className="flex items-center gap-1 text-xs font-mono flex-shrink-0">
+                        <span style={{ color: statusColor }}>{formatCurrency(spent, currency)}</span>
+                        <span className="text-zinc-300 dark:text-zinc-600">/</span>
+                        <span className="text-zinc-400">{formatCurrency(budget.amount, currency)}</span>
+                        <PencilSimple size={11} className="text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity ml-0.5" />
+                      </div>
+                      {isOver && (
+                        <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 px-1.5 py-0.5 rounded-full flex-shrink-0">!</span>
+                      )}
+                    </button>
                   ) : (
                     <button
-                      onClick={() => { setEditingId(cat.id); setEditValue(hasBudget ? String(budget.amount) : '') }}
-                      className="flex items-center gap-1 text-xs font-mono text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors flex-shrink-0"
+                      onClick={() => { setEditingId(cat.id); setEditValue('') }}
+                      className="flex-1 flex items-center gap-2"
                     >
-                      {hasBudget ? (
-                        <>
-                          <span style={{ color: statusColor }}>{formatCurrency(spent, currency)}</span>
-                          <span className="text-zinc-300 dark:text-zinc-600">/ {formatCurrency(budget.amount, currency)}</span>
-                          <PencilSimple size={12} className="ml-1 text-zinc-300" />
-                        </>
-                      ) : (
-                        <>
-                          {spent > 0 && <span className="text-zinc-500">{formatCurrency(spent, currency)}</span>}
-                          <span className="flex items-center gap-0.5 text-[#e07a5f]">
-                            <Plus size={12} />
-                            Limite
-                          </span>
-                        </>
-                      )}
+                      <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+                      <span className="text-xs font-mono text-zinc-400 flex-shrink-0">{formatCurrency(spent, currency)}</span>
+                      <span className="flex items-center gap-0.5 text-[10px] text-[#e07a5f] flex-shrink-0">
+                        <Plus size={10} />
+                        Limite
+                      </span>
                     </button>
                   )}
                 </div>
-
-                {/* Gauge */}
-                {hasBudget && (
-                  <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: statusColor }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.5, ease: 'easeOut' }}
-                    />
-                  </div>
-                )}
-
-                {/* Over budget detail */}
-                {isOver && (
-                  <p className="text-[10px] text-red-400 mt-1.5">
-                    +{formatCurrency(spent - budget.amount, currency)} au-dessus de la limite
-                  </p>
-                )}
               </motion.div>
             )
           })}
