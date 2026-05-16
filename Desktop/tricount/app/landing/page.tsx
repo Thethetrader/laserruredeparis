@@ -65,7 +65,6 @@ function Nav() {
         <nav className="hidden md:flex items-center gap-7 text-sm" style={{ color: INK }}>
           <a href="#solution" className="hover:opacity-70 transition-opacity">Fonctionnalités</a>
           <a href="#faq" className="hover:opacity-70 transition-opacity">FAQ</a>
-          <Link href="/login" className="hover:opacity-70 transition-opacity">Connexion</Link>
           <Link href="/login" className="px-4 py-2 rounded-full text-white text-sm font-medium transition-transform hover:-translate-y-0.5" style={{ background: TERRA }}>
             Se connecter
           </Link>
@@ -263,7 +262,7 @@ function Solution() {
             index={3}
             badge="Budget vivant"
             title="Des jauges en temps réel, pas un fichier Excel."
-            description="Fixez un budget mensuel par catégorie. Voyez instantanément où vous en êtes. Code couleur du vert vers le rouge — clair, immédiat, sans calcul mental."
+            description="Fixez un budget mensuel par catégorie. Voyez instantanément où vous en êtes. Code couleur du vert vers le rouge : clair, immédiat, sans calcul mental."
             bullets={['Budget prévisionnel par catégorie', 'Projection fin de mois calculée en live', 'Alertes douces avant le dépassement']}
             mockup={<DashboardMock />}
           />
@@ -293,7 +292,7 @@ function Solution() {
 // ─── Demo interactive ──────────────────────────────────────────────
 function Demo() {
   const screens = [
-    { key: 'dashboard', label: 'Dashboard', text: 'Vue d\'ensemble : solde, dépensé, restant, épargne — tout en un coup d\'œil.', mock: <DashboardMock /> },
+    { key: 'dashboard', label: 'Dashboard', text: 'Vue d\'ensemble : solde, dépensé, restant, épargne, tout en un coup d\'œil.', mock: <DashboardMock /> },
     { key: 'expense', label: 'Saisie', text: 'Une dépense en 5 secondes, partage 50/50 ou personnalisé.', mock: <AddExpenseMock /> },
     { key: 'recurring', label: 'Charges fixes', text: 'Loyer, abos, mutuelle : programmez une fois, c\'est répété chaque mois.', mock: <RecurringMock /> },
     { key: 'debt', label: 'Dette & règlement', text: 'L\'historique mensuel, et le bouton « On khalass ! » qui clos le mois.', mock: <DebtMock /> },
@@ -714,7 +713,7 @@ function Footer() {
         <div className="md:col-span-5 space-y-4">
           <Logo size="md" />
           <p className="text-sm text-zinc-600 leading-relaxed max-w-sm">
-            « <em>Khalass</em> », en arabe dialectal, signifie « <em>fini, réglé, on en parle plus</em> ». ONKHALASS, c'est l'app qui met enfin tout à plat dans le budget du couple — pour qu'à la fin du mois, on puisse dire « on khalass » et passer à autre chose.
+            « <em>Khalass</em> », en arabe dialectal, signifie « <em>fini, réglé, on en parle plus</em> ». ONKHALASS, c'est l'app qui met enfin tout à plat dans le budget du couple, pour qu'à la fin du mois, on puisse dire « on khalass » et passer à autre chose.
           </p>
         </div>
         <div className="md:col-span-2">
