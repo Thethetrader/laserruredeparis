@@ -23,7 +23,7 @@ const COLORS = ['#e07a5f', '#81b29a', '#3d405b', '#f2cc8f', '#457b9d', '#e63946'
 export default function SettingsPage() {
   const router = useRouter()
   const qc = useQueryClient()
-  const { data: couple } = useCouple()
+  const { data: couple, isLoading: coupleLoading } = useCouple()
   const { data: members = [] } = useCoupleMembers()
   const { data: profile } = useProfile()
   const { data: categories = [] } = useCategories()
@@ -273,7 +273,7 @@ export default function SettingsPage() {
           ) : (
             <Button
               onClick={generateInvite}
-              disabled={inviteLoading}
+              disabled={inviteLoading || coupleLoading || !couple}
               className="w-full rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-semibold"
             >
               <LinkSimple size={16} className="mr-2" />

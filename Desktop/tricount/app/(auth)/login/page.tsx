@@ -52,8 +52,12 @@ function LoginForm() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: profile } = await (supabase as any).from('profiles').select('couple_id').eq('id', user.id).single()
-        router.push(profile?.couple_id ? redirectTo : '/onboarding')
+        const { data: profile, error: profileError } = await (supabase as any).from('profiles').select('couple_id').eq('id', user.id).single()
+        if (profileError || !profile) {
+          router.push(redirectTo)
+        } else {
+          router.push(profile.couple_id ? redirectTo : '/onboarding')
+        }
       }
     } else {
       const { data: authData, error } = await supabase.auth.signUp({

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { insertCouple, insertCoupleMember, updateProfile, selectInviteByToken, markInviteUsed } from '@/lib/supabase/typed'
@@ -18,6 +18,18 @@ const COLORS = ['#e07a5f', '#81b29a', '#3d405b', '#f2cc8f', '#457b9d', '#e63946'
 export default function OnboardingPage() {
   const router = useRouter()
   const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose')
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createClient() as any
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: { id: string } | null } }) => {
+      if (!user) return
+      supabase.from('profiles').select('couple_id').eq('id', user.id).single()
+        .then(({ data: profile }: { data: { couple_id: string | null } | null }) => {
+          if (profile?.couple_id) router.replace('/dashboard')
+        })
+    })
+  }, [router])
   const [coupleName, setCoupleName] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [color, setColor] = useState(COLORS[0])
