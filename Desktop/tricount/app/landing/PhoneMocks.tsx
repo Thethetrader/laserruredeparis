@@ -136,7 +136,7 @@ export function DashboardMock() {
                 </div>
                 <span className="font-mono text-zinc-500">{m.pct}%</span>
               </div>
-              <motion.div className="h-1 bg-zinc-100 rounded-full overflow-hidden">
+              <div className="h-1 bg-zinc-100 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   whileInView={{ width: `${m.pct}%` }}
@@ -145,7 +145,37 @@ export function DashboardMock() {
                   className="h-full rounded-full"
                   style={{ background: m.color }}
                 />
-              </motion.div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Par catégorie */}
+        <div className="mx-3 space-y-1">
+          <p className="text-[6px] uppercase tracking-wider font-semibold text-zinc-400">Par catégorie</p>
+          {[
+            { name: 'Alimentation', spent: 172, budget: 500, color: '#4CAF50' },
+            { name: 'Logement', spent: 850, budget: 900, color: '#2196F3' },
+            { name: 'Transport', spent: 72, budget: 150, color: '#FF9800' },
+          ].map((c, i) => (
+            <div key={c.name} className="space-y-0.5">
+              <div className="flex items-center justify-between text-[7px]">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c.color }} />
+                  <span className="text-zinc-700">{c.name}</span>
+                </div>
+                <span className="font-mono text-zinc-500">{c.spent} / {c.budget} €</span>
+              </div>
+              <div className="h-1 bg-zinc-100 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${(c.spent / c.budget) * 100}%` }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: i * 0.1 }}
+                  className="h-full rounded-full"
+                  style={{ background: c.color }}
+                />
+              </div>
             </div>
           ))}
         </div>
