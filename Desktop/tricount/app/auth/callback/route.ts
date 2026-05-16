@@ -1,28 +1,45 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
 
   if (code) {
-    const supabase = await createClient()
+    const cookiesToSet: Array<{ name: string; value: string; options: object }> = []
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll() },
+          setAll(cookies) { cookiesToSet.push(...cookies) },
+        },
+      }
+    )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
+      let redirectPath = '/dashboard'
+
       if (user) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sb = supabase as any
-        // Ensure profile exists (since trigger was removed)
-        await sb.from('profiles').upsert({ id: user.id }, { onConflict: 'id', ignoreDuplicates: true })
-        const { data: profile } = await sb.from('profiles').select('couple_id').eq('id', user.id).single()
+        await supabase.from('profiles').upsert({ id: user.id }, { onConflict: 'id', ignoreDuplicates: true })
+        const { data: profile } = await supabase.from('profiles').select('couple_id').eq('id', user.id).single()
         if (!profile?.couple_id) {
-          return NextResponse.redirect(`${origin}/onboarding`)
+          redirectPath = '/onboarding'
         }
       }
-      return NextResponse.redirect(`${origin}/dashboard`)
+
+      const response = NextResponse.redirect(new URL(redirectPath, origin))
+      // Attach session cookies to the redirect so the browser is logged in
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
+      })
+      return response
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`)
+  return NextResponse.redirect(new URL('/login?error=auth', origin))
 }
