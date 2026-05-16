@@ -292,15 +292,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Projection */}
-      {totalBudget > 0 && dayOfMonth > 0 && dayOfMonth < daysInMonth && (
-        <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl px-4 py-3 flex items-center justify-between border border-zinc-200/50 dark:border-zinc-800">
-          <span className="text-xs text-zinc-500">Projection fin de mois</span>
-          <span className="font-mono text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            {formatCurrency(projection, currency)}
-          </span>
-        </div>
-      )}
 
       {/* Category gauges */}
       {categoriesWithData.length > 0 ? (
