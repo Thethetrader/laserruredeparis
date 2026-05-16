@@ -40,7 +40,7 @@ export default function OnboardingPage() {
       await createDefaultCategories(supabase, couple.id)
 
       toast.success('Couple créé ! Invitez votre partenaire.')
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       toast.error('Une erreur est survenue')
     } finally {
@@ -67,7 +67,7 @@ export default function OnboardingPage() {
       await markInviteUsed(supabase, invite.id)
 
       toast.success('Bienvenue dans le couple !')
-      router.push('/')
+      router.push('/dashboard')
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Une erreur est survenue')
     } finally {

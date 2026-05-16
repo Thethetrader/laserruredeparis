@@ -9,7 +9,7 @@ import {
   ChartBar, ArrowsClockwise, PiggyBank, ShieldCheck, House,
   CheckCircle, Star,
 } from '@phosphor-icons/react'
-import { DashboardMock, AddExpenseMock, RecurringMock, DebtMock, SavingsMock } from './PhoneMocks'
+import { DashboardMock, AddExpenseMock, RecurringMock, DebtMock, SavingsMock } from './landing/PhoneMocks'
 
 const TERRA = '#e07a5f'
 const TERRA_DARK = '#c8654f'
@@ -573,91 +573,7 @@ function Faq() {
   )
 }
 
-// ─── CTA + waitlist ────────────────────────────────────────────────
-function WaitlistForm() {
-  const [email, setEmail] = useState('')
-  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [error, setError] = useState('')
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Email invalide')
-      setState('error')
-      return
-    }
-    setState('loading')
-    setError('')
-    try {
-      const r = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!r.ok) throw new Error('fail')
-      setState('success')
-    } catch {
-      setError('Erreur. Réessaie dans un instant.')
-      setState('error')
-    }
-  }
-
-  if (state === 'success') {
-    return (
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-3xl bg-white p-8 md:p-10 border border-zinc-100 shadow-xl max-w-xl mx-auto text-center">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: SAGE + '20' }}>
-          <CheckCircle size={30} weight="fill" style={{ color: SAGE }} />
-        </div>
-        <h3 className="text-2xl font-semibold mb-2" style={{ color: INK, fontFamily: 'var(--font-instrument), Georgia, serif' }}>
-          On khalass ! Tu es sur la liste.
-        </h3>
-        <p className="text-zinc-600 mb-5 leading-relaxed">
-          On t'écrit dès que ta place beta est prête. En attendant, fais découvrir ONKHALASS à un couple qui en a besoin.
-        </p>
-        <div className="flex gap-2 justify-center text-sm">
-          <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("Je viens de rejoindre la liste d'attente d'ONKHALASS, l'app pour gérer le budget du couple sans prise de tête. ")}&url=${encodeURIComponent('https://onkhalass.netlify.app')}`} target="_blank" rel="noopener" className="px-4 py-2 rounded-full border-2 text-xs font-medium hover:-translate-y-0.5 transition-transform" style={{ borderColor: INK + '20', color: INK }}>
-            Partager sur X
-          </a>
-          <button onClick={() => { navigator.clipboard.writeText('https://onkhalass.netlify.app'); }} className="px-4 py-2 rounded-full text-xs font-medium text-white hover:-translate-y-0.5 transition-transform" style={{ background: TERRA }}>
-            Copier le lien
-          </button>
-        </div>
-      </motion.div>
-    )
-  }
-
-  return (
-    <form onSubmit={submit} className="rounded-3xl bg-white p-6 md:p-8 border border-zinc-100 shadow-xl max-w-xl mx-auto space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 relative">
-          <EnvelopeSimple size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="email"
-            placeholder="vous@email.fr"
-            value={email}
-            onChange={e => { setEmail(e.target.value); if (state === 'error') setState('idle') }}
-            required
-            className="w-full h-12 pl-11 pr-4 rounded-full border-2 outline-none transition-colors focus:border-[color:var(--tw-ring-color)]"
-            style={{ borderColor: INK + '15', color: INK, ['--tw-ring-color' as string]: TERRA } as React.CSSProperties}
-            aria-label="Adresse email"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={state === 'loading'}
-          className="h-12 px-6 rounded-full text-white font-semibold transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 whitespace-nowrap"
-          style={{ background: TERRA, boxShadow: `0 8px 20px -8px ${TERRA}80` }}
-        >
-          {state === 'loading' ? 'Envoi…' : 'Je m\'inscris'}
-          {state !== 'loading' && <ArrowRight size={16} weight="bold" />}
-        </button>
-      </div>
-      {error && <p className="text-sm text-red-500 px-2">{error}</p>}
-      <p className="text-xs text-zinc-500 text-center">Pas de spam. Une seule notif : quand ta place est prête.</p>
-    </form>
-  )
-}
-
+// ─── CTA ────────────────────────────────────────────────────────────
 function FinalCTA() {
   return (
     <section id="cta" className="py-20 md:py-32 relative overflow-hidden" style={{ background: INK }}>

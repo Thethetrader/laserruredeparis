@@ -31,15 +31,15 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  const publicPaths = ['/login', '/invite', '/landing', '/api/waitlist', '/legal']
-  const isPublic = publicPaths.some(p => pathname.startsWith(p))
+  const publicPaths = ['/', '/login', '/invite', '/landing', '/api/waitlist', '/legal']
+  const isPublic = publicPaths.some(p => pathname === p || (p !== '/' && pathname.startsWith(p)))
 
   if (!user && !isPublic) {
-    return NextResponse.redirect(new URL('/landing', request.url))
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
-  if (user && (pathname === '/login' || pathname === '/landing')) {
-    return NextResponse.redirect(new URL('/', request.url))
+  if (user && (pathname === '/login' || pathname === '/' || pathname === '/landing')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse

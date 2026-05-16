@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { EnvelopeSimple, Heart } from '@phosphor-icons/react'
+import { EnvelopeSimple, Heart, House } from '@phosphor-icons/react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 
 const schema = z.object({
@@ -51,11 +52,17 @@ export default function LoginPage() {
           transition={{ duration: 0.4 }}
           className="space-y-8"
         >
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpg" alt="ONKHALASS" className="w-8 h-8 rounded-xl object-cover" />
-            <span className="font-semibold text-zinc-800 dark:text-zinc-100 tracking-tight">ONKHALASS</span>
+          {/* Logo + home */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.jpg" alt="ONKHALASS" className="w-8 h-8 rounded-xl object-cover" />
+              <span className="font-bold tracking-[0.05em] text-zinc-800 dark:text-zinc-100">ONKHALASS</span>
+            </div>
+            <Link href="/" className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800 transition-colors">
+              <House size={16} />
+              Accueil
+            </Link>
           </div>
 
           {!sent ? (
