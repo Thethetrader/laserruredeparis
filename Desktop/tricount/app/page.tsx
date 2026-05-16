@@ -64,7 +64,7 @@ function Hero() {
             <em className="italic font-normal" style={{ color: TERRA }}>enfin clair.</em>
           </h1>
           <p className="text-lg text-white/60 max-w-sm mx-auto leading-relaxed">
-            Dépenses partagées, charges fixes, épargne commune. Tout en un.
+            Moins dépenser. Plus épargner. Ensemble, sans friction.
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
@@ -126,11 +126,11 @@ function Hero() {
 
 // ─── Screens strip ────────────────────────────────────────────────────
 const FEATURES = [
-  { mock: <DashboardMock />, label: 'Vue d\'ensemble', sub: 'Solde, dépenses, épargne — tout en un coup d\'œil.' },
-  { mock: <AddExpenseMock />, label: 'Saisie en 5s', sub: 'Montant, catégorie, partage. Tap, done.' },
-  { mock: <RecurringMock />, label: 'Charges fixes', sub: 'Loyer, abos — auto-injectés chaque mois.' },
-  { mock: <DebtMock />, label: 'On khalass !', sub: 'Un clic pour solder et archiver le mois.' },
-  { mock: <SavingsMock />, label: 'Épargne', sub: 'Pots communs avec objectifs et progression.' },
+  { mock: <DashboardMock />, label: 'Vue d\'ensemble', sub: 'Budget, épargne, solde — tout visible en temps réel.' },
+  { mock: <AddExpenseMock />, label: 'Dépenses', sub: 'Saisie en 5s. Moins vous dépensez, plus vous épargnez.' },
+  { mock: <RecurringMock />, label: 'Charges fixes', sub: 'Loyer, abos automatiques — zéro oubli, zéro friction.' },
+  { mock: <SavingsMock />, label: 'Épargne d\'abord', sub: 'Posez vos objectifs. L\'app optimise le reste pour y arriver.' },
+  { mock: <DebtMock />, label: 'Solde rapide', sub: 'En fin de mois, soldez l\'équité en un clic et libérez du cash.' },
 ]
 
 function Screens() {
@@ -280,11 +280,10 @@ function CTA() {
           className="text-4xl md:text-6xl tracking-tight font-semibold text-white leading-tight"
           style={{ fontFamily: 'var(--font-instrument), Georgia, serif' }}
         >
-          Prêts à dire{' '}
-          <em className="italic font-normal" style={{ color: SAND }}>« on khalass »</em>{' '}
-          chaque mois ?
+          Votre épargne commune,{' '}
+          <em className="italic font-normal" style={{ color: SAND }}>enfin qui progresse.</em>
         </h2>
-        <p className="text-white/50">Soyez parmi les premiers à accéder à la beta.</p>
+        <p className="text-white/50">Optimisez vos dépenses, faites grossir vos projets. Accès beta limité.</p>
         <WaitlistForm />
         <p className="text-white/30 text-xs">Pas de spam. Une notif quand ta place est prête.</p>
         <div className="pt-4">
