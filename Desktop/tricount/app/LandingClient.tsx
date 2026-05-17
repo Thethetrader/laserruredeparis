@@ -72,7 +72,7 @@ function Hero() {
               className="inline-flex items-center gap-2 h-12 px-7 rounded-full text-white font-semibold transition-transform hover:-translate-y-0.5 active:scale-95"
               style={{ background: TERRA, boxShadow: `0 12px 35px -10px ${TERRA}90` }}
             >
-              Commencer
+              Commencer gratuitement
               <ArrowRight size={16} weight="bold" />
             </Link>
             <a
@@ -83,6 +83,9 @@ function Hero() {
               Voir l'app
             </a>
           </div>
+          <p className="text-sm font-medium mt-3" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            100% gratuit — aucune carte bancaire requise
+          </p>
         </motion.div>
 
         {/* Three phones */}
@@ -348,9 +351,12 @@ function CTA() {
           className="inline-flex items-center gap-2 h-12 px-8 rounded-full text-white font-semibold transition-transform hover:-translate-y-0.5 active:scale-95"
           style={{ background: TERRA, boxShadow: `0 12px 35px -10px ${TERRA}90` }}
         >
-          Se connecter
+          Commencer gratuitement
           <ArrowRight size={16} weight="bold" />
         </Link>
+        <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          Gratuit, sans engagement, sans carte bancaire.
+        </p>
       </div>
     </section>
   )
