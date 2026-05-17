@@ -1,12 +1,14 @@
 {
-  "name": "ONKHALASS",
-  "short_name": "OKLS",
-  "description": "Gérez votre budget en couple, simplement.",
+  "name": "ONKHALASS — Budget couple",
+  "short_name": "ONKHALASS",
+  "description": "Mieux dépenser, plus épargner ensemble. L'app de budget pour couples.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf4ed",
   "theme_color": "#e07a5f",
   "orientation": "portrait",
+  "lang": "fr",
+  "categories": ["finance", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",

@@ -8,13 +8,18 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 const instrument = Instrument_Serif({ variable: '--font-instrument', subsets: ['latin'], weight: '400', style: ['normal', 'italic'] })
 
 export const metadata: Metadata = {
-  title: 'ONKHALASS',
-  description: 'Gérez votre budget en couple, simplement.',
+  metadataBase: new URL('https://onkhalass.netlify.app'),
+  title: {
+    default: 'ONKHALASS — Budget couple',
+    template: '%s · ONKHALASS',
+  },
+  description: "L'app pour mieux dépenser et plus épargner à deux.",
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'OKLS' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'ONKHALASS' },
   icons: {
     icon: '/favicon.png',
     apple: '/apple-touch-icon.png',
+    shortcut: '/favicon.png',
   },
 }
 
