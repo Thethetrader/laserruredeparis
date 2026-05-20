@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopBar } from "@/components/layout/TopBar";
+import { PushNotificationSetup } from "@/components/PushNotificationSetup";
+import { DevRoleSwitcher } from "@/components/DevRoleSwitcher";
 import type { Establishment, EstablishmentWithRole, Profile, UserRole } from "@/lib/types/database";
 
 type MemberRow = { role: UserRole; establishments: Establishment };
@@ -76,12 +78,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar establishment={establishment} establishments={establishments} />
       <TopBar profile={profile} establishment={establishment} establishments={establishments} />
 
-      {/* mobile: pt-[56px] pb-[60px] — desktop: pl-[240px], no top/bottom offset */}
-      <main className="pt-[56px] pb-[60px] lg:pt-0 lg:pb-0 lg:pl-[240px]">
+      {/* mobile: pt-[56px] pb safe-area+60px — desktop: pl-[240px], no top/bottom offset */}
+      <main className="pt-[56px] lg:pt-0 lg:pb-0 lg:pl-[240px]"
+        style={{ paddingBottom: "calc(60px + env(safe-area-inset-bottom))" }}>
         {children}
       </main>
 
       <BottomNav />
+      <DevRoleSwitcher />
+      <div className="fixed bottom-[72px] right-4 z-50 lg:bottom-4">
+        <PushNotificationSetup establishmentId={establishment.id} />
+      </div>
     </div>
   );
 }
