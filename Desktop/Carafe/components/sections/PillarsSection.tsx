@@ -47,7 +47,7 @@ function RecognitionPreview() {
           ))}
         </div>
         <p className="text-[10px] leading-relaxed mb-1" style={{ color: "var(--foreground)" }}>
-          &ldquo;Julie a été formidable, très professionnelle.&rdquo;
+          &ldquo;Yasmine a été formidable, service impeccable.&rdquo;
         </p>
         <p className="text-[8px] font-mono" style={{ color: "var(--foreground-dim)" }}>Marie D. · Google · il y a 2j</p>
       </div>
@@ -63,7 +63,7 @@ function RecognitionPreview() {
             style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.2)" }}
           >
             <Check size={9} strokeWidth={2} style={{ color: "var(--accent)" }} />
-            <p className="text-[10px]" style={{ color: "var(--accent)" }}>Archivé sur la fiche de Julie</p>
+            <p className="text-[10px]" style={{ color: "var(--accent)" }}>Archivé sur la fiche de Yasmine</p>
           </motion.div>
         ) : (
           <motion.button
@@ -75,7 +75,7 @@ function RecognitionPreview() {
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[10px] font-medium"
             style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.18)", color: "var(--accent)" }}
           >
-            Envoyer à Julie
+            Envoyer à Yasmine
           </motion.button>
         )}
       </AnimatePresence>
@@ -228,7 +228,7 @@ const pillars = [
     tag: "02 · RECONNAISSANCE",
     icon: Star,
     title: "Ils construisent leur réputation. Chez vous.",
-    desc: "Un avis Google mentionne Julie. En un clic, c'est sur sa fiche. Mois après mois, elle construit quelque chose de concret. Elle n'a aucune raison d'aller recommencer ailleurs.",
+    desc: "Un avis Google mentionne Yasmine. En un clic, c'est sur sa fiche. Mois après mois, elle construit quelque chose de concret. Elle n'a aucune raison d'aller recommencer ailleurs.",
     Preview: RecognitionPreview,
   },
   {

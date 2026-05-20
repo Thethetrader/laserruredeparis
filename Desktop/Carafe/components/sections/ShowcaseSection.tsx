@@ -13,55 +13,89 @@ const views = [
 ];
 
 function ProtocolsView() {
+  const categories = [
+    { emoji: "🍽️", label: "Salle", count: 2 },
+    { emoji: "👨‍🍳", label: "Cuisine", count: 1 },
+    { emoji: "🍹", label: "Bar", count: 1 },
+    { emoji: "🤝", label: "Accueil", count: 1 },
+    { emoji: "🧹", label: "Hygiène", count: 1 },
+    { emoji: "🔒", label: "Sécurité", count: 0 },
+    { emoji: "🌅", label: "Ouverture", count: 1 },
+    { emoji: "🌙", label: "Fermeture", count: 1 },
+  ];
   return (
-    <div className="p-5 space-y-3">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Protocoles actifs</h3>
-        <span className="font-mono text-[9px] px-2 py-0.5 rounded" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>12 actifs</span>
+    <div className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</h3>
+        <span className="font-mono text-[9px] px-2 py-0.5 rounded" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>8 protocoles · 7 catégories</span>
       </div>
-      {[
-        { cat: "OUVERTURE", title: "Procédure d'ouverture standard", read: "15/15", done: true },
-        { cat: "HYGIÈNE", title: "Nettoyage et désinfection", read: "13/15", done: false },
-        { cat: "MENU", title: "Carte d'été v3.2", read: "8/15", done: false },
-        { cat: "SERVICE", title: "Gestion VIP & événements", read: "15/15", done: true },
-      ].map(({ cat, title, read, done }) => (
-        <div key={title} className="flex items-center gap-3 p-3 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="flex-1">
-            <span className="font-mono text-[8px] px-1.5 py-0.5 rounded mr-2" style={{ background: done?"rgba(16,185,129,0.1)":"rgba(6,182,212,0.1)", color: done?"var(--success)":"var(--accent)" }}>{cat}</span>
-            <p className="text-[10px] mt-1" style={{ color: "var(--foreground-muted)" }}>{title}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {categories.map(({ emoji, label, count }) => (
+          <div key={label} className="rounded-lg p-3 flex items-center gap-2.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <span className="text-[18px] leading-none">{emoji}</span>
+            <div>
+              <p className="text-[10px] font-semibold" style={{ color: "var(--foreground)" }}>{label}</p>
+              <p className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>{count} protocole{count !== 1 ? "s" : ""}</p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="font-mono text-[9px]" style={{ color: done?"var(--success)":"var(--foreground-dim)" }}>{read}</p>
-            <p className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>ont lu</p>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
 
 function DashboardView() {
   return (
-    <div className="p-5 space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="p-5 space-y-3">
+      <div className="grid grid-cols-4 gap-2">
         {[
-          { label: "Présence", value: "94%", icon: TrendingUp, color: "var(--success)" },
-          { label: "Score équipe", value: "87/100", icon: Trophy, color: "var(--accent)" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="p-3 rounded-xl" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Icon size={11} style={{ color }} />
-              <p className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>{label}</p>
-            </div>
-            <p className="text-xl font-semibold" style={{ color, lineHeight: 1 }}>{value}</p>
+          { val: "3", label: "Retards" },
+          { val: "14", label: "Avis clients", accent: true },
+          { val: "2", label: "Défis actifs" },
+          { val: "2", label: "En attente", accent: true },
+        ].map(({ val, label, accent }) => (
+          <div key={label} className="p-2 rounded-lg text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <p className="font-bold text-base leading-none mb-1" style={{ color: accent ? "var(--accent)" : "var(--foreground)" }}>{val}</p>
+            <p className="text-[7px] leading-tight" style={{ color: "var(--foreground-dim)" }}>{label}</p>
           </div>
         ))}
       </div>
       <div className="p-3 rounded-xl" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <p className="font-mono text-[8px] mb-2" style={{ color: "var(--foreground-dim)" }}>Engagement · 7 derniers jours</p>
-        <div className="flex items-end gap-1" style={{ height: 48 }}>
-          {[40,55,48,72,60,85,78].map((h,i) => (
-            <div key={i} className="flex-1 rounded-t" style={{ height: `${h}%`, background: i===6?"var(--accent)":"rgba(6,182,212,0.2)" }} />
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <TrendingUp size={10} style={{ color: "var(--accent)" }} />
+          <p className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>Classement équipe</p>
+        </div>
+        <div className="space-y-2.5">
+          {[
+            { rank: "🥇", init: "YB", name: "Yasmine Benali", pts: 92, tagColor: "#10b981", tag: "Ponctuel" },
+            { rank: "🥈", init: "KM", name: "Karim Mansour", pts: 78, tagColor: "#f59e0b", tag: "1 retard" },
+            { rank: "🥉", init: "JD", name: "Julie Dupont", pts: 61, tagColor: "#ef4444", tag: "2 retards" },
+          ].map(({ rank, init, name, pts, tagColor, tag }) => (
+            <div key={name} className="flex items-center gap-2">
+              <span className="text-[10px]">{rank}</span>
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ background: "rgba(6,182,212,0.15)", color: "var(--accent)" }}>{init}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-[9px] font-medium" style={{ color: "var(--foreground)" }}>{name}</span>
+                  <span className="text-[7px] px-1 rounded" style={{ background: `${tagColor}22`, color: tagColor }}>{tag}</span>
+                </div>
+                <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${pts}%`, background: "var(--accent)" }} />
+                </div>
+              </div>
+              <span className="font-bold text-[10px]" style={{ color: "var(--accent)" }}>{pts}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="p-3 rounded-xl" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <p className="font-mono text-[8px] mb-2" style={{ color: "var(--foreground-dim)" }}>Retours clients ce mois</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+          {[["8","Compliments","#10b981"],["3","Plaintes","#f59e0b"],["2","Suggestions","var(--foreground-dim)"],["1","Incidents","#ef4444"]].map(([v,l,c]) => (
+            <div key={l} className="flex items-center gap-1.5">
+              <span className="font-bold text-[11px]" style={{ color: c }}>{v}</span>
+              <span className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>{l}</span>
+            </div>
           ))}
         </div>
       </div>
@@ -73,26 +107,30 @@ function EmployeeView() {
   return (
     <div className="p-5">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-semibold" style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.3)", color: "var(--accent)" }}>JM</div>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center text-base font-semibold" style={{ background: "rgba(6,182,212,0.15)", border: "1px solid rgba(6,182,212,0.3)", color: "var(--accent)" }}>YB</div>
         <div>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Julie Moreau</p>
-          <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Cheffe de rang · 2 ans 4 mois</p>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Yasmine Benali</p>
+          <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Chef de salle · Score : 92 pts</p>
         </div>
       </div>
       <div className="flex gap-2 mb-4 flex-wrap">
-        {["Fidèle de la maison","Top serveuse Q1","Expert vins"].map(b => (
+        {["Ponctuel","Top équipe Q1","Expert service"].map(b => (
           <span key={b} className="font-mono text-[8px] px-2 py-0.5 rounded" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--accent)" }}>{b}</span>
         ))}
+      </div>
+      <div className="flex gap-2 mb-3">
+        <button className="flex-1 py-1.5 rounded-lg text-[9px] font-semibold text-center" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)" }}>⭐ Bravo</button>
+        <button className="flex-1 py-1.5 rounded-lg text-[9px] font-semibold text-center" style={{ background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>⚡ Bonus</button>
       </div>
       <div className="p-3 rounded-lg mb-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <div className="flex gap-0.5 mb-1">
           {[1,2,3,4,5].map(i=><Star key={i} size={8} style={{ color:"#F59E0B", fill:"#F59E0B" }} />)}
         </div>
-        <p className="text-[9px]" style={{ color: "var(--foreground-muted)" }}>&ldquo;Julie a été formidable, très professionnelle.&rdquo;</p>
+        <p className="text-[9px]" style={{ color: "var(--foreground-muted)" }}>&ldquo;Service impeccable, Yasmine a rendu notre soirée parfaite.&rdquo;</p>
         <p className="font-mono text-[8px] mt-1" style={{ color: "var(--foreground-dim)" }}>Marie D. · Google · il y a 2j</p>
       </div>
       <div className="space-y-1">
-        {["Carte des vins","Encaissement","Allergènes"].map(s => (
+        {["3/3 protocoles lus","Aucun retard ce mois","2 défis gagnés"].map(s => (
           <div key={s} className="flex items-center gap-2">
             <Check size={9} style={{ color:"var(--success)" }} />
             <p className="text-[9px]" style={{ color:"var(--foreground-muted)" }}>{s}</p>
@@ -132,25 +170,38 @@ function ChallengeView() {
     <div className="p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>Challenge en cours</p>
-          <p className="font-mono text-[9px]" style={{ color: "var(--foreground-dim)" }}>3 avis Google / jour · 3j restants</p>
+          <p className="text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>Défis en cours</p>
+          <p className="font-mono text-[9px]" style={{ color: "var(--foreground-dim)" }}>2 défis actifs · Mai 2026</p>
         </div>
         <Trophy size={14} style={{ color: "var(--accent)" }} />
       </div>
-      <div className="h-1.5 rounded-full mb-4" style={{ background: "var(--background-elev)" }}>
-        <div className="h-full rounded-full" style={{ width: "68%", background: "var(--accent)" }} />
-      </div>
-      <div className="space-y-2">
+      <div className="space-y-2 mb-3">
         {[
-          { init: "JM", name: "Julie M.", pts: 47, rank: 1 },
-          { init: "RK", name: "Rayan K.", pts: 38, rank: 2 },
-          { init: "YO", name: "Yasmine O.", pts: 31, rank: 3 },
+          { label: "3 avis Google / jour", progress: 68, days: "3j restants" },
+          { label: "Zéro retard ce mois", progress: 90, days: "11j restants" },
+        ].map(({ label, progress, days }) => (
+          <div key={label} className="p-2.5 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[9px]" style={{ color: "var(--foreground-muted)" }}>{label}</span>
+              <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>{days}</span>
+            </div>
+            <div className="h-1.5 rounded-full" style={{ background: "var(--border)" }}>
+              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: "var(--accent)" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-1.5">
+        {[
+          { init: "YB", name: "Yasmine Benali", pts: 92, rank: 1 },
+          { init: "KM", name: "Karim Mansour", pts: 78, rank: 2 },
+          { init: "JD", name: "Julie Dupont", pts: 61, rank: 3 },
         ].map(({ init, name, pts, rank }) => (
           <div key={init} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "var(--background-elev)", border: rank===1?"1px solid rgba(6,182,212,0.25)":"1px solid var(--border)" }}>
-            <span className="font-mono text-[9px] w-4" style={{ color: rank===1?"var(--accent)":"var(--foreground-dim)" }}>#{rank}</span>
+            <span className="text-[10px]">{["🥇","🥈","🥉"][rank-1]}</span>
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-semibold" style={{ background: rank===1?"rgba(6,182,212,0.15)":"var(--background-soft)", color: rank===1?"var(--accent)":"var(--foreground-dim)" }}>{init}</div>
             <span className="flex-1 text-[10px]" style={{ color: "var(--foreground-muted)" }}>{name}</span>
-            <span className="font-mono text-[9px]" style={{ color: rank===1?"var(--accent)":"var(--foreground-dim)" }}>{pts}pts</span>
+            <span className="font-mono text-[9px] font-bold" style={{ color: rank===1?"var(--accent)":"var(--foreground-dim)" }}>{pts} pts</span>
           </div>
         ))}
       </div>

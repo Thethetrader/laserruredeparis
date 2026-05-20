@@ -5,13 +5,13 @@ import { motion, useInView } from "framer-motion";
 import { Star, Check, Download, Award } from "lucide-react";
 
 const reviews = [
-  { name: "Marie D.", text: "Julie a été formidable, très professionnelle. Le service était impeccable.", date: "il y a 2j" },
-  { name: "Thomas B.", text: "Accueil exceptionnel, Julie a rendu notre anniversaire inoubliable.", date: "il y a 5j" },
-  { name: "Camille L.", text: "Recommandations parfaites pour les vins. On reviendra !", date: "il y a 8j" },
+  { name: "Marie D.", text: "Yasmine a été formidable, service impeccable. On reviendra !", date: "il y a 2j" },
+  { name: "Thomas B.", text: "Accueil exceptionnel, Yasmine a rendu notre soirée inoubliable.", date: "il y a 5j" },
+  { name: "Camille L.", text: "Chef de salle au top, recommend fortement !", date: "il y a 8j" },
 ];
 
-const skills = ["Carte des vins", "Encaissement", "Allergènes", "Gestion VIP", "Latte art"];
-const badges = ["Fidèle de la maison", "Top serveuse Q1", "Expert vins", "Onboarding parfait"];
+const skills = ["Gestion de salle", "Encaissement", "Allergènes", "Gestion VIP", "Onboarding équipe"];
+const badges = ["Ponctuel", "Top équipe Q1", "Expert service", "Zéro retard"];
 
 function useCountUp(target: number, active: boolean, delay = 0) {
   const [val, setVal] = useState(0);
@@ -80,11 +80,11 @@ export default function EmployeeSection() {
                   className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold flex-shrink-0"
                   style={{ background: "rgba(6,182,212,0.15)", border: "2px solid rgba(6,182,212,0.3)", color: "var(--accent)" }}
                 >
-                  JM
+                  YB
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-[18px] font-semibold mb-0.5" style={{ color: "var(--foreground)" }}>Julie Moreau</h3>
-                  <p className="text-sm mb-0.5" style={{ color: "var(--foreground-muted)" }}>Cheffe de rang</p>
+                  <h3 className="text-[18px] font-semibold mb-0.5" style={{ color: "var(--foreground)" }}>Yasmine Benali</h3>
+                  <p className="text-sm mb-0.5" style={{ color: "var(--foreground-muted)" }}>Chef de salle</p>
                   <p className="text-[12px] font-mono" style={{ color: "var(--foreground-dim)" }}>Le Comptoir des Halles</p>
                 </div>
               </div>
