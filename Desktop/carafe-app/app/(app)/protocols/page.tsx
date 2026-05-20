@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid } from "lucide-react";
+import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -110,7 +110,7 @@ const DEV_PROTOCOLS: Protocol[] = [
     id: "p3",
     establishment_id: DEV_ESTABLISHMENT_ID,
     author_id: DEV_PROFILE_ID,
-    title: "Normes HACCP — Températures",
+    title: "Normes HACCP Températures",
     content: "Températures de conservation obligatoires :\n- Produits frais : 0°C à +4°C\n- Surgelés : -18°C\n- Plats chauds en service : minimum +63°C\n\nEnregistrer les températures matin et soir dans le registre HACCP.",
     category: "hygiene",
     is_mandatory: true,
@@ -211,6 +211,8 @@ export default function ProtocolsPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<ProtocolCategory | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "gallery">("list");
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -433,7 +435,7 @@ export default function ProtocolsPage() {
             <AlertCircle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
             <p className="text-sm" style={{ color: "var(--foreground)" }}>
               <span style={{ fontWeight: 600 }}>{totalUnreadMandatory} protocole{totalUnreadMandatory > 1 ? "s" : ""} obligatoire{totalUnreadMandatory > 1 ? "s" : ""}</span>
-              {" "}à valider — ouvrez-les et confirmez votre lecture.
+              {" "}à valider ouvrez-les et confirmez votre lecture.
             </p>
           </div>
         )}
@@ -501,13 +503,14 @@ export default function ProtocolsPage() {
   const CatIcon = catIcon;
   const catUnread = categoryUnread(selectedCategory);
   const catUnreadMandatory = filteredProtocols.filter(p => !reads.has(p.id) && p.is_mandatory).length;
+  const catAttachments = filteredProtocols.filter(p => p.attachment_url);
 
   return (
     <div className="px-4 py-8 lg:px-8 max-w-2xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-start gap-3">
-          <button onClick={() => { setSelectedCategory(null); setShowForm(false); }}
+          <button onClick={() => { setSelectedCategory(null); setShowForm(false); setViewMode("list"); }}
             className="flex-shrink-0 rounded-lg p-2 mt-0.5"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
             <ChevronLeft size={16} />
@@ -569,8 +572,82 @@ export default function ProtocolsPage() {
         />
       )}
 
+      {/* View toggle — only if there are attachments */}
+      {catAttachments.length > 0 && (
+        <div className="flex gap-2 mb-5">
+          {(["list", "gallery"] as const).map(mode => (
+            <button key={mode} onClick={() => setViewMode(mode)}
+              className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+              style={viewMode === mode
+                ? { background: CATEGORY_COLORS[selectedCategory], color: CATEGORY_TEXT[selectedCategory], border: `1px solid ${CATEGORY_TEXT[selectedCategory]}33` }
+                : { background: "transparent", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+              {mode === "list" ? "Protocoles" : `Photos · ${catAttachments.length}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Gallery view */}
+      {viewMode === "gallery" && catAttachments.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            {catAttachments.map(p => (
+              <div key={p.id}>
+                {p.attachment_type === "image" ? (
+                  <button
+                    onClick={() => setLightboxUrl(p.attachment_url!)}
+                    className="w-full rounded-xl overflow-hidden transition-opacity active:opacity-75"
+                    style={{ aspectRatio: "1", display: "block" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.attachment_url!}
+                      alt={p.attachment_name ?? p.title}
+                      className="w-full h-full"
+                      style={{ objectFit: "cover" }}
+                    />
+                  </button>
+                ) : (
+                  <a href={p.attachment_url!} target="_blank" rel="noopener noreferrer"
+                    className="w-full rounded-xl flex flex-col items-center justify-center gap-2 transition-opacity active:opacity-75"
+                    style={{ aspectRatio: "1", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    <FileText size={28} strokeWidth={1.5} style={{ color: "#F87171" }} />
+                    <span className="text-[10px] font-mono px-2 text-center line-clamp-2" style={{ color: "#F87171" }}>
+                      {p.attachment_name ?? "PDF"}
+                    </span>
+                  </a>
+                )}
+                <p className="text-[11px] mt-1.5 px-0.5 truncate" style={{ color: "var(--foreground-dim)" }}>{p.title}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Lightbox */}
+          {lightboxUrl && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(6px)" }}
+              onClick={() => setLightboxUrl(null)}>
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute top-4 right-4 rounded-full flex items-center justify-center"
+                style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)", color: "#fff" }}>
+                <X size={18} />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxUrl}
+                alt=""
+                className="max-w-full max-h-full rounded-xl"
+                style={{ objectFit: "contain", maxHeight: "90vh" }}
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </>
+      )}
+
       {/* List */}
-      {filteredProtocols.length === 0 ? (
+      {(viewMode === "list" || catAttachments.length === 0) && (filteredProtocols.length === 0 ? (
         <div className="rounded-xl flex flex-col items-center justify-center py-16"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
           <BookOpen size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 12 }} />
@@ -595,7 +672,7 @@ export default function ProtocolsPage() {
             />
           ))}
         </div>
-      )}
+      ))}
     </div>
   );
 }
