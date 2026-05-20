@@ -1,0 +1,101 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Carafe Design Tokens */
+    --background:        #09090B;
+    --background-soft:   #111114;
+    --background-elev:   #1A1A1F;
+    --background-hover:  #18181D;
+    --border:            #27272A;
+    --border-soft:       #1F1F23;
+    --border-strong:     #3F3F46;
+    --foreground:        #FAFAFA;
+    --foreground-muted:  #A1A1AA;
+    --foreground-dim:    #71717A;
+    --accent:            #06B6D4;
+    --accent-glow:       #22D3EE;
+    --accent-deep:       #0891B2;
+    --accent-bg:         rgba(6, 182, 212, 0.08);
+    --success:           #10B981;
+    --warning:           #F59E0B;
+    --danger:            #EF4444;
+
+    --radius-sm: 4px;
+    --radius-base: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* shadcn compatibility — mapped to our tokens */
+    --radius: 0.5rem;
+    --card:              var(--background-soft);
+    --card-foreground:   var(--foreground);
+    --popover:           var(--background-elev);
+    --popover-foreground: var(--foreground);
+    --primary:           var(--accent);
+    --primary-foreground: #09090B;
+    --secondary:         var(--background-soft);
+    --secondary-foreground: var(--foreground);
+    --muted:             var(--background-elev);
+    --muted-foreground:  var(--foreground-dim);
+    --destructive:       var(--danger);
+    --destructive-foreground: var(--foreground);
+    --input:             var(--border);
+    --ring:              var(--accent);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--foreground-dim); }
+}
+
+@layer utilities {
+  .mono {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 24px -4px rgba(6, 182, 212, 0.15);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes kudos-particle {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-24px) scale(0.5); opacity: 0; }
+}
