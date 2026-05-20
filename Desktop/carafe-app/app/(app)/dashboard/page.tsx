@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
-import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus } from "lucide-react";
+import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus, ThumbsUp } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -24,6 +24,17 @@ interface MemberScore {
   badge: "gold" | "silver" | "bronze" | null;
 }
 
+type FeedbackCategory = "compliment" | "complaint" | "suggestion" | "incident";
+
+interface FeedbackItem {
+  id: string;
+  category: FeedbackCategory;
+  content: string;
+  table_number: string | null;
+  created_at: string;
+  confirmation_count: number;
+}
+
 interface FeedbackSummary {
   compliment: number;
   complaint: number;
@@ -39,6 +50,8 @@ interface DashboardData {
   establishment_id: string;
   leaderboard: MemberScore[];
   feedback_summary: FeedbackSummary;
+  feedback_items: FeedbackItem[];
+  my_confirmed_feedback: string[];
   delays_this_month: number;
   active_challenges: number;
   unread_mandatory: number;
@@ -51,6 +64,13 @@ const BADGE_CONFIG = {
   bronze: { emoji: "🥉", color: "#C97B4B" },
 };
 
+const CATEGORY_META: Record<FeedbackCategory, { label: string; emoji: string; color: string; bg: string; border: string }> = {
+  compliment: { label: "Compliments",  emoji: "😊", color: "var(--success)",  bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.25)" },
+  complaint:  { label: "Plaintes",     emoji: "😤", color: "var(--danger)",   bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.25)" },
+  suggestion: { label: "Suggestions",  emoji: "💡", color: "var(--accent)",   bg: "rgba(6,182,212,0.1)",   border: "rgba(6,182,212,0.25)" },
+  incident:   { label: "Incidents",    emoji: "⚠️", color: "var(--warning)",  bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.25)" },
+};
+
 function ScoreBar({ value, color }: { value: number; color: string }) {
   return (
     <div className="rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
@@ -59,6 +79,14 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
+  { id: "f1", category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
+  { id: "f2", category: "complaint",  content: "Attente trop longue — table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
+  { id: "f3", category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu.", table_number: null, created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
+  { id: "f4", category: "incident",   content: "Verre cassé en salle, client légèrement blessé — pris en charge immédiatement.", table_number: "8", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
+  { id: "f5", category: "compliment", content: "Service excellent ce soir, accueil très chaleureux selon le client. Il reviendra.", table_number: null, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
+];
+
 const DEV_DATA_MANAGER: DashboardData = {
   role: "owner", my_profile_id: DEV_PROFILE_ID, my_first_name: "Dev", establishment_id: "dev-establishment",
   leaderboard: [
@@ -66,7 +94,9 @@ const DEV_DATA_MANAGER: DashboardData = {
     { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
     { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, protocols_read: 1, protocols_total: 3, badge: "bronze" },
   ],
-  feedback_summary: { compliment: 8, complaint: 3, suggestion: 2, incident: 1, total: 14 },
+  feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
+  feedback_items: DEV_FEEDBACK_ITEMS,
+  my_confirmed_feedback: [],
   delays_this_month: 3, active_challenges: 2, unread_mandatory: 1, unread_total: 2,
 };
 
@@ -77,7 +107,9 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
     { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
     { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, protocols_read: 1, protocols_total: 3, badge: "bronze" },
   ],
-  feedback_summary: { compliment: 8, complaint: 3, suggestion: 2, incident: 1, total: 14 },
+  feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
+  feedback_items: DEV_FEEDBACK_ITEMS,
+  my_confirmed_feedback: ["f2"],
   delays_this_month: 2, active_challenges: 2, unread_mandatory: 2, unread_total: 2,
 };
 
@@ -108,24 +140,26 @@ export default function DashboardPage() {
 
     const estId = memberData.establishment_id;
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart),
+      supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, is_mandatory").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
-      supabase.from("customer_feedback").select("category").eq("establishment_id", estId).gte("created_at", new Date(now.getFullYear(), now.getMonth(), 1).toISOString()),
+      supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
+      supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
     ]);
 
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
     const protocols = (protocolsRes.data ?? []) as Array<{ id: string; is_mandatory: boolean }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
-    const feedback = (feedbackRes.data ?? []) as Array<{ category: string }>;
+    const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
+    const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
 
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
@@ -147,37 +181,22 @@ export default function DashboardPage() {
         const p = m.profiles;
         const fn = p?.first_name ?? "";
         const ln = p?.last_name ?? "";
-        return {
-          profile_id: m.profile_id,
-          name: `${fn} ${ln}`.trim() || "—",
-          first_name: fn,
-          last_name: ln,
-          avatar_url: p?.avatar_url ?? null,
-          job_title: m.job_title,
-          score,
-          delays_count: del,
-          protocols_read: read,
-          protocols_total: totalProtocols,
-          badge: null as MemberScore["badge"],
-        };
+        return { profile_id: m.profile_id, name: `${fn} ${ln}`.trim() || "—", first_name: fn, last_name: ln, avatar_url: p?.avatar_url ?? null, job_title: m.job_title, score, delays_count: del, protocols_read: read, protocols_total: totalProtocols, badge: null as MemberScore["badge"] };
       })
       .sort((a, b) => b.score - a.score)
       .map((m, i) => ({ ...m, badge: (["gold", "silver", "bronze"][i] ?? null) as MemberScore["badge"] }));
 
-    const fbSummary: FeedbackSummary = { compliment: 0, complaint: 0, suggestion: 0, incident: 0, total: feedback.length };
-    feedback.forEach(f => { if (f.category in fbSummary) (fbSummary as unknown as Record<string, number>)[f.category]++; });
+    const fbSummary: FeedbackSummary = { compliment: 0, complaint: 0, suggestion: 0, incident: 0, total: rawFeedback.length };
+    rawFeedback.forEach(f => { if (f.category in fbSummary) (fbSummary as unknown as Record<string, number>)[f.category]++; });
+
+    const feedbackItems: FeedbackItem[] = rawFeedback.map(f => ({ ...f, category: f.category as FeedbackCategory, confirmation_count: 0 }));
 
     setData({
-      role: memberData.role,
-      my_profile_id: user.id,
-      my_first_name: myFirstName,
-      establishment_id: estId,
-      leaderboard,
-      feedback_summary: fbSummary,
+      role: memberData.role, my_profile_id: user.id, my_first_name: myFirstName, establishment_id: estId,
+      leaderboard, feedback_summary: fbSummary, feedback_items: feedbackItems, my_confirmed_feedback: myConfirmed,
       delays_this_month: delays.filter(d => d.employee_id === user.id).length,
       active_challenges: challengesRes.data?.length ?? 0,
-      unread_mandatory: unreadMandatory,
-      unread_total: unreadTotal,
+      unread_mandatory: unreadMandatory, unread_total: unreadTotal,
     });
     setLoading(false);
   }
@@ -191,15 +210,16 @@ export default function DashboardPage() {
   }
 
   const isManager = data.role === "owner" || data.role === "manager";
-
-  return isManager
-    ? <ManagerDashboard data={data} />
-    : <EmployeeDashboard data={data} />;
+  return isManager ? <ManagerDashboard data={data} /> : <EmployeeDashboard data={data} />;
 }
 
 /* ─── MANAGER VIEW ─────────────────────────────────── */
 function ManagerDashboard({ data }: { data: DashboardData }) {
   const month = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const [feedbackModal, setFeedbackModal] = useState<FeedbackCategory | null>(null);
+
+  const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
+  const modalMeta = feedbackModal ? CATEGORY_META[feedbackModal] : null;
 
   return (
     <div className="px-4 py-8 lg:px-8 max-w-3xl">
@@ -271,25 +291,30 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* Feedback breakdown */}
+      {/* Feedback breakdown — clickable tiles */}
       {data.feedback_summary.total > 0 && (
         <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <MessageSquare size={14} style={{ color: "var(--accent)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
+          <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} style={{ color: "var(--accent)" }} />
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
+            </div>
+            <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
           </div>
           <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
-            {([
-              { key: "compliment", label: "Compliments", emoji: "😊", color: "var(--success)" },
-              { key: "complaint",  label: "Plaintes",    emoji: "😤", color: "var(--danger)" },
-              { key: "suggestion", label: "Suggestions", emoji: "💡", color: "var(--accent)" },
-              { key: "incident",   label: "Incidents",   emoji: "⚠️", color: "var(--warning)" },
-            ] as const).map(({ key, label, emoji, color }) => (
-              <div key={key} className="px-5 py-4" style={{ background: "var(--background-elev)" }}>
-                <p className="text-2xl font-semibold mb-0.5" style={{ color }}>{data.feedback_summary[key]}</p>
-                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{emoji} {label}</p>
-              </div>
-            ))}
+            {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
+              const meta = CATEGORY_META[cat];
+              const count = data.feedback_summary[cat];
+              return (
+                <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
+                  className="px-5 py-4 text-left transition-opacity"
+                  style={{ background: "var(--background-elev)", opacity: count === 0 ? 0.5 : 1, cursor: count > 0 ? "pointer" : "default" }}>
+                  <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.emoji} {meta.label}</p>
+                  {count > 0 && <p className="text-[10px] mt-1" style={{ color: meta.color }}>Voir les avis →</p>}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -316,13 +341,67 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
           ))}
         </div>
       )}
+
+      {/* Feedback modal */}
+      {feedbackModal && modalMeta && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <span>{modalMeta.emoji}</span>
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{modalMeta.label}</p>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  style={{ background: modalMeta.bg, color: modalMeta.color }}>
+                  {modalItems.length}
+                </span>
+              </div>
+              <button onClick={() => setFeedbackModal(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 60px)" }}>
+              {modalItems.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis dans cette catégorie</p>
+                </div>
+              ) : (
+                <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                  {modalItems.map(item => (
+                    <div key={item.id} className="px-5 py-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        {item.table_number && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded"
+                            style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>
+                            Table {item.table_number}
+                          </span>
+                        )}
+                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                          {new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                      {item.confirmation_count > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                          <ThumbsUp size={11} style={{ color: "var(--foreground-dim)" }} />
+                          <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+                            {item.confirmation_count} collègue{item.confirmation_count > 1 ? "s" : ""} ont eu le même retour
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─── EMPLOYEE VIEW ────────────────────────────────── */
 type QuickModal = "delay" | "feedback" | null;
-type FeedbackCategory = "compliment" | "complaint" | "suggestion" | "incident";
 
 function EmployeeDashboard({ data }: { data: DashboardData }) {
   const supabase = createClient();
@@ -335,19 +414,19 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const [modal, setModal] = useState<QuickModal>(null);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set(data.my_confirmed_feedback));
+  const [confirmCounts, setConfirmCounts] = useState<Record<string, number>>(
+    Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
+  );
 
-  // Delay form
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
   const [delayMinutes, setDelayMinutes] = useState("15");
   const [delayReason, setDelayReason] = useState<"transport" | "personal" | "health" | "other">("transport");
-
-  // Feedback form
   const [fbCategory, setFbCategory] = useState<FeedbackCategory>("compliment");
   const [fbContent, setFbContent] = useState("");
   const [fbTable, setFbTable] = useState("");
 
   const closeModal = () => { setModal(null); setSubmitting(false); setDelayMinutes("15"); setDelayDate(new Date().toISOString().split("T")[0]); setDelayReason("transport"); setFbCategory("compliment"); setFbContent(""); setFbTable(""); };
-
   const showSuccess = (msg: string) => { setSuccessMsg(msg); closeModal(); setTimeout(() => setSuccessMsg(null), 3000); };
 
   const submitDelay = async () => {
@@ -367,6 +446,26 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
     showSuccess("Avis client enregistré ✓");
   };
 
+  const toggleConfirm = async (feedbackId: string) => {
+    const isConfirmed = confirmedIds.has(feedbackId);
+    const delta = isConfirmed ? -1 : 1;
+
+    setConfirmedIds(prev => {
+      const next = new Set(prev);
+      if (isConfirmed) next.delete(feedbackId); else next.add(feedbackId);
+      return next;
+    });
+    setConfirmCounts(prev => ({ ...prev, [feedbackId]: (prev[feedbackId] ?? 0) + delta }));
+
+    if (!DEV_MODE) {
+      if (isConfirmed) {
+        await supabase.from("feedback_confirmations").delete().eq("profile_id", data.my_profile_id).eq("feedback_id", feedbackId);
+      } else {
+        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: data.my_profile_id, feedback_id: feedbackId });
+      }
+    }
+  };
+
   return (
     <div className="px-4 py-8 lg:px-8 max-w-xl">
       {/* Greeting */}
@@ -379,7 +478,6 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </h1>
       </div>
 
-      {/* Success toast */}
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium"
           style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
@@ -397,9 +495,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
               {data.unread_mandatory} protocole{data.unread_mandatory > 1 ? "s" : ""} obligatoire{data.unread_mandatory > 1 ? "s" : ""} à lire
             </p>
-            <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-              Ouvre-les et confirme ta lecture
-            </p>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Ouvre-les et confirme ta lecture</p>
           </div>
           <ChevronRight size={16} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginTop: 2 }} />
         </a>
@@ -448,8 +544,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         <button onClick={() => setModal("delay")}
           className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(245,158,11,0.1)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
             <Clock size={15} style={{ color: "var(--warning)" }} />
           </div>
           <div className="flex-1">
@@ -462,8 +557,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         <a href="/protocols"
           className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(6,182,212,0.1)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.1)" }}>
             <BookOpen size={15} style={{ color: "var(--accent)" }} />
           </div>
           <div className="flex-1">
@@ -478,8 +572,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         <button onClick={() => setModal("feedback")}
           className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(139,92,246,0.1)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
             <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
           </div>
           <div className="flex-1">
@@ -492,8 +585,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         <a href="/challenges"
           className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(245,158,11,0.1)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
             <Trophy size={15} style={{ color: "#F59E0B" }} />
           </div>
           <div className="flex-1">
@@ -504,7 +596,57 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </a>
       </div>
 
-      {/* Mini leaderboard for employee */}
+      {/* Recent feedback — employee can confirm */}
+      {data.feedback_items.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Retours clients récents</p>
+            <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+          </div>
+          <div className="space-y-2">
+            {data.feedback_items.slice(0, 4).map(item => {
+              const meta = CATEGORY_META[item.category];
+              const confirmed = confirmedIds.has(item.id);
+              const count = confirmCounts[item.id] ?? 0;
+              return (
+                <div key={item.id} className="rounded-xl p-4"
+                  style={{ background: "var(--background-elev)", border: `1px solid ${confirmed ? meta.border : "var(--border)"}` }}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
+                          style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
+                          {meta.label}
+                        </span>
+                        {item.table_number && (
+                          <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>
+                        )}
+                      </div>
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                      <p className="text-[10px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
+                        {new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => toggleConfirm(item.id)}
+                    className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: confirmed ? meta.bg : "var(--background-soft)",
+                      color: confirmed ? meta.color : "var(--foreground-dim)",
+                      border: `1px solid ${confirmed ? meta.border : "var(--border)"}`,
+                    }}>
+                    <ThumbsUp size={12} fill={confirmed ? "currentColor" : "none"} />
+                    {confirmed ? "Tu as eu ce retour" : "Moi aussi j'ai eu ce retour"}
+                    {count > 0 && <span className="ml-1 opacity-70">· {count}</span>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mini leaderboard */}
       {data.leaderboard.length > 1 && (
         <div>
           <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Classement équipe</p>
@@ -514,11 +656,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               const isMe = member.profile_id === data.my_profile_id;
               return (
                 <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
-                  style={{
-                    background: isMe ? "rgba(139,92,246,0.05)" : "var(--background-elev)",
-                    borderBottom: i < 2 ? "1px solid var(--border)" : "none",
-                    border: isMe ? "none" : undefined,
-                  }}>
+                  style={{ background: isMe ? "rgba(139,92,246,0.05)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
                   <span className="text-lg w-6 text-center flex-shrink-0">{b?.emoji ?? `${i + 1}`}</span>
                   <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
@@ -559,8 +697,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Durée (minutes)</label>
-                <input type="number" min="1" max="480" value={delayMinutes} onChange={e => setDelayMinutes(e.target.value)}
-                  placeholder="15"
+                <input type="number" min="1" max="480" value={delayMinutes} onChange={e => setDelayMinutes(e.target.value)} placeholder="15"
                   className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                   style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
                   onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"}
