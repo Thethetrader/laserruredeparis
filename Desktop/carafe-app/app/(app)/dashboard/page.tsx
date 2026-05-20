@@ -64,11 +64,11 @@ const BADGE_CONFIG = {
   bronze: { emoji: "🥉", color: "#C97B4B" },
 };
 
-const CATEGORY_META: Record<FeedbackCategory, { label: string; emoji: string; color: string; bg: string; border: string }> = {
-  compliment: { label: "Compliments",  emoji: "😊", color: "var(--success)",  bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.25)" },
-  complaint:  { label: "Plaintes",     emoji: "😤", color: "var(--danger)",   bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.25)" },
-  suggestion: { label: "Suggestions",  emoji: "💡", color: "var(--accent)",   bg: "rgba(6,182,212,0.1)",   border: "rgba(6,182,212,0.25)" },
-  incident:   { label: "Incidents",    emoji: "⚠️", color: "var(--warning)",  bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.25)" },
+const CATEGORY_META: Record<FeedbackCategory, { label: string; color: string; bg: string; border: string }> = {
+  compliment: { label: "Compliments",  color: "var(--success)",  bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.25)" },
+  complaint:  { label: "Plaintes",     color: "var(--danger)",   bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.25)" },
+  suggestion: { label: "Suggestions",  color: "var(--accent)",   bg: "rgba(6,182,212,0.1)",   border: "rgba(6,182,212,0.25)" },
+  incident:   { label: "Incidents",    color: "var(--warning)",  bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.25)" },
 };
 
 function ScoreBar({ value, color }: { value: number; color: string }) {
@@ -81,9 +81,9 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 
 const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
   { id: "f1", category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
-  { id: "f2", category: "complaint",  content: "Attente trop longue — table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
+  { id: "f2", category: "complaint",  content: "Attente trop longue table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
   { id: "f3", category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu.", table_number: null, created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
-  { id: "f4", category: "incident",   content: "Verre cassé en salle, client légèrement blessé — pris en charge immédiatement.", table_number: "8", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
+  { id: "f4", category: "incident",   content: "Verre cassé en salle, client légèrement blessé pris en charge immédiatement.", table_number: "8", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
   { id: "f5", category: "compliment", content: "Service excellent ce soir, accueil très chaleureux selon le client. Il reviendra.", table_number: null, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
 ];
 
@@ -181,7 +181,7 @@ export default function DashboardPage() {
         const p = m.profiles;
         const fn = p?.first_name ?? "";
         const ln = p?.last_name ?? "";
-        return { profile_id: m.profile_id, name: `${fn} ${ln}`.trim() || "—", first_name: fn, last_name: ln, avatar_url: p?.avatar_url ?? null, job_title: m.job_title, score, delays_count: del, protocols_read: read, protocols_total: totalProtocols, badge: null as MemberScore["badge"] };
+        return { profile_id: m.profile_id, name: `${fn} ${ln}`.trim() || "-", first_name: fn, last_name: ln, avatar_url: p?.avatar_url ?? null, job_title: m.job_title, score, delays_count: del, protocols_read: read, protocols_total: totalProtocols, badge: null as MemberScore["badge"] };
       })
       .sort((a, b) => b.score - a.score)
       .map((m, i) => ({ ...m, badge: (["gold", "silver", "bronze"][i] ?? null) as MemberScore["badge"] }));
@@ -291,7 +291,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* Feedback breakdown — clickable tiles */}
+      {/* Feedback breakdown clickable tiles */}
       {data.feedback_summary.total > 0 && (
         <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
           <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
@@ -310,7 +310,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                   className="px-5 py-4 text-left transition-opacity"
                   style={{ background: "var(--background-elev)", opacity: count === 0 ? 0.5 : 1, cursor: count > 0 ? "pointer" : "default" }}>
                   <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
-                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.emoji} {meta.label}</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
                   {count > 0 && <p className="text-[10px] mt-1" style={{ color: meta.color }}>Voir les avis →</p>}
                 </button>
               );
@@ -350,7 +350,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
           <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2">
-                <span>{modalMeta.emoji}</span>
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: modalMeta.color }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{modalMeta.label}</p>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                   style={{ background: modalMeta.bg, color: modalMeta.color }}>
@@ -511,10 +511,10 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         <div className="flex items-end gap-4 mb-4">
           <div>
             <p className="text-5xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
-              {myStats?.score ?? "—"}
+              {myStats?.score ?? "-"}
             </p>
             <p className="text-[11px] font-mono mt-1" style={{ color: "var(--foreground-dim)" }}>
-              {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : "—"}
+              {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : "-"}
             </p>
           </div>
           <div className="flex-1 pb-1">
@@ -596,7 +596,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </a>
       </div>
 
-      {/* Recent feedback — employee can confirm */}
+      {/* Recent feedback employee can confirm */}
       {data.feedback_items.length > 0 && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
