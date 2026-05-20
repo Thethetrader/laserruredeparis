@@ -232,9 +232,9 @@ function RetoursScreen() {
 }
 
 const SCREENS = [
-  { label: "Dashboard", icon: LayoutDashboard, nav: 0, content: <DashboardScreen /> },
   { label: "Protocoles", icon: BookOpen, nav: 1, content: <ProtocolesScreen /> },
   { label: "Retours clients", icon: MessageSquare, nav: 2, content: <RetoursScreen /> },
+  { label: "Dashboard", icon: LayoutDashboard, nav: 0, content: <DashboardScreen /> },
 ];
 
 export default function HeroMockup() {
