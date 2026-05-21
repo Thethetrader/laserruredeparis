@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, CalendarDays } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -12,7 +12,7 @@ const managerNav = [
   { href: "/scoring",           icon: Zap,             label: "Score" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/team",              icon: Users,           label: "Équipe" },
-  { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
+  { href: "/schedule",          icon: CalendarDays,    label: "RDV" },
 ];
 
 const employeeNav = [

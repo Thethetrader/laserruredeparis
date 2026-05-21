@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
@@ -10,9 +10,10 @@ const adminNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours clients" },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
 ];
 
 interface SidebarProps {
