@@ -53,9 +53,9 @@ const STATUS_STYLE: Record<FeedbackStatus, { color: string }> = {
 
 const DEV_FEEDBACK: Feedback[] = [
   { id: "f1", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: DEV_PROFILE_ID, category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", status: "resolved", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
-  { id: "f2", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: DEV_PROFILE_ID, category: "complaint",  content: "Attente trop longue — table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", status: "in_progress", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
-  { id: "f3", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu — plusieurs personnes de son groupe étaient déçues.", table_number: null, status: "open", created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
-  { id: "f4", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "incident",   content: "Verre cassé en salle, client légèrement blessé — pris en charge immédiatement.", table_number: "8", status: "open", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
+  { id: "f2", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: DEV_PROFILE_ID, category: "complaint",  content: "Attente trop longue table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", status: "in_progress", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
+  { id: "f3", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu plusieurs personnes de son groupe étaient déçues.", table_number: null, status: "open", created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
+  { id: "f4", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "incident",   content: "Verre cassé en salle, client légèrement blessé pris en charge immédiatement.", table_number: "8", status: "open", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
   { id: "f5", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-3",    category: "compliment", content: "Service excellent ce soir, accueil très chaleureux selon le client. Il reviendra.", table_number: null, status: "resolved", created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
 ];
 
@@ -214,7 +214,7 @@ export default function CustomerFeedbackPage() {
         </button>
       </div>
 
-      {/* Stats — manager only */}
+      {/* Stats manager only */}
       {isManager && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
@@ -357,7 +357,7 @@ export default function CustomerFeedbackPage() {
                   </div>
                 </div>
 
-                {/* Confirm button — employee only, not for own feedback */}
+                {/* Confirm button employee only, not for own feedback */}
                 {!isManager && !isMyFeedback && (
                   <div className="px-5 pb-4">
                     <button onClick={() => toggleConfirm(feedback.id)}

@@ -4,11 +4,22 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
-import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus, ThumbsUp } from "lucide-react";
+import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const DEV_PROFILE_ID = "dev-user";
+
+interface Protocol {
+  id: string;
+  title: string;
+  content?: string;
+  category?: string;
+  is_mandatory: boolean;
+  is_read: boolean;
+  read_count: number;
+  total_members: number;
+}
 
 interface MemberScore {
   profile_id: string;
@@ -43,17 +54,29 @@ interface FeedbackSummary {
   total: number;
 }
 
+interface ChallengeItem {
+  id: string;
+  title: string;
+  description: string | null;
+  target_value: number | null;
+  current_value: number;
+  unit: string | null;
+  ends_at: string | null;
+}
+
 interface DashboardData {
   role: string;
   my_profile_id: string;
   my_first_name: string;
   establishment_id: string;
+  protocols: Protocol[];
   leaderboard: MemberScore[];
   feedback_summary: FeedbackSummary;
   feedback_items: FeedbackItem[];
   my_confirmed_feedback: string[];
   delays_this_month: number;
   active_challenges: number;
+  active_challenges_list: ChallengeItem[];
   unread_mandatory: number;
   unread_total: number;
 }
@@ -79,6 +102,12 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+const DEV_PROTOCOLS: Protocol[] = [
+  { id: "p1", title: "Normes HACCP Températures", is_mandatory: true,  is_read: true,  read_count: 3, total_members: 3 },
+  { id: "p2", title: "Procédure ouverture salle",  is_mandatory: true,  is_read: true,  read_count: 2, total_members: 3 },
+  { id: "p3", title: "Gestion des allergènes",     is_mandatory: false, is_read: false, read_count: 1, total_members: 3 },
+];
+
 const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
   { id: "f1", category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
   { id: "f2", category: "complaint",  content: "Attente trop longue table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
@@ -89,6 +118,7 @@ const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
 
 const DEV_DATA_MANAGER: DashboardData = {
   role: "owner", my_profile_id: DEV_PROFILE_ID, my_first_name: "Dev", establishment_id: "dev-establishment",
+  protocols: DEV_PROTOCOLS,
   leaderboard: [
     { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
     { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
@@ -98,10 +128,15 @@ const DEV_DATA_MANAGER: DashboardData = {
   feedback_items: DEV_FEEDBACK_ITEMS,
   my_confirmed_feedback: [],
   delays_this_month: 3, active_challenges: 2, unread_mandatory: 1, unread_total: 2,
+  active_challenges_list: [
+    { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
+    { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
+  ],
 };
 
 const DEV_DATA_EMPLOYEE: DashboardData = {
   role: "employee", my_profile_id: "profile-3", my_first_name: "Rayan", establishment_id: "dev-establishment",
+  protocols: DEV_PROTOCOLS,
   leaderboard: [
     { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
     { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
@@ -111,6 +146,10 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   feedback_items: DEV_FEEDBACK_ITEMS,
   my_confirmed_feedback: ["f2"],
   delays_this_month: 2, active_challenges: 2, unread_mandatory: 2, unread_total: 2,
+  active_challenges_list: [
+    { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
+    { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
+  ],
 };
 
 export default function DashboardPage() {
@@ -145,17 +184,17 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, is_mandatory").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, is_mandatory").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
-      supabase.from("challenges").select("id").eq("establishment_id", estId).eq("status", "active"),
+      supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
     ]);
 
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const protocols = (protocolsRes.data ?? []) as Array<{ id: string; is_mandatory: boolean }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; is_mandatory: boolean }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -167,10 +206,23 @@ export default function DashboardPage() {
     const readsByProfile: Record<string, number> = {};
     reads.forEach(r => { readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
 
-    const totalProtocols = protocols.length;
-    const myReads = new Set(reads.filter(r => r.profile_id === user.id).map(r => r.protocol_id));
-    const unreadMandatory = protocols.filter(p => p.is_mandatory && !myReads.has(p.id)).length;
-    const unreadTotal = protocols.filter(p => !myReads.has(p.id)).length;
+    const myReadIds = new Set(reads.filter(r => r.profile_id === user.id).map(r => r.protocol_id));
+    const totalProtocols = rawProtocols.length;
+    const unreadMandatory = rawProtocols.filter(p => p.is_mandatory && !myReadIds.has(p.id)).length;
+    const unreadTotal = rawProtocols.filter(p => !myReadIds.has(p.id)).length;
+
+    const totalNonOwners = members.filter(m => m.role !== "owner").length;
+    const readCountByProtocol: Record<string, number> = {};
+    reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
+
+    const protocols: Protocol[] = rawProtocols.map(p => ({
+      id: p.id,
+      title: p.title,
+      is_mandatory: p.is_mandatory,
+      is_read: myReadIds.has(p.id),
+      read_count: readCountByProtocol[p.id] ?? 0,
+      total_members: totalNonOwners,
+    }));
 
     const leaderboard: MemberScore[] = members
       .filter(m => m.role !== "owner")
@@ -193,9 +245,10 @@ export default function DashboardPage() {
 
     setData({
       role: memberData.role, my_profile_id: user.id, my_first_name: myFirstName, establishment_id: estId,
-      leaderboard, feedback_summary: fbSummary, feedback_items: feedbackItems, my_confirmed_feedback: myConfirmed,
+      protocols, leaderboard, feedback_summary: fbSummary, feedback_items: feedbackItems, my_confirmed_feedback: myConfirmed,
       delays_this_month: delays.filter(d => d.employee_id === user.id).length,
       active_challenges: challengesRes.data?.length ?? 0,
+      active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
     });
     setLoading(false);
@@ -203,7 +256,7 @@ export default function DashboardPage() {
 
   if (loading || !data) {
     return (
-      <div className="px-4 py-8 lg:px-8 max-w-3xl">
+      <div className="px-4 py-8 lg:px-8 max-w-4xl">
         {[1, 2, 3].map(i => <div key={i} className="rounded-xl h-28 animate-pulse mb-4" style={{ background: "var(--background-elev)" }} />)}
       </div>
     );
@@ -213,22 +266,186 @@ export default function DashboardPage() {
   return isManager ? <ManagerDashboard data={data} /> : <EmployeeDashboard data={data} />;
 }
 
+/* ─── PROTOCOL CREATION MODAL ───────────────────────── */
+type ProtocolCategory = "salle" | "cuisine" | "bar" | "accueil" | "hygiene" | "securite" | "ouverture" | "fermeture";
+
+const PROTO_CATEGORIES: { key: ProtocolCategory; label: string; icon: React.ElementType; color: string; text: string }[] = [
+  { key: "salle",     label: "Salle",     icon: LayoutGrid,      color: "rgba(139,92,246,0.13)", text: "#A78BFA" },
+  { key: "cuisine",   label: "Cuisine",   icon: UtensilsCrossed, color: "rgba(245,158,11,0.13)", text: "#FBBF24" },
+  { key: "bar",       label: "Bar",       icon: Wine,            color: "rgba(6,182,212,0.13)",  text: "var(--accent)" },
+  { key: "accueil",   label: "Accueil",   icon: Users,           color: "rgba(16,185,129,0.13)", text: "var(--success)" },
+  { key: "hygiene",   label: "Hygiène",   icon: Sparkles,        color: "rgba(6,182,212,0.12)",  text: "var(--accent)" },
+  { key: "securite",  label: "Sécurité",  icon: ShieldCheck,     color: "rgba(239,68,68,0.12)",  text: "var(--danger)" },
+  { key: "ouverture", label: "Ouverture", icon: Sunrise,         color: "rgba(16,185,129,0.12)", text: "var(--success)" },
+  { key: "fermeture", label: "Fermeture", icon: Sunset,          color: "rgba(245,158,11,0.12)", text: "var(--warning)" },
+];
+
+function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onClose: () => void; onAdded: (p: Protocol) => void }) {
+  const supabase = createClient();
+  const [step, setStep] = useState<"category" | "form">("category");
+  const [category, setCategory] = useState<ProtocolCategory>("salle");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [mandatory, setMandatory] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const selectedCat = PROTO_CATEGORIES.find(c => c.key === category)!;
+
+  const submit = async () => {
+    if (!title.trim()) return;
+    setSubmitting(true);
+
+    if (DEV_MODE) {
+      const newP: Protocol = {
+        id: `p-${Date.now()}`, title, content, category,
+        is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length,
+      };
+      onAdded(newP);
+      onClose();
+      return;
+    }
+
+    const { data: inserted } = await supabase.from("protocols").insert({
+      establishment_id: data.establishment_id,
+      author_id: data.my_profile_id,
+      title, content: content || "",
+      category: category as unknown as undefined,
+      is_mandatory: mandatory,
+    }).select().single();
+
+    if (inserted) {
+      const newP: Protocol = {
+        id: (inserted as { id: string }).id, title, content, category,
+        is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length,
+      };
+      onAdded(newP);
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2">
+            {step === "form" && (
+              <button onClick={() => setStep("category")} style={{ color: "var(--foreground-dim)", marginRight: 2 }}>
+                <ArrowLeft size={16} />
+              </button>
+            )}
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              {step === "category" ? "Choisir une catégorie" : "Nouveau protocole"}
+            </p>
+            {step === "form" && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded"
+                style={{ background: selectedCat.color, color: selectedCat.text }}>
+                {selectedCat.label}
+              </span>
+            )}
+          </div>
+          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+        </div>
+
+        {/* Step 1: catégorie */}
+        {step === "category" && (
+          <div className="p-4 grid grid-cols-2 gap-2">
+            {PROTO_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              return (
+                <button key={cat.key}
+                  onClick={() => { setCategory(cat.key); setStep("form"); }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.97]"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: cat.color }}>
+                    <Icon size={14} strokeWidth={1.5} style={{ color: cat.text }} />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Step 2: formulaire */}
+        {step === "form" && (
+          <div className="p-5 space-y-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre</label>
+              <input
+                value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="Ex: Procédure de nettoyage"
+                autoFocus
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                Contenu <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
+              </label>
+              <textarea
+                value={content} onChange={e => setContent(e.target.value)}
+                placeholder="Décrivez le protocole..."
+                rows={4}
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
+                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+              />
+            </div>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <div onClick={() => setMandatory(!mandatory)}
+                className="relative flex-shrink-0 rounded-sm transition-colors cursor-pointer"
+                style={{ width: 18, height: 18, background: mandatory ? "var(--accent)" : "var(--background-soft)", border: `1px solid ${mandatory ? "var(--accent)" : "var(--border)"}` }}>
+                {mandatory && (
+                  <svg className="absolute inset-0 m-auto" width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2.5 2.5L8 3" stroke="#09090B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm" style={{ color: "var(--foreground-muted)" }}>Lecture obligatoire</span>
+            </label>
+            <button
+              onClick={submit}
+              disabled={submitting || !title.trim()}
+              className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity"
+              style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !title.trim()) ? 0.5 : 1 }}>
+              {submitting ? "Création…" : "Créer le protocole"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── MANAGER VIEW ─────────────────────────────────── */
 function ManagerDashboard({ data }: { data: DashboardData }) {
   const month = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
   const [feedbackModal, setFeedbackModal] = useState<FeedbackCategory | null>(null);
+  const [showAddProtocol, setShowAddProtocol] = useState(false);
+  const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
+
+  const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
 
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
   const modalMeta = feedbackModal ? CATEGORY_META[feedbackModal] : null;
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-3xl">
+    <div className="px-4 py-8 lg:px-10 max-w-7xl">
       <div className="mb-8">
         <MonoLabel size="xs" className="mb-2 block">Vue d'ensemble</MonoLabel>
         <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — pleine largeur */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
           { icon: Clock, value: data.delays_this_month, label: "Retards", warn: data.delays_this_month > 3, href: "/delays" },
@@ -247,100 +464,216 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         ))}
       </div>
 
-      {/* Leaderboard */}
-      {data.leaderboard.length > 0 && (
-        <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <TrendingUp size={14} style={{ color: "var(--accent)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement équipe</p>
-          </div>
-          {data.leaderboard.map((member, i) => {
-            const b = member.badge ? BADGE_CONFIG[member.badge] : null;
-            return (
-              <div key={member.profile_id} className="px-5 py-4 flex items-center gap-4"
-                style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div className="w-7 text-center flex-shrink-0">
-                  {b ? <span className="text-xl">{b.emoji}</span> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
-                </div>
-                <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={34} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
-                    {member.job_title && <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>{member.job_title}</span>}
-                  </div>
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className="text-[11px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
-                      {member.delays_count === 0 ? "✓ Ponctuel" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
-                    </span>
-                    <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-                      {member.protocols_read}/{member.protocols_total} protocoles
-                    </span>
-                  </div>
-                  <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xl font-bold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
-                  <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
-                </div>
+      {/* 2 colonnes sur desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+
+        {/* Colonne gauche */}
+        <div className="space-y-6">
+
+          {/* 1. Protocoles */}
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
               </div>
-            );
-          })}
-          <div className="px-5 py-2.5 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-            Score = somme des points gagnés ce mois · protocoles, bravos, défis, bonus
-          </div>
-        </div>
-      )}
-
-      {/* Feedback breakdown clickable tiles */}
-      {data.feedback_summary.total > 0 && (
-        <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <div className="flex items-center gap-2">
-              <MessageSquare size={14} style={{ color: "var(--accent)" }} />
-              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
-            </div>
-            <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-          </div>
-          <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
-            {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
-              const meta = CATEGORY_META[cat];
-              const count = data.feedback_summary[cat];
-              return (
-                <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
-                  className="px-5 py-4 text-left transition-opacity"
-                  style={{ background: "var(--background-elev)", opacity: count === 0 ? 0.5 : 1, cursor: count > 0 ? "pointer" : "default" }}>
-                  <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
-                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
-                  {count > 0 && <p className="text-[10px] mt-1" style={{ color: meta.color }}>Voir les avis →</p>}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowAddProtocol(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md transition-opacity hover:opacity-75"
+                  style={{ background: "var(--accent)", color: "#09090B" }}>
+                  <Plus size={12} /> Ajouter
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Ponctualité */}
-      {data.leaderboard.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <Clock size={14} style={{ color: "var(--accent)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Ponctualité équipe</p>
-          </div>
-          {data.leaderboard.map((m, i) => (
-            <div key={m.profile_id} className="px-5 py-3 flex items-center gap-3"
-              style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
-              <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
-              <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
-              <span className="text-[11px] font-medium px-2.5 py-1 rounded"
-                style={m.delays_count === 0
-                  ? { background: "rgba(16,185,129,0.1)", color: "var(--success)" }
-                  : { background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
-                {m.delays_count === 0 ? "✓ Aucun retard" : `${m.delays_count} retard${m.delays_count > 1 ? "s" : ""}`}
-              </span>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Gérer</a>
+              </div>
             </div>
-          ))}
+            {protocols.length === 0 ? (
+              <div className="px-5 py-10 text-center" style={{ background: "var(--background-elev)" }}>
+                <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun protocole pour le moment</p>
+                <button onClick={() => setShowAddProtocol(true)} className="mt-2 text-[12px]" style={{ color: "var(--accent)" }}>
+                  Créer le premier protocole
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: "var(--background-elev)" }}>
+                {protocols.map((p, i) => {
+                  const allRead = p.read_count >= p.total_members && p.total_members > 0;
+                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                  return (
+                    <div key={p.id} className="px-5 py-3.5 flex items-center gap-4"
+                      style={{ borderBottom: i < protocols.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: allRead ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)", border: `1px solid ${allRead ? "rgba(16,185,129,0.25)" : "var(--border)"}` }}>
+                        {allRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--accent)" }} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                          {p.is_mandatory && (
+                            <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
+                              style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                              Obligatoire
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: allRead ? "var(--success)" : "var(--accent)" }} />
+                          </div>
+                          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+                            {p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Retours clients */}
+          {data.feedback_summary.total > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
+                </div>
+                <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+              </div>
+              <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
+                {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
+                  const meta = CATEGORY_META[cat];
+                  const count = data.feedback_summary[cat];
+                  return (
+                    <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
+                      className="px-5 py-4 text-left transition-opacity"
+                      style={{ background: "var(--background-elev)", opacity: count === 0 ? 0.5 : 1, cursor: count > 0 ? "pointer" : "default" }}>
+                      <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
+                      <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
+                      {count > 0 && <p className="text-[10px] mt-1" style={{ color: meta.color }}>Voir →</p>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
-      )}
+
+        {/* Colonne droite */}
+        <div className="space-y-6">
+
+          {/* 3. Classement équipe */}
+          {data.leaderboard.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <TrendingUp size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement équipe</p>
+              </div>
+              {data.leaderboard.map((member, i) => {
+                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
+                return (
+                  <div key={member.profile_id} className="px-4 py-3.5 flex items-center gap-3"
+                    style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div className="w-6 text-center flex-shrink-0">
+                      {b ? <span className="text-lg">{b.emoji}</span> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
+                    </div>
+                    <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
+                          {member.delays_count === 0 ? "✓" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                          {member.protocols_read}/{member.protocols_total} proto
+                        </span>
+                      </div>
+                      <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-lg font-bold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
+                      <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="px-4 py-2 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+                Score = protocoles + bravos + défis + bonus
+              </div>
+            </div>
+          )}
+
+          {/* 4. Défis en cours */}
+          {data.active_challenges_list.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <Trophy size={14} style={{ color: "#F59E0B" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis en cours</p>
+                </div>
+                <a href="/challenges" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+              </div>
+              <div style={{ background: "var(--background-elev)" }}>
+                {data.active_challenges_list.map((c, i) => {
+                  const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
+                  const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+                  return (
+                    <div key={c.id} className="px-4 py-3.5"
+                      style={{ borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
+                        {daysLeft !== null && (
+                          <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded"
+                            style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>
+                            {daysLeft}j
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? "var(--success)" : "#F59E0B" }} />
+                        </div>
+                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+                          {c.current_value}{c.target_value ? `/${c.target_value}` : ""}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 5. Ponctualité */}
+          {data.leaderboard.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <Clock size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Ponctualité équipe</p>
+              </div>
+              {data.leaderboard.map((m, i) => (
+                <div key={m.profile_id} className="px-4 py-3 flex items-center gap-3"
+                  style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={26} />
+                  <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
+                  <span className="text-[11px] font-medium px-2 py-1 rounded"
+                    style={m.delays_count === 0
+                      ? { background: "rgba(16,185,129,0.1)", color: "var(--success)" }
+                      : { background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
+                    {m.delays_count === 0 ? "✓ OK" : `${m.delays_count} retard${m.delays_count > 1 ? "s" : ""}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      </div>
 
       {/* Feedback modal */}
       {feedbackModal && modalMeta && (
@@ -467,7 +800,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   };
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-xl">
+    <div className="px-4 py-8 lg:px-8 max-w-3xl">
       {/* Greeting */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
@@ -485,7 +818,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* Mandatory protocols alert */}
+      {/* Alert protocoles obligatoires */}
       {data.unread_mandatory > 0 && (
         <a href="/protocols"
           className="flex items-start gap-3 rounded-xl px-4 py-4 mb-4 transition-opacity hover:opacity-80"
@@ -502,7 +835,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
       )}
 
       {/* Score card */}
-      <div className="rounded-xl p-5 mb-4"
+      <div className="rounded-xl p-5 mb-6"
         style={{ background: "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score ce mois</p>
@@ -538,67 +871,49 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {/* Quick actions */}
-      <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Actions rapides</p>
-      <div className="space-y-2 mb-8">
-        <button onClick={() => setModal("delay")}
-          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
-            <Clock size={15} style={{ color: "var(--warning)" }} />
+      {/* 1. Protocoles */}
+      {data.protocols.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
+            <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Déclarer un retard</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Signale un retard ou une absence</p>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            {data.protocols.map((p, i) => (
+              <a key={p.id} href="/protocols"
+                className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
+                style={{ background: "var(--background-elev)", borderBottom: i < data.protocols.length - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                  {p.is_read
+                    ? <Check size={13} style={{ color: "var(--success)" }} />
+                    : <BookOpen size={12} style={{ color: "var(--danger)" }} />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                    {p.is_mandatory && !p.is_read && (
+                      <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        Obligatoire
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] mt-0.5" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>
+                    {p.is_read ? "Signé ✓" : "Non lu"}
+                  </p>
+                </div>
+                <ChevronRight size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+              </a>
+            ))}
           </div>
-          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-        </button>
+        </div>
+      )}
 
-        <a href="/protocols"
-          className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.1)" }}>
-            <BookOpen size={15} style={{ color: "var(--accent)" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Mes protocoles</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-              {data.unread_total > 0 ? `${data.unread_total} non lu${data.unread_total > 1 ? "s" : ""}` : "Tout est à jour ✓"}
-            </p>
-          </div>
-          <ChevronRight size={14} style={{ color: "var(--foreground-dim)" }} />
-        </a>
-
-        <button onClick={() => setModal("feedback")}
-          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
-            <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
-          </div>
-          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-        </button>
-
-        <a href="/challenges"
-          className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
-            <Trophy size={15} style={{ color: "#F59E0B" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Défis en cours</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{data.active_challenges} défi{data.active_challenges !== 1 ? "s" : ""} actif{data.active_challenges !== 1 ? "s" : ""}</p>
-          </div>
-          <ChevronRight size={14} style={{ color: "var(--foreground-dim)" }} />
-        </a>
-      </div>
-
-      {/* Recent feedback employee can confirm */}
+      {/* 2. Retours clients récents */}
       {data.feedback_items.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Retours clients récents</p>
             <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
@@ -646,9 +961,50 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* Mini leaderboard */}
+      {/* 3. Défis en cours */}
+      {data.active_challenges_list.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Défis en cours</p>
+            <a href="/challenges" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+          </div>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            {data.active_challenges_list.map((c, i) => {
+              const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
+              const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+              return (
+                <a key={c.id} href="/challenges"
+                  className="flex items-center gap-4 px-4 py-3.5 transition-opacity hover:opacity-75"
+                  style={{ background: "var(--background-elev)", borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                    <Trophy size={12} style={{ color: "#F59E0B" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate mb-1" style={{ color: "var(--foreground)" }}>{c.title}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#F59E0B" }} />
+                      </div>
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{pct}%</span>
+                    </div>
+                  </div>
+                  {daysLeft !== null && (
+                    <span className="text-[10px] font-mono flex-shrink-0"
+                      style={{ color: daysLeft <= 2 ? "var(--danger)" : "var(--foreground-dim)" }}>
+                      {daysLeft}j
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Classement équipe */}
       {data.leaderboard.length > 1 && (
-        <div>
+        <div className="mb-8">
           <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Classement équipe</p>
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             {data.leaderboard.slice(0, 3).map((member, i) => {
@@ -673,7 +1029,38 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* ── Delay modal ── */}
+      {/* Quick actions */}
+      <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Actions rapides</p>
+      <div className="space-y-2">
+        <button onClick={() => setModal("delay")}
+          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
+            <Clock size={15} style={{ color: "var(--warning)" }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Déclarer un retard</p>
+            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Signale un retard ou une absence</p>
+          </div>
+          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
+        </button>
+
+        <button onClick={() => setModal("feedback")}
+          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
+            <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
+            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
+          </div>
+          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
+        </button>
+
+      </div>
+
+      {/* Delay modal */}
       {modal === "delay" && (
         <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
@@ -724,7 +1111,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {/* ── Feedback modal ── */}
+      {/* Feedback modal */}
       {modal === "feedback" && (
         <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}

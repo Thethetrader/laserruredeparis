@@ -233,7 +233,7 @@ export default function MemberProfilePage() {
           <style>{`@media print { .print-header { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e4e4e7; } }`}</style>
         </div>
         <div className="print-header" style={{ display: "none" }}>
-          <p style={{ fontSize: 11, fontFamily: "monospace", letterSpacing: 2, color: "#71717A", textTransform: "uppercase" }}>Fiche de performance — Carafe</p>
+          <p style={{ fontSize: 11, fontFamily: "monospace", letterSpacing: 2, color: "#71717A", textTransform: "uppercase" }}>Fiche de performance Carafe</p>
           <p style={{ fontSize: 11, fontFamily: "monospace", color: "#71717A" }}>{new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
 

@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "La Serrure de Paris - Serrurier Paris & Seine-Saint-Denis",
-  description: "Service d'urgence serrurier 24h/24 à Paris et en Seine-Saint-Denis. Intervention rapide en moins de 30 minutes. Devis gratuit, tarifs transparents.",
+  title: "ALTI TRADING : Formations Trading, Bourse et Cryptomonnaies",
+  description: "Rejoignez plus de 150 000 investisseurs heureux. Formez-vous au trading, à la bourse et aux cryptomonnaies avec ALTI TRADING.",
 };
 
 export default function RootLayout({
@@ -24,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} antialiased`}>
         {children}
       </body>
     </html>

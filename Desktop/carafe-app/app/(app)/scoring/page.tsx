@@ -89,7 +89,7 @@ const DEV_MEMBERS_INFO: ScoringMember[] = [
 const dA = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
 
 const DEV_EVENTS: ScoreEvent[] = [
-  // Yasmine (profile-2) — 68 pts
+  // Yasmine (profile-2) 68 pts
   { id:"se1",  profile_id:"profile-2", source_type:"protocol_view",     source_label:"Protocole ouverture",   reason:null, attributed_by_name:null,        points:1,  created_at:dA(25) },
   { id:"se2",  profile_id:"profile-2", source_type:"protocol_view",     source_label:"Hygiène en cuisine",    reason:null, attributed_by_name:null,        points:1,  created_at:dA(22) },
   { id:"se3",  profile_id:"profile-2", source_type:"protocol_view",     source_label:"Sécurité incendie",     reason:null, attributed_by_name:null,        points:1,  created_at:dA(18) },
@@ -110,7 +110,7 @@ const DEV_EVENTS: ScoreEvent[] = [
   { id:"se18", profile_id:"profile-2", source_type:"kudo_from_peer",    source_label:"Rayan Dupont",          reason:null, attributed_by_name:null,        points:1,  created_at:dA(4)  },
   // 5+12+20+10+20+1 = 68 ✓
 
-  // Dev Mode (dev-user) — 45 pts
+  // Dev Mode (dev-user) 45 pts
   { id:"se19", profile_id:"dev-user",  source_type:"protocol_view",     source_label:"Protocole ouverture",   reason:null, attributed_by_name:null,        points:1,  created_at:dA(24) },
   { id:"se20", profile_id:"dev-user",  source_type:"protocol_view",     source_label:"Service à table",       reason:null, attributed_by_name:null,        points:1,  created_at:dA(17) },
   { id:"se21", profile_id:"dev-user",  source_type:"protocol_view",     source_label:"Fermeture caisse",      reason:null, attributed_by_name:null,        points:1,  created_at:dA(10) },
@@ -124,7 +124,7 @@ const DEV_EVENTS: ScoreEvent[] = [
   { id:"se29", profile_id:"dev-user",  source_type:"kudo_from_peer",    source_label:"Rayan Dupont",          reason:null, attributed_by_name:null,        points:1,  created_at:dA(2)  },
   // 3+6+10+10+15+1 = 45 ✓
 
-  // Rayan (profile-3) — 23 pts
+  // Rayan (profile-3) 23 pts
   { id:"se30", profile_id:"profile-3", source_type:"protocol_view",     source_label:"Protocole ouverture",   reason:null, attributed_by_name:null,        points:1,  created_at:dA(20) },
   { id:"se31", profile_id:"profile-3", source_type:"protocol_view",     source_label:"Service à table",       reason:null, attributed_by_name:null,        points:1,  created_at:dA(12) },
   { id:"se32", profile_id:"profile-3", source_type:"kudo_from_manager", source_label:"Dev Mode",              reason:null, attributed_by_name:null,        points:2,  created_at:dA(18) },
@@ -280,7 +280,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
                     <span className="absolute -bottom-1 -right-1 text-lg">{b.emoji}</span>
                   </div>
                   <p className="text-xs font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
-                    {member.first_name ?? "—"}
+                    {member.first_name ?? "-"}
                   </p>
                   <p className="text-lg font-bold" style={{ color: b.color }}>{member.score}</p>
                   <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
@@ -359,7 +359,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
                 style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                 {scored.filter(m => m.profile_id !== myProfileId).map(m => (
                   <option key={m.profile_id} value={m.profile_id}>
-                    {`${m.first_name ?? ""} ${m.last_name ?? ""}`.trim()} — {m.score} pts
+                    {`${m.first_name ?? ""} ${m.last_name ?? ""}`.trim()} {m.score} pts
                   </option>
                 ))}
               </select>
@@ -443,7 +443,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
         </p>
         <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>
           point{(me?.score ?? 0) !== 1 ? "s" : ""} ·{" "}
-          {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${scored.length}` : "—"}
+          {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${scored.length}` : "-"}
         </p>
         {myEvents.length === 0 && (
           <p className="text-sm mt-4 pt-4" style={{ color: "var(--foreground-dim)", borderTop: "1px solid var(--border)" }}>
@@ -467,7 +467,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
                   <span className="text-lg w-6 text-center flex-shrink-0">{b.emoji}</span>
                   <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
-                    {m.first_name ?? "—"}{isMe ? " (toi)" : ""}
+                    {m.first_name ?? "-"}{isMe ? " (toi)" : ""}
                   </p>
                   <p className="text-sm font-bold flex-shrink-0" style={{ color: b.color }}>{m.score} pts</p>
                 </div>
@@ -499,7 +499,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
                         ? event.source_label
                         : event.reason
                           ? `"${event.reason.slice(0, 48)}${event.reason.length > 48 ? "…" : ""}"`
-                          : "—"}
+                          : "-"}
                       {" · "}{relTime(event.created_at)}
                     </p>
                   </div>

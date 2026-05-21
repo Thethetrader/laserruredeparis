@@ -397,7 +397,7 @@ export default function ProtocolsPage() {
   /* ── Category grid view ── */
   if (!selectedCategory) {
     return (
-      <div className="px-4 py-8 lg:px-8 max-w-2xl">
+      <div className="px-4 py-8 lg:px-8 max-w-4xl">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -506,7 +506,7 @@ export default function ProtocolsPage() {
   const catAttachments = filteredProtocols.filter(p => p.attachment_url);
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl">
+    <div className="px-4 py-8 lg:px-8 max-w-4xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-start gap-3">
