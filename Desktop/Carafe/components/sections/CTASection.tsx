@@ -121,7 +121,7 @@ export default function CTASection() {
   return (
     <section
       id="cta"
-      className="py-40"
+      className="py-16 md:py-40"
       style={{
         background: "var(--background-soft)",
         borderTop: "1px solid rgba(6,182,212,0.12)",

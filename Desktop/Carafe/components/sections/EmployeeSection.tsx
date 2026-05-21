@@ -41,7 +41,7 @@ export default function EmployeeSection() {
   const challenges = useCountUp(8, inView, 500);
 
   return (
-    <section className="py-32" style={{ background: "var(--background)" }}>
+    <section className="py-14 md:py-32" style={{ background: "var(--background)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           ref={ref}

@@ -119,7 +119,7 @@ export default function SolutionSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="py-40" style={{ background: "var(--background-soft)" }}>
+    <section className="py-16 md:py-40" style={{ background: "var(--background-soft)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left */}

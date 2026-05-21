@@ -320,7 +320,7 @@ export default function ShowcaseSection() {
   const CurrentView = viewComponents[active];
 
   return (
-    <section className="py-28" style={{ background: "var(--background-soft)" }}>
+    <section className="py-12 md:py-28" style={{ background: "var(--background-soft)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           ref={titleRef}

@@ -49,7 +49,7 @@ export default function PricingSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="pricing" className="py-32" style={{ background: "var(--background-soft)" }}>
+    <section id="pricing" className="py-14 md:py-32" style={{ background: "var(--background-soft)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           ref={ref}

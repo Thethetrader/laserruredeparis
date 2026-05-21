@@ -308,7 +308,7 @@ export default function PillarsSection() {
   const inView = useInView(titleRef, { once: true, margin: "-80px" });
 
   return (
-    <section id="features" style={{ background: "var(--background)" }} className="py-28 md:py-36">
+    <section id="features" style={{ background: "var(--background)" }} className="py-12 md:py-36">
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
           ref={titleRef}

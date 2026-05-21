@@ -68,7 +68,7 @@ export default function AutomationSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section className="relative py-28 md:py-36 overflow-hidden" style={{ background: "var(--background-soft)" }}>
+    <section className="relative py-12 md:py-36 overflow-hidden" style={{ background: "var(--background-soft)" }}>
       <Particles />
       <div className="relative z-10 max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <motion.div
