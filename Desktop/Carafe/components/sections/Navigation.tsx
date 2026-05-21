@@ -90,7 +90,7 @@ export default function Navigation() {
               v0.1 · BETA
             </span>
             <a
-              href="https://carafe-app.netlify.app"
+              href="https://app.joincarafe.com"
               className="text-sm px-3 py-1.5 transition-colors duration-150 group flex items-center gap-1"
               style={{ color: "var(--foreground-muted)" }}
               onMouseEnter={e => (e.currentTarget.style.color = "var(--foreground)")}
@@ -143,7 +143,7 @@ export default function Navigation() {
               ))}
             </nav>
             <div className="mt-12 flex flex-col gap-4">
-              <a href="https://carafe-app.netlify.app" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
+              <a href="https://app.joincarafe.com" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
               <a
                 href="#cta"
                 onClick={() => setMenuOpen(false)}
