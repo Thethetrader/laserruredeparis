@@ -28,76 +28,83 @@ function TypeOn({ text, active }: { text: string; active: boolean }) {
   return <span>{displayed}<span className="inline-block w-0.5 h-4 ml-0.5 align-middle" style={{ background: active && displayed.length < text.length ? "var(--accent)" : "transparent" }} /></span>;
 }
 
+const NAV_ICONS = ["M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6","M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253","M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z","M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0","M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"];
+
 function DashboardMockup() {
+  const feedbacks = [
+    { tag: "COMPLIMENT", tagBg: "rgba(16,185,129,0.15)", tagColor: "#10b981", table: "Table 5", text: "Le client a adoré le risotto aux champignons. Demande à féliciter le chef.", date: "19 mai, 23:12", status: "Résolu", statusBg: "rgba(16,185,129,0.12)", statusColor: "#10b981", moiAussi: 2 },
+    { tag: "RÉCLAMATION", tagBg: "rgba(239,68,68,0.15)", tagColor: "#ef4444", table: "Table 12", text: "Attente trop longue — 45 minutes pour les entrées. Groupe mécontent.", date: "18 mai, 23:12", status: "En cours", statusBg: "rgba(245,158,11,0.12)", statusColor: "#f59e0b", moiAussi: 3 },
+    { tag: "SUGGESTION", tagBg: "rgba(139,92,246,0.15)", tagColor: "#8b5cf6", table: null, text: "Un client suggère d'ajouter des options végétaliennes au menu.", date: "17 mai, 23:12", status: "Ouvert", statusBg: "rgba(100,116,139,0.12)", statusColor: "#94a3b8", moiAussi: 1 },
+  ];
+
   return (
-    <div
-      className="rounded-2xl overflow-hidden glow-cyan"
-      style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}
-    >
-      {/* Top bar */}
-      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
+    <div className="rounded-2xl overflow-hidden glow-cyan" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+      {/* Title bar */}
+      <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
         <div className="flex gap-1.5">
-          {["var(--danger)","var(--warning)","var(--success)"].map((c,i)=>(<div key={i} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />))}
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#FF5F57" }} />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#FEBC2E" }} />
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#28C840" }} />
         </div>
-        <span className="font-mono text-[9px] ml-2" style={{ color: "var(--foreground-dim)" }}>carafe.app · Dashboard</span>
+        <div className="flex-1 mx-2">
+          <div className="text-[8px] px-2 py-0.5 rounded" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)", maxWidth: 160 }}>app.joincarafe.com</div>
+        </div>
       </div>
 
-      <div className="p-5 space-y-4">
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: "Retards", value: "3" },
-            { label: "Avis clients", value: "14", accent: true },
-            { label: "Défis actifs", value: "2" },
-            { label: "Lectures en attente", value: "2", accent: true },
-          ].map(({ label, value, accent }) => (
-            <div key={label} className="p-2.5 rounded-xl text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <p className="text-lg font-semibold leading-none mb-1" style={{ color: accent ? "var(--accent)" : "var(--foreground)" }}>{value}</p>
-              <p className="font-mono text-[7px] leading-tight" style={{ color: "var(--foreground-dim)" }}>{label}</p>
+      {/* App shell */}
+      <div className="flex" style={{ height: 340 }}>
+        {/* Sidebar */}
+        <div className="flex flex-col items-center gap-1 py-2 px-1.5" style={{ background: "var(--background)", borderRight: "1px solid var(--border)", width: 36, flexShrink: 0 }}>
+          <div className="w-5 h-5 flex items-center justify-center mb-1">
+            <span className="font-bold text-[8px]" style={{ color: "var(--accent)" }}>C</span>
+          </div>
+          {NAV_ICONS.map((d, i) => (
+            <div key={i} className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: i === 2 ? "rgba(6,182,212,0.12)" : "transparent", border: i === 2 ? "1px solid rgba(6,182,212,0.25)" : "1px solid transparent" }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={i === 2 ? "var(--accent)" : "var(--foreground-dim)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d={d} />
+              </svg>
             </div>
           ))}
         </div>
 
-        {/* Classement équipe */}
-        <div className="p-3 rounded-xl" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <p className="font-mono text-[8px] mb-2.5" style={{ color: "var(--foreground-dim)" }}>Classement équipe</p>
-          <div className="space-y-2.5">
-            {[
-              { init: "YB", name: "Yasmine Benali", role: "Chef de salle", pts: 92, tag: "Ponctuel", tagColor: "#10b981" },
-              { init: "KM", name: "Karim Mansour", role: "Responsable", pts: 78, tag: "1 retard", tagColor: "#f59e0b" },
-              { init: "JD", name: "Julie Dupont", role: "Serveuse", pts: 61, tag: "2 retards", tagColor: "#ef4444" },
-            ].map(({ init, name, pts, tag, tagColor }, i) => (
-              <div key={name} className="flex items-center gap-2">
-                <span className="text-[10px]">{["🥇","🥈","🥉"][i]}</span>
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0" style={{ background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)" }}>{init}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <span className="text-[9px] font-medium truncate" style={{ color: "var(--foreground)" }}>{name}</span>
-                    <span className="text-[7px] px-1 rounded" style={{ background: `${tagColor}22`, color: tagColor }}>{tag}</span>
-                  </div>
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                    <div className="h-full rounded-full" style={{ width: `${pts}%`, background: "var(--accent)" }} />
-                  </div>
-                </div>
-                <span className="font-bold text-[10px] flex-shrink-0" style={{ color: "var(--accent)" }}>{pts}</span>
-              </div>
+        {/* Main */}
+        <div className="flex-1 flex flex-col overflow-hidden" style={{ background: "var(--background-soft)" }}>
+          {/* Page header */}
+          <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
+            <div>
+              <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>RETOURS CLIENTS</p>
+              <p className="text-[10px] font-semibold" style={{ color: "var(--foreground)" }}>5 avis au total</p>
+            </div>
+            <div className="flex gap-1">
+              {[["5","Total"],["2","Ouverts"],["2","Résolus"]].map(([v,l]) => (
+                <span key={l} className="text-[7px] px-1.5 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>{v} {l}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex gap-1 px-3 pt-2 pb-1">
+            {["Tous 5","Compliment 2","Réclamation 1","Suggestion 1"].map((f, i) => (
+              <span key={f} className="text-[7px] px-1.5 py-0.5 rounded-full" style={{ background: i === 0 ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: i === 0 ? "var(--accent)" : "var(--foreground-dim)", border: `1px solid ${i === 0 ? "rgba(6,182,212,0.3)" : "var(--border)"}` }}>{f}</span>
             ))}
           </div>
-        </div>
 
-        {/* Retours clients */}
-        <div className="p-3 rounded-xl" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <p className="font-mono text-[8px] mb-2" style={{ color: "var(--foreground-dim)" }}>Retours clients ce mois</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { val: "8", label: "Compliments", color: "#10b981" },
-              { val: "3", label: "Plaintes", color: "#f59e0b" },
-              { val: "2", label: "Suggestions", color: "var(--foreground-dim)" },
-              { val: "1", label: "Incidents", color: "#ef4444" },
-            ].map(({ val, label, color }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className="font-bold text-[11px]" style={{ color }}>{val}</span>
-                <span className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>{label}</span>
+          {/* Feedback list */}
+          <div className="flex-1 overflow-hidden px-3 py-1 space-y-1.5">
+            {feedbacks.map(({ tag, tagBg, tagColor, table, text, date, status, statusBg, statusColor, moiAussi }) => (
+              <div key={tag + date} className="rounded-lg p-2.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <div className="flex items-start justify-between mb-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[7px] font-semibold px-1.5 py-0.5 rounded" style={{ background: tagBg, color: tagColor }}>{tag}</span>
+                    {table && <span className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>{table}</span>}
+                  </div>
+                  <span className="text-[7px] px-1.5 py-0.5 rounded" style={{ background: statusBg, color: statusColor }}>{status}</span>
+                </div>
+                <p className="text-[8px] leading-relaxed mb-1" style={{ color: "var(--foreground-muted)" }}>{text}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[7px] font-mono" style={{ color: "var(--foreground-dim)" }}>{date}</span>
+                  <span className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>👍 {moiAussi} moi aussi</span>
+                </div>
               </div>
             ))}
           </div>
