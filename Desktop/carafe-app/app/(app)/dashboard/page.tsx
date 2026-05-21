@@ -439,7 +439,8 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
 
 /* ─── MANAGER VIEW ─────────────────────────────────── */
 function ManagerDashboard({ data }: { data: DashboardData }) {
-  const month = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const [month, setMonth] = useState("");
+  useEffect(() => { setMonth(new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })); }, []);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackCategory | null>(null);
   const [showAddProtocol, setShowAddProtocol] = useState(false);
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
@@ -752,8 +753,8 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const myStats = data.leaderboard.find(m => m.profile_id === data.my_profile_id);
   const myRank = data.leaderboard.findIndex(m => m.profile_id === data.my_profile_id) + 1;
   const myBadge = myStats?.badge ? BADGE_CONFIG[myStats.badge] : null;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+  const [greeting, setGreeting] = useState("Bonjour");
+  useEffect(() => { const h = new Date().getHours(); setGreeting(h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"); }, []);
 
   const [modal, setModal] = useState<QuickModal>(null);
   const [submitting, setSubmitting] = useState(false);

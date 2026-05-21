@@ -299,8 +299,8 @@ export default function TeamPage() {
                     <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={38} />
                   </Link>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/team/${member.profile_id}`} className="text-sm font-medium truncate hover:underline" style={{ color: "var(--foreground)" }}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Link href={`/team/${member.profile_id}`} className="text-sm font-medium truncate hover:underline min-w-0" style={{ color: "var(--foreground)" }}>
                         {(member.first_name || member.last_name) ? `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() : member.email}
                       </Link>
                       <span className="text-[10px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
@@ -308,7 +308,7 @@ export default function TeamPage() {
                         {ROLE_LABELS[member.role]}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       {member.job_title && <span className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>{member.job_title}</span>}
                       {positiveCount > 0 && (
                         <button onClick={() => setExpandedKudos(isExpanded ? null : member.profile_id)}
@@ -319,28 +319,26 @@ export default function TeamPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {isManager && member.profile_id !== myProfileId && (
-                      <>
-                        <button onClick={() => { setKudosTarget(member); setKudosMessage(""); setKudosType("positive"); }}
-                          className="text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors"
-                          style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
-                          Bravo
-                        </button>
-                        <button onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); }}
-                          className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors"
-                          style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}>
-                          <Zap size={11} /> Bonus
-                        </button>
-                      </>
-                    )}
-                    <Link href={`/team/${member.profile_id}`}
-                      className="flex items-center justify-center w-7 h-7 rounded-md"
-                      style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-                      <ChevronRight size={13} />
-                    </Link>
-                  </div>
+                  <Link href={`/team/${member.profile_id}`}
+                    className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0"
+                    style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                    <ChevronRight size={13} />
+                  </Link>
                 </div>
+                {isManager && member.profile_id !== myProfileId && (
+                  <div className="px-4 pb-3 flex gap-2" style={{ borderTop: "1px solid var(--border-soft)" }}>
+                    <button onClick={() => { setKudosTarget(member); setKudosMessage(""); setKudosType("positive"); }}
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
+                      style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
+                      Bravo
+                    </button>
+                    <button onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); }}
+                      className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
+                      style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}>
+                      <Zap size={11} /> Bonus
+                    </button>
+                  </div>
+                )}
 
                 {/* Kudos list for this member */}
                 {isExpanded && memberKudos.length > 0 && (

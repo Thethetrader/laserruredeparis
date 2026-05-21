@@ -240,7 +240,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
   };
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl pb-24">
+    <div className="px-4 py-8 lg:px-8 max-w-2xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>

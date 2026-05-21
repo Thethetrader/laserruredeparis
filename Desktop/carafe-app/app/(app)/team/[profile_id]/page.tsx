@@ -215,7 +215,7 @@ export default function MemberProfilePage() {
         }
       `}</style>
 
-      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-xl pb-24">
+      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-xl">
         {/* Back + Export */}
         <div className="no-print flex items-center justify-between mb-6">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-dim)" }}>

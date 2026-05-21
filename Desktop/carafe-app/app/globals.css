@@ -52,6 +52,12 @@
     box-sizing: border-box;
   }
 
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -62,6 +68,7 @@
     color: var(--foreground);
     font-size: 15px;
     line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
   }
 
   :focus-visible {
@@ -76,6 +83,14 @@
 }
 
 @layer utilities {
+  /* Mobile: accounts for BottomNav (60px) + push notification button (56px) + safe area */
+  .app-main-safe-pb {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    .app-main-safe-pb { padding-bottom: 0; }
+  }
+
   .mono {
     font-family: var(--font-mono), ui-monospace, monospace;
     letter-spacing: 0.02em;
