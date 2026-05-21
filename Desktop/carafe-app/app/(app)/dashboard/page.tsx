@@ -82,10 +82,21 @@ interface DashboardData {
 }
 
 const BADGE_CONFIG = {
-  gold:   { emoji: "🥇", color: "#F59E0B" },
-  silver: { emoji: "🥈", color: "#94A3B8" },
-  bronze: { emoji: "🥉", color: "#C97B4B" },
+  gold:   { rank: "1", label: "Or",     color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  silver: { rank: "2", label: "Argent", color: "#94A3B8", bg: "rgba(148,163,184,0.10)" },
+  bronze: { rank: "3", label: "Bronze", color: "#C97B4B", bg: "rgba(201,123,75,0.10)"  },
 };
+
+function BadgeRank({ rank, color, bg, size = 24 }: { rank: string; color: string; bg: string; size?: number }) {
+  return (
+    <span
+      className="inline-flex items-center justify-center font-mono font-semibold rounded-sm flex-shrink-0"
+      style={{ width: size, height: size, fontSize: size * 0.42, color, background: bg, border: `1px solid ${color}22` }}
+    >
+      {rank}
+    </span>
+  );
+}
 
 const CATEGORY_META: Record<FeedbackCategory, { label: string; color: string; bg: string; border: string }> = {
   compliment: { label: "Compliments",  color: "var(--success)",  bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.25)" },
@@ -578,7 +589,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                   <div key={member.profile_id} className="px-4 py-3.5 flex items-center gap-3"
                     style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
                     <div className="w-6 text-center flex-shrink-0">
-                      {b ? <span className="text-lg">{b.emoji}</span> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
+                      {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
                     </div>
                     <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
                     <div className="flex-1 min-w-0">
@@ -839,7 +850,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         style={{ background: "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score ce mois</p>
-          {myBadge && <span className="text-2xl">{myBadge.emoji}</span>}
+          {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={28} />}
         </div>
         <div className="flex items-end gap-4 mb-4">
           <div>
@@ -1013,7 +1024,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               return (
                 <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
                   style={{ background: isMe ? "rgba(139,92,246,0.05)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                  <span className="text-lg w-6 text-center flex-shrink-0">{b?.emoji ?? `${i + 1}`}</span>
+                  {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
                   <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
                     {member.name}{isMe ? " (toi)" : ""}

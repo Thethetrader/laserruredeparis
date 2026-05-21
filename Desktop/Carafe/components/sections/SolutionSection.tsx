@@ -38,7 +38,7 @@ function DashboardMockup() {
   ];
 
   return (
-    <div className="rounded-2xl overflow-hidden glow-cyan" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+    <div className="rounded-2xl overflow-hidden" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", boxShadow: "inset 0 1px 0 rgba(6,182,212,0.10), 0 4px 32px rgba(6,182,212,0.06)" }}>
       {/* Title bar */}
       <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
         <div className="flex gap-1.5">

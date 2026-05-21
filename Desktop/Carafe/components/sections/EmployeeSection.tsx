@@ -70,8 +70,8 @@ export default function EmployeeSection() {
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-            className="rounded-2xl overflow-hidden glow-cyan"
-            style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-soft)", border: "1px solid var(--border)", boxShadow: "inset 0 1px 0 rgba(6,182,212,0.10), 0 4px 32px rgba(6,182,212,0.06)" }}
           >
             {/* Header */}
             <div className="p-6" style={{ borderBottom: "1px solid var(--border)" }}>

@@ -1,4 +1,3 @@
-import CustomCursor from "@/components/CustomCursor";
 import Navigation from "@/components/sections/Navigation";
 import HeroSection from "@/components/sections/HeroSection";
 import ProblemSection from "@/components/sections/ProblemSection";
@@ -15,7 +14,6 @@ import FooterSection from "@/components/sections/FooterSection";
 export default function Home() {
   return (
     <>
-      <CustomCursor />
       <Navigation />
       <main>
         <HeroSection />

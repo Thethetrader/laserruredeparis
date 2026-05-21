@@ -79,10 +79,11 @@ export default function PricingSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 + i * 0.1 }}
-              className={`relative p-8 rounded-xl flex flex-col transition-transform duration-200 hover:-translate-y-1${plan.primary ? " breathe-glow" : ""}`}
+              className="relative p-8 rounded-xl flex flex-col transition-transform duration-200 hover:-translate-y-1"
               style={{
                 background: "var(--background)",
                 border: plan.primary ? "1px solid rgba(6,182,212,0.4)" : "1px solid var(--border)",
+                boxShadow: plan.primary ? "inset 0 1px 0 rgba(6,182,212,0.15), 0 4px 28px rgba(6,182,212,0.08)" : undefined,
               }}
             >
               {plan.badge && (

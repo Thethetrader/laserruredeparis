@@ -143,22 +143,37 @@ export default function ProblemSection() {
           </motion.div>
         </div>
 
-        {/* 3 Problem cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Problems — zig-zag asymmetric, not 3 equal cols */}
+        <div className="space-y-px" style={{ borderTop: "1px solid var(--border)" }}>
           {problems.map(({ icon: Icon, title, desc }, i) => (
             <motion.div
               key={title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
+              initial={{ opacity: 0, x: i % 2 === 0 ? -16 : 16 }}
+              animate={inView ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 + i * 0.12 }}
-              className="p-6 rounded-xl"
-              style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}
+              className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 py-7"
+              style={{
+                borderBottom: "1px solid var(--border)",
+                paddingLeft: i === 1 ? "clamp(0px, 4vw, 48px)" : undefined,
+              }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-4" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)" }}>
-                <Icon size={15} strokeWidth={1.5} style={{ color: "var(--accent)" }} />
+              <div className="flex items-start gap-3.5">
+                <div
+                  className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+                >
+                  <Icon size={13} strokeWidth={1.5} style={{ color: "var(--foreground-dim)" }} />
+                </div>
+                <span
+                  className="text-[13px] font-medium leading-tight"
+                  style={{ color: "var(--foreground)", paddingTop: 4 }}
+                >
+                  {title}
+                </span>
               </div>
-              <h3 className="text-[15px] font-medium mb-2" style={{ color: "var(--foreground)" }}>{title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{desc}</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)", maxWidth: "52ch" }}>
+                {desc}
+              </p>
             </motion.div>
           ))}
         </div>
