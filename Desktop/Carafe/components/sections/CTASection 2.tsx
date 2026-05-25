@@ -82,7 +82,7 @@ export default function CTASection() {
           className="text-base md:text-lg text-zinc-400 leading-relaxed mb-10 max-w-xl"
         >
           Rejoignez la liste d&apos;attente. Soyez parmi les premiers restaurants à tester
-          Carafe.
+          Karaf.
         </motion.p>
 
         {/* Form */}

@@ -81,7 +81,7 @@ export default function HeroSection() {
 
             <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
               <a
-                href="https://app.joincarafe.com"
+                href="https://carafe-landing.netlify.app"
                 className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
                 style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
               >

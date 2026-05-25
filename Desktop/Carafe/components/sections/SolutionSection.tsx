@@ -32,9 +32,9 @@ const NAV_ICONS = ["M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v1
 
 function DashboardMockup() {
   const feedbacks = [
-    { tag: "COMPLIMENT", tagBg: "rgba(16,185,129,0.15)", tagColor: "#10b981", table: "Table 5", text: "Le client a adoré le risotto aux champignons. Demande à féliciter le chef.", date: "19 mai, 23:12", status: "Résolu", statusBg: "rgba(16,185,129,0.12)", statusColor: "#10b981", moiAussi: 2 },
-    { tag: "RÉCLAMATION", tagBg: "rgba(239,68,68,0.15)", tagColor: "#ef4444", table: "Table 12", text: "Attente trop longue — 45 minutes pour les entrées. Groupe mécontent.", date: "18 mai, 23:12", status: "En cours", statusBg: "rgba(245,158,11,0.12)", statusColor: "#f59e0b", moiAussi: 3 },
-    { tag: "SUGGESTION", tagBg: "rgba(139,92,246,0.15)", tagColor: "#8b5cf6", table: null, text: "Un client suggère d'ajouter des options végétaliennes au menu.", date: "17 mai, 23:12", status: "Ouvert", statusBg: "rgba(100,116,139,0.12)", statusColor: "#94a3b8", moiAussi: 1 },
+    { init: "YB", name: "Yasmine B.", cat: "PLAT", catBg: "rgba(6,182,212,0.12)", catColor: "var(--accent)", ton: "▼ Négatif", tonBg: "rgba(245,158,11,0.12)", tonColor: "#f59e0b", item: "Risotto aux champignons", text: "trop salé, il a pas fini son assiette", echo: 3, revient: true, echoed: false, ago: "12 min" },
+    { init: "KM", name: "Karim M.", cat: "SERVICE", catBg: "rgba(139,92,246,0.12)", catColor: "#8b5cf6", ton: "▲ Positif", tonBg: "rgba(16,185,129,0.12)", tonColor: "#10b981", item: "Accueil en salle", text: "super accueil, ils reviendront", echo: 1, revient: false, echoed: true, ago: "34 min" },
+    { init: "JD", name: "Julie D.", cat: "BOISSON", catBg: "rgba(245,158,11,0.12)", catColor: "#f59e0b", ton: "▼ Négatif", tonBg: "rgba(245,158,11,0.12)", tonColor: "#f59e0b", item: "Vin blanc maison", text: "pas assez frais", echo: 0, revient: false, echoed: false, ago: "1h" },
   ];
 
   return (
@@ -73,37 +73,36 @@ function DashboardMockup() {
           <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
             <div>
               <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>RETOURS CLIENTS</p>
-              <p className="text-[10px] font-semibold" style={{ color: "var(--foreground)" }}>5 avis au total</p>
+              <p className="text-[10px] font-semibold" style={{ color: "var(--foreground)" }}>4 retours · 7 jours</p>
             </div>
             <div className="flex gap-1">
-              {[["5","Total"],["2","Ouverts"],["2","Résolus"]].map(([v,l]) => (
-                <span key={l} className="text-[7px] px-1.5 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>{v} {l}</span>
+              {["Tous","▼ Négatif","▲ Positif"].map((l) => (
+                <span key={l} className="text-[7px] px-1.5 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>{l}</span>
               ))}
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-1 px-3 pt-2 pb-1">
-            {["Tous 5","Compliment 2","Réclamation 1","Suggestion 1"].map((f, i) => (
-              <span key={f} className="text-[7px] px-1.5 py-0.5 rounded-full" style={{ background: i === 0 ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: i === 0 ? "var(--accent)" : "var(--foreground-dim)", border: `1px solid ${i === 0 ? "rgba(6,182,212,0.3)" : "var(--border)"}` }}>{f}</span>
-            ))}
-          </div>
-
           {/* Feedback list */}
-          <div className="flex-1 overflow-hidden px-3 py-1 space-y-1.5">
-            {feedbacks.map(({ tag, tagBg, tagColor, table, text, date, status, statusBg, statusColor, moiAussi }) => (
-              <div key={tag + date} className="rounded-lg p-2.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-                <div className="flex items-start justify-between mb-1">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[7px] font-semibold px-1.5 py-0.5 rounded" style={{ background: tagBg, color: tagColor }}>{tag}</span>
-                    {table && <span className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>{table}</span>}
+          <div className="flex-1 overflow-hidden px-3 py-2 space-y-1.5">
+            {feedbacks.map(({ init, name, cat, catBg, catColor, ton, tonBg, tonColor, item, text, echo, revient, echoed, ago }) => (
+              <div key={name + item} className="rounded-lg overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <div className="p-2">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center text-[5px] font-bold flex-shrink-0" style={{ background: "rgba(6,182,212,0.15)", color: "var(--accent)" }}>{init}</div>
+                    <span className="text-[8px] font-medium" style={{ color: "var(--foreground)" }}>{name}</span>
+                    <span className="text-[6px]" style={{ color: "var(--foreground-dim)" }}>· il y a {ago}</span>
+                    {revient && <span className="ml-auto text-[6px] font-mono px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>ÇA REVIENT</span>}
                   </div>
-                  <span className="text-[7px] px-1.5 py-0.5 rounded" style={{ background: statusBg, color: statusColor }}>{status}</span>
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-[6px] font-mono px-1 py-0.5 rounded" style={{ background: catBg, color: catColor }}>{cat}</span>
+                    <span className="text-[6px] px-1 py-0.5 rounded" style={{ background: tonBg, color: tonColor }}>{ton}</span>
+                  </div>
+                  <p className="text-[8px] font-medium mb-0.5" style={{ color: "var(--foreground)" }}>{item}</p>
+                  <p className="text-[7px]" style={{ color: "var(--foreground-dim)", fontStyle: "italic" }}>« {text} »</p>
+                  {echo > 0 && <p className="text-[6px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{echo} collègues ont entendu pareil</p>}
                 </div>
-                <p className="text-[8px] leading-relaxed mb-1" style={{ color: "var(--foreground-muted)" }}>{text}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-[7px] font-mono" style={{ color: "var(--foreground-dim)" }}>{date}</span>
-                  <span className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>👍 {moiAussi} moi aussi</span>
+                <div className="flex items-center justify-center py-1 text-[7px] font-medium" style={{ background: echoed ? "rgba(16,185,129,0.08)" : "rgba(6,182,212,0.06)", color: echoed ? "#10b981" : "var(--accent)", borderTop: "1px solid var(--border)" }}>
+                  {echoed ? "✓ Entendu (toi inclus)" : "+1 J'ai entendu pareil"}
                 </div>
               </div>
             ))}
@@ -136,13 +135,13 @@ export default function SolutionSection() {
               className="font-semibold leading-tight mb-3"
               style={{ fontSize: "clamp(28px, 4vw, 48px)", letterSpacing: "-0.04em", color: "var(--foreground)" }}
             >
-              <TypeOn text="Voilà Carafe." active={inView} />
+              <TypeOn text="Voilà Karaf." active={inView} />
             </h2>
             <p className="text-base mb-8" style={{ color: "var(--foreground-muted)" }}>
               <TypeOn text="Driver une équipe sans s'épuiser. Sans répéter. Sans pourrir l'ambiance." active={inView} />
             </p>
             <p className="text-base leading-relaxed mb-8" style={{ color: "var(--foreground-muted)" }}>
-              Carafe remplace votre groupe WhatsApp pro par un vrai outil de management. Protocoles épinglés, retards tracés, retours clients capturés en plein service. Vous voyez qui bosse bien, vous le valorisez en un clic. Ils construisent quelque chose chez vous. Ils restent.
+              Karaf remplace votre groupe WhatsApp pro par un vrai outil de management. Protocoles épinglés, retards tracés, retours clients capturés en plein service. Vous voyez qui bosse bien, vous le valorisez en un clic. Ils construisent quelque chose chez vous. Ils restent.
             </p>
             <ul className="space-y-3">
               {checkpoints.map((item, i) => (

@@ -10,7 +10,7 @@ const navLinks = [
   { label: "FAQ", href: "#faq" },
 ];
 
-function CarafeLogo() {
+function KarafLogo() {
   return (
     <a href="#" className="flex items-center gap-2.5 group focus:outline-none">
       <svg width="18" height="22" viewBox="0 0 22 26" fill="none" aria-hidden="true">
@@ -24,7 +24,7 @@ function CarafeLogo() {
         />
       </svg>
       <span className="text-[17px] font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
-        Carafe
+        Karaf
       </span>
     </a>
   );
@@ -79,7 +79,7 @@ export default function Navigation() {
         }}
       >
         <div className="w-full mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between" style={{ maxWidth: 1240 }}>
-          <CarafeLogo />
+          <KarafLogo />
 
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map(l => <NavLink key={l.href} {...l} />)}
@@ -90,7 +90,7 @@ export default function Navigation() {
               v0.1 · BETA
             </span>
             <a
-              href="https://app.joincarafe.com"
+              href="/login"
               className="text-sm px-3 py-1.5 transition-colors duration-150 group flex items-center gap-1"
               style={{ color: "var(--foreground-muted)" }}
               onMouseEnter={e => (e.currentTarget.style.color = "var(--foreground)")}
@@ -103,7 +103,7 @@ export default function Navigation() {
               className="btn-shine text-sm font-medium px-4 py-2 rounded-md flex items-center gap-1.5 group active:scale-[0.98] transition-transform duration-100"
               style={{ background: "var(--accent)", color: "#09090B" }}
             >
-              Essayer Carafe
+              Essayer Karaf
               <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
           </div>
@@ -143,14 +143,14 @@ export default function Navigation() {
               ))}
             </nav>
             <div className="mt-12 flex flex-col gap-4">
-              <a href="https://app.joincarafe.com" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
+              <a href="/login" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
               <a
                 href="#cta"
                 onClick={() => setMenuOpen(false)}
                 className="font-medium px-6 py-3 rounded-md text-center text-sm"
                 style={{ background: "var(--accent)", color: "#09090B" }}
               >
-                Essayer Carafe
+                Essayer Karaf
               </a>
             </div>
             <p className="mt-auto mb-8 font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>v0.1 · BETA</p>

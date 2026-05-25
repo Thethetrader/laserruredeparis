@@ -80,7 +80,7 @@ export default function AutomationSection() {
         >
           <p className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--foreground-dim)" }}>Automatisation</p>
           <h2 className="font-semibold tracking-tight leading-tight mb-3" style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.04em", color: "var(--foreground)" }}>
-            Carafe travaille pour vous.
+            Karaf travaille pour vous.
           </h2>
           <p className="text-base" style={{ color: "var(--foreground-muted)" }}>
             Tous les lundis matin, votre récap arrive. Vous pilotez en cinq minutes.

@@ -143,7 +143,7 @@ export default function CTASection() {
             Prêt à driver votre équipe autrement ?
           </h2>
           <p className="text-base mb-10" style={{ color: "var(--foreground-muted)" }}>
-            Rejoignez les premiers restaurants à tester Carafe. Accès prioritaire à l&apos;ouverture.
+            Rejoignez les premiers restaurants à tester Karaf. Accès prioritaire à l&apos;ouverture.
           </p>
 
           {status === "success" ? (

@@ -16,12 +16,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Carafe : L'app de communication pro pour la restauration",
+  title: "Karaf : L'app de communication pro pour la restauration",
   description:
-    "Carafe remplace les groupes WhatsApp pro dans votre restaurant. Protocoles centralisés, retards tracés, équipe motivée. Tout au même endroit.",
+    "Karaf remplace les groupes WhatsApp pro dans votre restaurant. Protocoles centralisés, retards tracés, équipe motivée. Tout au même endroit.",
   keywords: ["restaurant", "communication professionnelle", "protocoles", "gestion équipe", "restauration"],
   openGraph: {
-    title: "Carafe. Tout coule. Rien ne se perd.",
+    title: "Karaf. Tout coule. Rien ne se perd.",
     description:
       "L'app de communication pro pensée pour la restauration. Pas pour faire des smileys, pour faire tourner votre établissement.",
     type: "website",

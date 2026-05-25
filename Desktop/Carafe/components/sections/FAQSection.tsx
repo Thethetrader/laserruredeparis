@@ -5,20 +5,20 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
-    q: "Est-ce que Carafe remplace WhatsApp ?",
+    q: "Est-ce que Karaf remplace WhatsApp ?",
     a: "Oui, pour la communication pro entre la direction et l'équipe. Si vos employés veulent garder un groupe WhatsApp entre eux, ils peuvent, ce n'est pas notre rôle, et ça vous protège juridiquement.",
   },
   {
-    q: "Combien de temps pour mettre en place Carafe ?",
+    q: "Combien de temps pour mettre en place Karaf ?",
     a: "Cinq minutes pour créer votre compte, ajouter votre équipe, et publier vos premiers protocoles. Une heure pour tout transférer de vos anciens supports. Ensuite c'est l'app qui travaille.",
   },
   {
     q: "Mes employés vont-ils vraiment l'utiliser ?",
-    a: "Oui, parce qu'ils y trouvent leur intérêt : leur fiche se remplit avec leurs avis, leurs compétences, leurs trophées. Mois après mois, ça devient une lettre de recommandation qu'ils emportent. Carafe valorise leur travail, il ne les surveille pas.",
+    a: "Oui, parce qu'ils y trouvent leur intérêt : leur fiche se remplit avec leurs avis, leurs compétences, leurs trophées. Mois après mois, ça devient une lettre de recommandation qu'ils emportent. Karaf valorise leur travail, il ne les surveille pas.",
   },
   {
     q: "Et si je ne suis pas à l'aise avec la tech ?",
-    a: "L'app est faite pour la restauration, pas pour des ingénieurs. Si vous savez utiliser WhatsApp, vous savez utiliser Carafe.",
+    a: "L'app est faite pour la restauration, pas pour des ingénieurs. Si vous savez utiliser WhatsApp, vous savez utiliser Karaf.",
   },
   {
     q: "Mes données sont-elles en sécurité ?",
@@ -29,20 +29,20 @@ const faqs = [
     a: "14 jours d'essai gratuit, sans carte bancaire. Si vous ne renouvelez pas, votre compte s'arrête, point.",
   },
   {
-    q: "Carafe fonctionne pour plusieurs établissements ?",
+    q: "Karaf fonctionne pour plusieurs établissements ?",
     a: "Oui. Si vous gérez plusieurs restaurants, vous pouvez centraliser plusieurs équipes dans un même compte, avec des protocoles partagés ou spécifiques à chaque lieu.",
   },
   {
     q: "Et si j'ai déjà un planning Combo / Skello ?",
-    a: "Gardez-les. Carafe ne fait pas de planning. On se concentre sur ce que les autres ne font pas bien : communication, protocoles, motivation, reconnaissance.",
+    a: "Gardez-les. Karaf ne fait pas de planning. On se concentre sur ce que les autres ne font pas bien : communication, protocoles, motivation, reconnaissance.",
   },
   {
-    q: "Comment Carafe vous aide concrètement chaque semaine ?",
-    a: "Carafe analyse les données de votre établissement et vous prépare un récap chaque lundi matin. Qui a brillé, qui a eu des retards, quels challenges ont été gagnés. Cinq minutes pour piloter. Carafe propose, vous décidez.",
+    q: "Comment Karaf vous aide concrètement chaque semaine ?",
+    a: "Karaf analyse les données de votre établissement et vous prépare un récap chaque lundi matin. Qui a brillé, qui a eu des retards, quels challenges ont été gagnés. Cinq minutes pour piloter. Karaf propose, vous décidez.",
   },
   {
     q: "Et les avis Google, vous gérez ça ?",
-    a: "Pour l'instant, quand vous recevez un avis client qui mentionne un de vos employés, vous le collez dans Carafe en 30 secondes. Il s'archive sur la fiche de cet employé. Une intégration directe avec Google est prévue plus tard.",
+    a: "Pour l'instant, quand vous recevez un avis client qui mentionne un de vos employés, vous le collez dans Karaf en 30 secondes. Il s'archive sur la fiche de cet employé. Une intégration directe avec Google est prévue plus tard.",
   },
 ];
 

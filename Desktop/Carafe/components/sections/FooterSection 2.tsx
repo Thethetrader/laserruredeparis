@@ -66,7 +66,7 @@ export default function FooterSection() {
                   strokeLinejoin="round"
                 />
               </svg>
-              <span className="text-[16px] font-semibold text-zinc-50 tracking-tight">Carafe</span>
+              <span className="text-[16px] font-semibold text-zinc-50 tracking-tight">Karaf</span>
             </div>
             <p className="text-xs font-mono text-zinc-500 mb-1">Tout coule. Rien ne se perd.</p>
             <p className="text-sm text-zinc-600 leading-relaxed max-w-[20ch]">
@@ -99,7 +99,7 @@ export default function FooterSection() {
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-zinc-800">
           <p className="text-xs font-mono text-zinc-600">
-            &copy; 2026 Carafe. Fait en France avec attention.
+            &copy; 2026 Karaf. Fait en France avec attention.
           </p>
 
           <div className="flex items-center gap-4">

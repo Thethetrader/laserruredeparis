@@ -29,7 +29,7 @@ export default function FooterSection() {
                 <path d="M6.5 4.5H15.5L18 11H4L6.5 4.5Z" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" />
                 <path d="M4 11C4 11 2 14 2 17.5C2 21 5.13 24 11 24C16.87 24 20 21 20 17.5C20 14 18 11 18 11H4Z" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" />
               </svg>
-              <span className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>Carafe</span>
+              <span className="text-[16px] font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>Karaf</span>
             </div>
             <p className="font-mono text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Tout coule. Rien ne se perd.</p>
             <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)", maxWidth: "20ch" }}>
@@ -65,7 +65,7 @@ export default function FooterSection() {
         >
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <p className="font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-              &copy; 2026 Carafe. Fait en France avec attention.
+              &copy; 2026 Karaf. Fait en France avec attention.
             </p>
             <p className="font-mono text-[10px]" style={{ color: "var(--foreground-dim)", opacity: 0.6 }}>
               build 0.1.0 · deployed minutes ago
