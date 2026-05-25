@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
@@ -335,7 +335,7 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -592,7 +592,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                     <div className="w-6 text-center flex-shrink-0">
                       {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
                     </div>
-                    <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
@@ -671,7 +671,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
               {data.leaderboard.map((m, i) => (
                 <div key={m.profile_id} className="px-4 py-3 flex items-center gap-3"
                   style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={26} />
+                  <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={26} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
                   <span className="text-[11px] font-medium px-2 py-1 rounded"
                     style={m.delays_count === 0
@@ -689,7 +689,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
 
       {/* Feedback modal */}
       {feedbackModal && modalMeta && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
@@ -812,7 +812,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   };
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-3xl">
+    <div className="px-4 py-8 lg:px-8 max-w-7xl">
       {/* Greeting */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
@@ -1026,7 +1026,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                 <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
                   style={{ background: isMe ? "rgba(139,92,246,0.05)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
                   {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
-                  <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
+                  <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
                     {member.name}{isMe ? " (toi)" : ""}
                   </p>
@@ -1074,7 +1074,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
 
       {/* Delay modal */}
       {modal === "delay" && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -1125,7 +1125,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
 
       {/* Feedback modal */}
       {modal === "feedback" && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>

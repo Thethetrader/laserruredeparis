@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { Profile, EstablishmentWithRole } from "@/lib/types/database";
 
@@ -15,16 +15,15 @@ interface TopBarProps {
 export function TopBar({ profile, establishment, establishments }: TopBarProps) {
   return (
     <header
-      className="lg:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between px-4"
+      className="lg:hidden fixed top-0 inset-x-0 z-40 topbar-safe-height flex items-center justify-between px-4"
       style={{
-        height: 56,
         background: "var(--background)",
         borderBottom: "1px solid var(--border-soft)",
       }}
     >
       {/* Left: brand + establishment */}
       <div className="flex items-center gap-3">
-        <MonoLabel size="xs" color="var(--accent)">[ C ]</MonoLabel>
+        <MonoLabel size="xs" color="var(--accent)">[ K ]</MonoLabel>
 
         {establishments.length > 1 ? (
           <Link
@@ -45,7 +44,7 @@ export function TopBar({ profile, establishment, establishments }: TopBarProps) 
       {/* Right: avatar */}
       <div className="flex items-center gap-2">
         <Link href="/account">
-          <CarafeAvatar
+          <KarafAvatar
             firstName={profile.first_name}
             lastName={profile.last_name}
             avatarUrl={profile.avatar_url}

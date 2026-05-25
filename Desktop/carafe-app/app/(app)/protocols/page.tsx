@@ -158,7 +158,7 @@ const DEV_PROTOCOLS: Protocol[] = [
     establishment_id: DEV_ESTABLISHMENT_ID,
     author_id: DEV_PROFILE_ID,
     title: "Carte des cocktails & accords mets",
-    content: "Les cocktails signature de la maison :\n- Spritz Carafe : Aperol, prosecco, orange\n- Negroni Blanc : gin, lillet blanc, Campari\n\nAccords recommandés :\n- Viandes rouges → Bordeaux rouge\n- Poissons → Chablis ou Sancerre",
+    content: "Les cocktails signature de la maison :\n- Spritz Karaf : Aperol, prosecco, orange\n- Negroni Blanc : gin, lillet blanc, Campari\n\nAccords recommandés :\n- Viandes rouges → Bordeaux rouge\n- Poissons → Chablis ou Sancerre",
     category: "bar",
     is_mandatory: false,
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),

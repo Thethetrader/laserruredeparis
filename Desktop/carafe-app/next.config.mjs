@@ -6,6 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ["@anthropic-ai/sdk"],
 };
 
 export default nextConfig;

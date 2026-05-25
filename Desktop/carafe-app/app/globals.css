@@ -83,9 +83,23 @@
 }
 
 @layer utilities {
-  /* Mobile: accounts for BottomNav (60px) + push notification button (56px) + safe area */
+  /* TopBar height = 56px + iOS status bar safe area */
+  .topbar-safe-height {
+    height: calc(56px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Main content offset to clear TopBar on mobile */
+  .pt-topbar-safe {
+    padding-top: calc(56px + env(safe-area-inset-top));
+  }
+  @media (min-width: 1024px) {
+    .pt-topbar-safe { padding-top: 0; }
+  }
+
+  /* Mobile: accounts for BottomNav (60px) + safe area */
   .app-main-safe-pb {
-    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
   }
   @media (min-width: 1024px) {
     .app-main-safe-pb { padding-bottom: 0; }

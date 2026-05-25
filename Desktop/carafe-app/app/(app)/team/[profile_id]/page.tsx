@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, BookOpen, Award } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
@@ -183,7 +183,7 @@ export default function MemberProfilePage() {
 
   if (loading) {
     return (
-      <div className="px-4 py-8 max-w-xl mx-auto">
+      <div className="px-4 py-8 max-w-4xl">
         {[1, 2, 3].map(i => <div key={i} className="rounded-xl h-24 animate-pulse mb-4" style={{ background: "var(--background-elev)" }} />)}
       </div>
     );
@@ -191,7 +191,7 @@ export default function MemberProfilePage() {
 
   if (!member) {
     return (
-      <div className="px-4 py-8 max-w-xl mx-auto text-center">
+      <div className="px-4 py-8 max-w-4xl text-center">
         <p style={{ color: "var(--foreground-dim)" }}>Profil introuvable.</p>
       </div>
     );
@@ -215,7 +215,7 @@ export default function MemberProfilePage() {
         }
       `}</style>
 
-      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-xl">
+      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-4xl">
         {/* Back + Export */}
         <div className="no-print flex items-center justify-between mb-6">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-dim)" }}>
@@ -233,14 +233,14 @@ export default function MemberProfilePage() {
           <style>{`@media print { .print-header { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e4e4e7; } }`}</style>
         </div>
         <div className="print-header" style={{ display: "none" }}>
-          <p style={{ fontSize: 11, fontFamily: "monospace", letterSpacing: 2, color: "#71717A", textTransform: "uppercase" }}>Fiche de performance Carafe</p>
+          <p style={{ fontSize: 11, fontFamily: "monospace", letterSpacing: 2, color: "#71717A", textTransform: "uppercase" }}>Fiche de performance Karaf</p>
           <p style={{ fontSize: 11, fontFamily: "monospace", color: "#71717A" }}>{new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
         </div>
 
         {/* Hero */}
         <div className="print-card rounded-2xl p-6 mb-4 flex items-center gap-5"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={64} />
+          <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={64} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="print-text text-xl font-bold" style={{ color: "var(--foreground)" }}>{fullName}</h1>
@@ -372,7 +372,7 @@ export default function MemberProfilePage() {
           <style>{`@media print { .print-footer { display: block !important; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4e4e7; font-size: 10px; font-family: monospace; color: #71717A; text-align: center; } }`}</style>
         </div>
         <div className="print-footer" style={{ display: "none" }}>
-          Généré par Carafe · {new Date().toLocaleDateString("fr-FR")}
+          Généré par Karaf · {new Date().toLocaleDateString("fr-FR")}
         </div>
       </div>
     </>

@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
-import { Camera, CheckCircle, LogOut } from "lucide-react";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
+import { Camera, CheckCircle, LogOut, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { PushNotificationSetup } from "@/components/PushNotificationSetup";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
@@ -23,6 +24,7 @@ export default function AccountPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [establishmentId, setEstablishmentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -38,6 +40,7 @@ export default function AccountPage() {
       setProfile(mock);
       setFirstName(mock.first_name ?? "");
       setLastName(mock.last_name ?? "");
+      setEstablishmentId("dev-establishment");
       setLoading(false);
       return;
     }
@@ -48,13 +51,18 @@ export default function AccountPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
 
-    const { data } = await supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", user.id).single();
-    if (data) {
-      const p: ProfileData = { ...data, email: user.email ?? "" };
+    const [profileRes, memberRes] = await Promise.all([
+      supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", user.id).single(),
+      supabase.from("establishment_members").select("establishment_id").eq("profile_id", user.id).eq("is_active", true).single(),
+    ]);
+
+    if (profileRes.data) {
+      const p: ProfileData = { ...profileRes.data, email: user.email ?? "" };
       setProfile(p);
       setFirstName(p.first_name ?? "");
       setLastName(p.last_name ?? "");
     }
+    if (memberRes.data) setEstablishmentId(memberRes.data.establishment_id);
     setLoading(false);
   }
 
@@ -102,7 +110,7 @@ export default function AccountPage() {
   };
 
   const signOut = async () => {
-    if (DEV_MODE) { router.push("/login"); return; }
+    if (DEV_MODE) { router.push("/"); return; }
     await supabase.auth.signOut();
     router.push("/login");
   };
@@ -111,7 +119,7 @@ export default function AccountPage() {
 
   if (loading) {
     return (
-      <div className="px-4 py-8 lg:px-8 max-w-lg">
+      <div className="px-4 py-8 lg:px-8 max-w-4xl">
         <div className="rounded-xl h-24 animate-pulse" style={{ background: "var(--background-elev)" }} />
       </div>
     );
@@ -122,13 +130,18 @@ export default function AccountPage() {
   const displayAvatarUrl = avatarPreview ?? profile.avatar_url;
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-lg">
-      <MonoLabel size="xs" className="mb-6 block">Mon compte</MonoLabel>
+    <div className="px-4 py-8 lg:px-8 max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <MonoLabel size="xs">Mon compte</MonoLabel>
+        <button onClick={() => router.back()} className="flex items-center justify-center w-8 h-8 rounded-full transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+          <X size={15} />
+        </button>
+      </div>
 
       {/* Avatar */}
       <div className="flex flex-col items-center mb-8">
         <div className="relative">
-          <CarafeAvatar
+          <KarafAvatar
             firstName={firstName || profile.first_name}
             lastName={lastName || profile.last_name}
             avatarUrl={displayAvatarUrl}
@@ -200,6 +213,18 @@ export default function AccountPage() {
           {saved && <span className="text-[12px]" style={{ color: "var(--success)" }}>✓ Modifications sauvegardées</span>}
         </div>
       </div>
+
+      {/* Notifications */}
+      {establishmentId && (
+        <div className="rounded-xl px-5 py-4 mb-4 flex items-center justify-between gap-4"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <div>
+            <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--foreground)" }}>Notifications push</p>
+            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Reçois les alertes en temps réel</p>
+          </div>
+          <PushNotificationSetup establishmentId={establishmentId} />
+        </div>
+      )}
 
       {/* Sign out */}
       <button

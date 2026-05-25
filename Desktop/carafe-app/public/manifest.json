@@ -1,6 +1,6 @@
 {
-  "name": "Carafe",
-  "short_name": "Carafe",
+  "name": "Karaf",
+  "short_name": "Karaf",
   "description": "Communication pro pour la restauration",
   "start_url": "/dashboard",
   "display": "standalone",

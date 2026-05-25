@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopBar } from "@/components/layout/TopBar";
-import { PushNotificationSetup } from "@/components/PushNotificationSetup";
 import { DevRoleSwitcher } from "@/components/DevRoleSwitcher";
 import type { Establishment, EstablishmentWithRole, Profile, UserRole } from "@/lib/types/database";
 
@@ -78,15 +77,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar establishment={establishment} establishments={establishments} />
       <TopBar profile={profile} establishment={establishment} establishments={establishments} />
 
-      <main className="pt-[56px] lg:pt-0 lg:pl-[240px] app-main-safe-pb">
+      <main className="pt-topbar-safe lg:pl-[240px] app-main-safe-pb">
         {children}
       </main>
 
       <BottomNav />
       <DevRoleSwitcher />
-      <div className="fixed bottom-[72px] right-4 z-50 lg:bottom-4">
-        <PushNotificationSetup establishmentId={establishment.id} />
-      </div>
     </div>
   );
 }

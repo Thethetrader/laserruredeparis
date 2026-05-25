@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { Trophy, BookOpen, MessageSquare, Zap, Plus, X, Award, Star } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
@@ -179,7 +179,7 @@ export default function ScoringPage() {
 
   if (loading || !settings) {
     return (
-      <div className="px-4 py-8 lg:px-8 max-w-2xl">
+      <div className="px-4 py-8 lg:px-8 max-w-4xl">
         {[1,2,3].map(i => <div key={i} className="h-24 rounded-xl animate-pulse mb-4" style={{ background: "var(--background-elev)" }} />)}
       </div>
     );
@@ -187,7 +187,7 @@ export default function ScoringPage() {
 
   if (!settings.is_enabled) {
     return (
-      <div className="px-4 py-20 max-w-xl mx-auto text-center">
+      <div className="px-4 py-20 max-w-4xl mx-auto text-center">
         <Zap size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", margin: "0 auto 12px" }} />
         <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Le système de score est désactivé sur cet établissement.</p>
       </div>
@@ -240,7 +240,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
   };
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl">
+    <div className="px-4 py-8 lg:px-8 max-w-4xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
@@ -276,7 +276,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
               return (
                 <div key={member.profile_id} className={`flex flex-col items-center text-center ${topPad}`}>
                   <div className="relative mb-2">
-                    <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={rank === 1 ? 52 : 44} />
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={rank === 1 ? 52 : 44} />
                     <span className="absolute -bottom-1 -right-1 text-lg">{b.emoji}</span>
                   </div>
                   <p className="text-xs font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
@@ -306,7 +306,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
               <div className="w-7 text-center flex-shrink-0">
                 {b ? <span className="text-xl">{b.emoji}</span> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
               </div>
-              <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={34} />
+              <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={34} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
                   {`${m.first_name ?? ""} ${m.last_name ?? ""}`.trim()}
@@ -337,7 +337,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
 
       {/* Bonus modal */}
       {bonusTarget && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setBonusTarget(null); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -425,7 +425,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
   const podium = scored.slice(0, 3);
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-xl pb-24">
+    <div className="px-4 py-8 lg:px-8 max-w-4xl pb-24">
       <div className="mb-8">
         <MonoLabel size="xs" className="mb-2 block">Mon score</MonoLabel>
         <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
@@ -465,7 +465,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
                 <div key={m.profile_id} className="flex items-center gap-3 rounded-lg px-3 py-2"
                   style={{ background: isMe ? "rgba(139,92,246,0.06)" : "var(--background-soft)" }}>
                   <span className="text-lg w-6 text-center flex-shrink-0">{b.emoji}</span>
-                  <CarafeAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
+                  <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
                     {m.first_name ?? "-"}{isMe ? " (toi)" : ""}
                   </p>

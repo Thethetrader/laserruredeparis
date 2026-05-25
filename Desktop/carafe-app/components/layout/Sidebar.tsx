@@ -31,7 +31,8 @@ export function Sidebar({ establishment, establishments }: SidebarProps) {
     >
       {/* Header */}
       <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-        <MonoLabel size="xs" color="var(--accent)" className="mb-3 block">[ CARAFE ]</MonoLabel>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Karaf" style={{ height: 44, width: "auto", marginBottom: 12 }} />
 
         {/* Establishment selector */}
         {establishments.length > 1 ? (
@@ -78,16 +79,18 @@ export function Sidebar({ establishment, establishments }: SidebarProps) {
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-4" style={{ borderTop: "1px solid var(--border-soft)" }}>
-        <Link
-          href="/establishment/settings"
-          className="flex items-center gap-3 px-2.5 py-2 rounded-base text-[13px] transition-colors"
-          style={{ color: "var(--foreground-dim)" }}
-        >
-          <Settings size={14} strokeWidth={1.5} />
-          Paramètres
-        </Link>
-      </div>
+      {(establishment.role === "owner" || establishment.role === "manager") && (
+        <div className="px-3 py-4" style={{ borderTop: "1px solid var(--border-soft)" }}>
+          <Link
+            href="/establishment/settings"
+            className="flex items-center gap-3 px-2.5 py-2 rounded-base text-[13px] transition-colors"
+            style={{ color: "var(--foreground-dim)" }}
+          >
+            <Settings size={14} strokeWidth={1.5} />
+            Paramètres
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }

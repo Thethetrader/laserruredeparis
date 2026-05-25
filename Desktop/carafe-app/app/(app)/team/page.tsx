@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { CarafeAvatar } from "@/components/ui/custom/CarafeAvatar";
-import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap } from "lucide-react";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
+import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, Search, Copy, Check, Clock } from "lucide-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/types/database";
 import { useDevRole } from "@/hooks/useDevRole";
@@ -66,13 +66,15 @@ export default function TeamPage() {
   const [kudosList, setKudosList] = useState<Kudos[]>(DEV_MODE ? DEV_KUDOS : []);
   const [role, setRole] = useState<string>("employee");
   const [myProfileId, setMyProfileId] = useState<string>(DEV_MODE ? DEV_PROFILE_ID : "");
-  const [_establishmentId, setEstablishmentId] = useState<string>(DEV_MODE ? DEV_ESTABLISHMENT_ID : "");
+  const [establishmentId, setEstablishmentId] = useState<string>(DEV_MODE ? DEV_ESTABLISHMENT_ID : "");
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("employee");
   const [inviting, setInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; email: string | null; role: string; created_at: string }>>([]);
   const [kudosTarget, setKudosTarget] = useState<TeamMember | null>(null);
   const [kudosType, setKudosType] = useState<"positive" | "negative">("positive");
   const [kudosMessage, setKudosMessage] = useState("");
@@ -86,11 +88,20 @@ export default function TeamPage() {
   const [bonusReason, setBonusReason] = useState("");
   const [sendingBonus, setSendingBonus] = useState(false);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (DEV_MODE) { setRole(devRole); setMembers(DEV_MEMBERS); setLoading(false); return; }
     loadData();
   }, [devRole]);
+
+  async function loadPendingInvites(estabId: string) {
+    const res = await fetch(`/api/invitations?establishment_id=${estabId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setPendingInvites(data.invitations ?? []);
+    }
+  }
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -104,6 +115,9 @@ export default function TeamPage() {
     if (!memberData) { setLoading(false); return; }
     setRole(memberData.role);
     setEstablishmentId(memberData.establishment_id);
+    if (memberData.role === "owner" || memberData.role === "manager") {
+      loadPendingInvites(memberData.establishment_id);
+    }
 
     const { data } = await supabase
       .from("establishment_members")
@@ -187,11 +201,25 @@ export default function TeamPage() {
   };
 
   const sendInvite = async () => {
-    if (!inviteEmail.trim()) return;
     setInviting(true);
-    setInviteSuccess(true);
+    const res = await fetch("/api/invitations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ establishment_id: establishmentId, role: inviteRole, email: inviteEmail || null }),
+    });
+    const data = await res.json();
     setInviting(false);
-    setTimeout(() => { setInviteSuccess(false); setInviteEmail(""); setInviteRole("employee"); setShowInviteForm(false); }, 2000);
+    if (res.ok) {
+      setInviteLink(data.link);
+      setInviteEmail("");
+      loadPendingInvites(establishmentId);
+    }
+  };
+
+  const copyLink = async (link: string) => {
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -202,11 +230,14 @@ export default function TeamPage() {
     );
   }
 
-  const activeMembers = members.filter(m => m.is_active);
+  const searchLower = search.toLowerCase();
+  const activeMembers = members.filter(m => m.is_active).filter(m =>
+    !search || `${m.first_name ?? ""} ${m.last_name ?? ""}`.toLowerCase().includes(searchLower) || m.email.toLowerCase().includes(searchLower)
+  );
   const inactiveMembers = members.filter(m => !m.is_active);
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl">
+    <div className="px-4 py-8 lg:px-8 max-w-4xl">
       {/* Bonus success toast */}
       {bonusSuccess && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg"
@@ -216,12 +247,12 @@ export default function TeamPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-5">
         <div>
           <MonoLabel size="xs" className="mb-2 block">Équipe</MonoLabel>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Équipe</h1>
           <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>
-            {activeMembers.length} membre{activeMembers.length !== 1 ? "s" : ""} actif{activeMembers.length !== 1 ? "s" : ""}
+            {members.filter(m => m.is_active).length} membre{members.filter(m => m.is_active).length !== 1 ? "s" : ""} actif{members.filter(m => m.is_active).length !== 1 ? "s" : ""}
           </p>
         </div>
         {isManager && (
@@ -233,18 +264,58 @@ export default function TeamPage() {
         )}
       </div>
 
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--foreground-dim)" }} />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Rechercher un membre…"
+          className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl outline-none"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+          onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+          onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
       {/* Invite form */}
       {showInviteForm && isManager && (
         <div className="rounded-xl p-5 mb-6" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-medium mb-4" style={{ color: "var(--foreground)" }}>Inviter un membre</p>
-          {inviteSuccess ? (
-            <div className="rounded-lg px-4 py-3 text-sm" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", color: "#10B981" }}>
-              Invitation envoyée avec succès.
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Inviter un membre</p>
+            <button onClick={() => { setShowInviteForm(false); setInviteLink(null); }} style={{ color: "var(--foreground-dim)" }}><X size={16} /></button>
+          </div>
+
+          {inviteLink ? (
+            <div className="space-y-3">
+              <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+                Lien d&apos;invitation généré. Envoie-le par WhatsApp, SMS ou email.
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                <p className="text-[11px] font-mono flex-1 truncate" style={{ color: "var(--foreground-dim)" }}>{inviteLink}</p>
+                <button onClick={() => copyLink(inviteLink)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium flex-shrink-0 transition-colors"
+                  style={{ background: copied ? "rgba(16,185,129,0.12)" : "rgba(6,182,212,0.1)", color: copied ? "var(--success)" : "var(--accent)", border: `1px solid ${copied ? "rgba(16,185,129,0.3)" : "rgba(6,182,212,0.25)"}` }}>
+                  {copied ? <><Check size={11} /> Copié</> : <><Copy size={11} /> Copier</>}
+                </button>
+              </div>
+              <button onClick={() => setInviteLink(null)}
+                className="text-[12px] px-3 py-1.5 rounded-md"
+                style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                Générer un autre lien
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Email</label>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  Email <span style={{ color: "var(--foreground-dim)", textTransform: "none", letterSpacing: 0 }}>(optionnel)</span>
+                </label>
                 <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="collègue@restaurant.fr"
                   className="w-full px-3 py-2 text-sm rounded-md outline-none"
                   style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
@@ -257,23 +328,40 @@ export default function TeamPage() {
                   className="w-full px-3 py-2 text-sm rounded-md outline-none"
                   style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                   <option value="employee">Employé</option>
-                  <option value="manager">Manager</option>
+                  {role === "owner" && <option value="manager">Manager</option>}
                 </select>
               </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={sendInvite} disabled={inviting || !inviteEmail.trim()}
-                  className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
-                  style={{ background: "var(--accent)", color: "#09090B", opacity: (inviting || !inviteEmail.trim()) ? 0.5 : 1 }}>
-                  {inviting ? "Envoi…" : "Envoyer l'invitation"}
-                </button>
-                <button onClick={() => setShowInviteForm(false)}
-                  className="px-4 py-2 text-sm rounded-md"
-                  style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-                  Annuler
-                </button>
-              </div>
+              <button onClick={sendInvite} disabled={inviting}
+                className="w-full py-2.5 text-sm font-medium rounded-md transition-opacity flex items-center justify-center gap-2"
+                style={{ background: "var(--accent)", color: "#09090B", opacity: inviting ? 0.5 : 1 }}>
+                {inviting ? "Génération…" : <><Plus size={14} /> Générer le lien d&apos;invitation</>}
+              </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pending invitations */}
+      {isManager && pendingInvites.length > 0 && (
+        <div className="mb-6">
+          <MonoLabel size="xs" className="mb-3 block">En attente ({pendingInvites.length})</MonoLabel>
+          <div className="space-y-2">
+            {pendingInvites.map(inv => (
+              <div key={inv.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <Clock size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
+                    {inv.email ?? "Lien sans email"}
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ background: inv.role === "manager" ? "rgba(139,92,246,0.1)" : "rgba(161,161,170,0.1)", color: inv.role === "manager" ? "#8B5CF6" : "var(--foreground-dim)" }}>
+                  {inv.role === "manager" ? "Manager" : "Employé"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -296,7 +384,7 @@ export default function TeamPage() {
                 style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
                 <div className="px-4 py-3.5 flex items-center gap-3">
                   <Link href={`/team/${member.profile_id}`} className="flex-shrink-0">
-                    <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={38} />
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={38} />
                   </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
@@ -337,6 +425,11 @@ export default function TeamPage() {
                       style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}>
                       <Zap size={11} /> Bonus
                     </button>
+                    <button onClick={() => toggleActive(member.id, true)}
+                      className="ml-auto text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
+                      style={{ background: "rgba(239,68,68,0.07)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                      Retirer
+                    </button>
                   </div>
                 )}
 
@@ -375,7 +468,7 @@ export default function TeamPage() {
               {inactiveMembers.map(member => (
                 <div key={member.id} className="rounded-xl px-4 py-3.5 flex items-center gap-3"
                   style={{ background: "var(--background-elev)", border: "1px solid var(--border)", opacity: 0.5 }}>
-                  <CarafeAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={38} />
+                  <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={38} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
                       {(member.first_name || member.last_name) ? `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() : member.email}
@@ -395,7 +488,7 @@ export default function TeamPage() {
 
       {/* Kudos modal */}
       {kudosTarget && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) { if (kudosPhotoPreview) URL.revokeObjectURL(kudosPhotoPreview); setKudosPhotoFile(null); setKudosPhotoPreview(null); setKudosTarget(null); } }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -494,7 +587,7 @@ export default function TeamPage() {
 
       {/* ── Bonus modal ── */}
       {bonusTarget && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setBonusTarget(null); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>

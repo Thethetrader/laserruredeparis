@@ -1,87 +1,142 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { Plus, MessageSquare, ThumbsUp } from "lucide-react";
+import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
+import { Plus, X, RotateCcw, MoreHorizontal, Trash2 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
-const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
+const DEV_ESTABLISHMENT_ID = "dev-establishment";
 
-type FeedbackCategory = "compliment" | "complaint" | "suggestion" | "incident";
-type FeedbackStatus = "open" | "in_progress" | "resolved";
+type ItemCategory = "plat" | "boisson" | "service" | "ambiance" | "autre";
+type Tonality = "positive" | "negative";
+type OldCategory = "compliment" | "complaint" | "suggestion" | "incident";
+type FilterKey = ItemCategory | "positive" | "negative" | "mine" | "echoed";
 
-interface Feedback {
+interface FeedbackView {
   id: string;
-  establishment_id: string;
   reported_by: string | null;
-  category: FeedbackCategory;
+  reporter_name: string;
+  reporter_first: string;
+  reporter_last: string;
+  reporter_avatar: string | null;
+  item_cat: ItemCategory;
+  tonality: Tonality;
+  item: string;
   content: string;
   table_number: string | null;
-  status: FeedbackStatus;
+  echo_count: number;
+  is_echoed: boolean;
+  is_mine: boolean;
   created_at: string;
-  confirmation_count: number;
 }
 
-const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
-  compliment: "Compliment",
-  complaint: "Réclamation",
-  suggestion: "Suggestion",
-  incident: "Incident",
+const ITEM_CATS: { key: ItemCategory; label: string; icon: string }[] = [
+  { key: "plat",     label: "Plat",     icon: "🍽" },
+  { key: "boisson",  label: "Boisson",  icon: "🥤" },
+  { key: "service",  label: "Service",  icon: "👋" },
+  { key: "ambiance", label: "Ambiance", icon: "🎵" },
+  { key: "autre",    label: "Autre",    icon: "···" },
+];
+
+const CAT_LABELS: Record<ItemCategory, string> = {
+  plat: "PLAT", boisson: "BOISSON", service: "SERVICE", ambiance: "AMBIANCE", autre: "AUTRE",
 };
 
-const CATEGORY_STYLE: Record<FeedbackCategory, { bg: string; color: string; border: string }> = {
-  compliment: { bg: "rgba(16,185,129,0.1)",  color: "#10B981",         border: "rgba(16,185,129,0.25)" },
-  complaint:  { bg: "rgba(239,68,68,0.1)",   color: "var(--danger)",   border: "rgba(239,68,68,0.25)" },
-  suggestion: { bg: "rgba(6,182,212,0.1)",   color: "var(--accent)",   border: "rgba(6,182,212,0.25)" },
-  incident:   { bg: "rgba(245,158,11,0.1)",  color: "var(--warning)",  border: "rgba(245,158,11,0.25)" },
-};
+function toDBCategory(cat: ItemCategory, ton: Tonality): OldCategory {
+  if (ton === "positive") return "compliment";
+  if (cat === "ambiance") return "incident";
+  return "complaint";
+}
 
-const STATUS_LABELS: Record<FeedbackStatus, string> = {
-  open: "Ouvert",
-  in_progress: "En cours",
-  resolved: "Résolu",
-};
+function fromDBCategory(cat: OldCategory): { item_cat: ItemCategory; tonality: Tonality } {
+  if (cat === "compliment") return { item_cat: "service", tonality: "positive" };
+  if (cat === "complaint")  return { item_cat: "service", tonality: "negative" };
+  if (cat === "incident")   return { item_cat: "ambiance", tonality: "negative" };
+  return { item_cat: "autre", tonality: "positive" };
+}
 
-const STATUS_STYLE: Record<FeedbackStatus, { color: string }> = {
-  open: { color: "var(--warning)" },
-  in_progress: { color: "var(--accent)" },
-  resolved: { color: "var(--success)" },
-};
+function parseContent(raw: string): { item: string; content: string } {
+  const sep = raw.indexOf(" · ");
+  if (sep > 0) return { item: raw.slice(0, sep), content: raw.slice(sep + 3) };
+  return { item: "", content: raw };
+}
 
-const DEV_FEEDBACK: Feedback[] = [
-  { id: "f1", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: DEV_PROFILE_ID, category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", status: "resolved", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
-  { id: "f2", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: DEV_PROFILE_ID, category: "complaint",  content: "Attente trop longue table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", status: "in_progress", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
-  { id: "f3", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu plusieurs personnes de son groupe étaient déçues.", table_number: null, status: "open", created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
-  { id: "f4", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-2",    category: "incident",   content: "Verre cassé en salle, client légèrement blessé pris en charge immédiatement.", table_number: "8", status: "open", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
-  { id: "f5", establishment_id: DEV_ESTABLISHMENT_ID, reported_by: "profile-3",    category: "compliment", content: "Service excellent ce soir, accueil très chaleureux selon le client. Il reviendra.", table_number: null, status: "resolved", created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1)   return "à l'instant";
+  if (mins < 60)  return `il y a ${mins}min`;
+  if (hours < 24) return `il y a ${hours}h`;
+  if (days === 1) return `hier à ${d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+  if (days < 7)   return d.toLocaleDateString("fr-FR", { weekday: "long" });
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+const DEV_FEEDBACKS: FeedbackView[] = [
+  {
+    id: "f1", reported_by: "profile-3",
+    reporter_name: "Rayan Dupont", reporter_first: "Rayan", reporter_last: "Dupont", reporter_avatar: null,
+    item_cat: "plat", tonality: "negative", item: "Tarte tatin",
+    content: "trop sucrée, le client a pas fini son assiette",
+    table_number: "5", echo_count: 3, is_echoed: false, is_mine: false,
+    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
+  {
+    id: "f2", reported_by: "profile-2",
+    reporter_name: "Yasmine Benali", reporter_first: "Yasmine", reporter_last: "Benali", reporter_avatar: null,
+    item_cat: "service", tonality: "positive", item: "Accueil soir",
+    content: "la table 8 a trouvé l'accueil super chaleureux, ont demandé notre prénom",
+    table_number: "8", echo_count: 1, is_echoed: true, is_mine: false,
+    created_at: new Date(Date.now() - 5 * 3600000).toISOString(),
+  },
+  {
+    id: "f3", reported_by: DEV_PROFILE_ID,
+    reporter_name: "Dev Mode", reporter_first: "Dev", reporter_last: "Mode", reporter_avatar: null,
+    item_cat: "boisson", tonality: "negative", item: "Vin blanc maison",
+    content: "trop froid selon le client, a demandé à le réchauffer",
+    table_number: "12", echo_count: 0, is_echoed: false, is_mine: true,
+    created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
+  },
+  {
+    id: "f4", reported_by: "profile-2",
+    reporter_name: "Yasmine Benali", reporter_first: "Yasmine", reporter_last: "Benali", reporter_avatar: null,
+    item_cat: "ambiance", tonality: "negative", item: "Bruit en salle",
+    content: "table 3 s'est plainte du bruit venant de la cuisine",
+    table_number: "3", echo_count: 2, is_echoed: false, is_mine: false,
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: "f5", reported_by: "profile-3",
+    reporter_name: "Rayan Dupont", reporter_first: "Rayan", reporter_last: "Dupont", reporter_avatar: null,
+    item_cat: "plat", tonality: "positive", item: "Risotto champignons",
+    content: "excellent, table 7 a demandé à féliciter le chef",
+    table_number: "7", echo_count: 1, is_echoed: false, is_mine: false,
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
 ];
 
 export default function CustomerFeedbackPage() {
   const supabase = createClient();
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [devRole] = useDevRole();
-  const [role, setRole] = useState<string>("employee");
-  const [establishmentId, setEstablishmentId] = useState<string>(DEV_MODE ? DEV_ESTABLISHMENT_ID : "");
-  const [profileId, setProfileId] = useState<string>(DEV_MODE ? DEV_PROFILE_ID : "");
+  const [feedbacks, setFeedbacks] = useState<FeedbackView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set(["f2"]));
-  const [confirmCounts, setConfirmCounts] = useState<Record<string, number>>({});
-  const [filterCat, setFilterCat] = useState<FeedbackCategory | "all">("all");
-
-  const [formCategory, setFormCategory] = useState<FeedbackCategory>("compliment");
-  const [formContent, setFormContent] = useState("");
-  const [formTable, setFormTable] = useState("");
+  const [profileId, setProfileId] = useState(DEV_MODE ? DEV_PROFILE_ID : "");
+  const [establishmentId, setEstablishmentId] = useState(DEV_MODE ? DEV_ESTABLISHMENT_ID : "");
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (DEV_MODE) {
-      setRole(devRole);
-      setFeedbacks(DEV_FEEDBACK);
-      setConfirmCounts(Object.fromEntries(DEV_FEEDBACK.map(f => [f.id, f.confirmation_count])));
+      setFeedbacks(devRole === "employee" ? DEV_FEEDBACKS : DEV_FEEDBACKS);
       setLoading(false);
       return;
     }
@@ -98,197 +153,275 @@ export default function CustomerFeedbackPage() {
       .eq("profile_id", user.id).eq("is_active", true).single();
 
     if (!memberData) { setLoading(false); return; }
-
-    setRole(memberData.role);
     setEstablishmentId(memberData.establishment_id);
 
-    const [feedbackRes, confirmedRes] = await Promise.all([
-      supabase.from("customer_feedback").select("*").eq("establishment_id", memberData.establishment_id).order("created_at", { ascending: false }),
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const [feedbackRes, confirmedRes, membersRes] = await Promise.all([
+      supabase.from("customer_feedback").select("*")
+        .eq("establishment_id", memberData.establishment_id)
+        .gte("created_at", sevenDaysAgo)
+        .order("created_at", { ascending: false }),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
+      supabase.from("establishment_members")
+        .select("profile_id, profiles(first_name, last_name, avatar_url)")
+        .eq("establishment_id", memberData.establishment_id),
     ]);
 
-    const rawFeedback = (feedbackRes.data ?? []) as Feedback[];
-    setFeedbacks(rawFeedback.map(f => ({ ...f, confirmation_count: 0 })));
-    setConfirmCounts(Object.fromEntries(rawFeedback.map(f => [f.id, 0])));
+    const rawFeedback = (feedbackRes.data ?? []) as Array<{
+      id: string; reported_by: string | null; category: OldCategory;
+      content: string; table_number: string | null; created_at: string;
+    }>;
+    const confirmedSet = new Set((confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id));
 
-    const myConfirmed = new Set((confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id));
-    setConfirmedIds(myConfirmed);
+    type MemberRow = { profile_id: string; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null };
+    const profileMap: Record<string, { first: string; last: string; avatar: string | null }> = {};
+    (membersRes.data ?? [] as MemberRow[]).forEach((m: MemberRow) => {
+      if (m.profiles) profileMap[m.profile_id] = { first: m.profiles.first_name ?? "", last: m.profiles.last_name ?? "", avatar: m.profiles.avatar_url };
+    });
+
+    const allFeedbackIds = rawFeedback.map(f => f.id);
+    const echoCounts: Record<string, number> = {};
+    if (allFeedbackIds.length > 0) {
+      const echoRes = await supabase.from("feedback_confirmations").select("feedback_id").in("feedback_id", allFeedbackIds);
+      (echoRes.data ?? []).forEach((r: { feedback_id: string }) => {
+        echoCounts[r.feedback_id] = (echoCounts[r.feedback_id] ?? 0) + 1;
+      });
+    }
+
+    const views: FeedbackView[] = rawFeedback.map(f => {
+      const { item_cat, tonality } = fromDBCategory(f.category);
+      const { item, content } = parseContent(f.content);
+      const profile = f.reported_by ? profileMap[f.reported_by] : null;
+      const firstName = profile?.first ?? "";
+      const lastName = profile?.last ?? "";
+      return {
+        id: f.id, reported_by: f.reported_by,
+        reporter_name: `${firstName} ${lastName}`.trim() || "Anonyme",
+        reporter_first: firstName, reporter_last: lastName, reporter_avatar: profile?.avatar ?? null,
+        item_cat, tonality,
+        item: item || content.slice(0, 40),
+        content: item ? content : f.content,
+        table_number: f.table_number,
+        echo_count: echoCounts[f.id] ?? 0,
+        is_echoed: confirmedSet.has(f.id),
+        is_mine: f.reported_by === user.id,
+        created_at: f.created_at,
+      };
+    });
+
+    setFeedbacks(views);
     setLoading(false);
   }
 
-  const isManager = role === "owner" || role === "manager";
-
-  const stats = {
-    total: feedbacks.length,
-    open: feedbacks.filter(f => f.status === "open").length,
-    resolved: feedbacks.filter(f => f.status === "resolved").length,
+  const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
-  const submitFeedback = async () => {
-    if (!formContent.trim()) return;
-    setSubmitting(true);
-
-    if (DEV_MODE) {
-      const newF: Feedback = {
-        id: `f-${Date.now()}`,
-        establishment_id: DEV_ESTABLISHMENT_ID,
-        reported_by: DEV_PROFILE_ID,
-        category: formCategory,
-        content: formContent,
-        table_number: formTable || null,
-        status: "open",
-        created_at: new Date().toISOString(),
-        confirmation_count: 0,
-      };
-      setFeedbacks(prev => [newF, ...prev]);
-      setConfirmCounts(prev => ({ ...prev, [newF.id]: 0 }));
-      resetForm();
-      setSubmitting(false);
-      return;
-    }
-
-    const { data } = await supabase.from("customer_feedback").insert({
-      establishment_id: establishmentId,
-      reported_by: profileId,
-      category: formCategory,
-      content: formContent,
-      table_number: formTable || null,
-    }).select().single();
-
-    if (data) {
-      const newF = { ...data, confirmation_count: 0 } as Feedback;
-      setFeedbacks(prev => [newF, ...prev]);
-      setConfirmCounts(prev => ({ ...prev, [newF.id]: 0 }));
-    }
-    resetForm();
-    setSubmitting(false);
-  };
-
-  const updateStatus = async (id: string, status: FeedbackStatus) => {
-    if (DEV_MODE) { setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status } : f)); return; }
-    await supabase.from("customer_feedback").update({ status }).eq("id", id);
-    setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status } : f));
-  };
-
-  const toggleConfirm = async (feedbackId: string) => {
-    const isConfirmed = confirmedIds.has(feedbackId);
-    const delta = isConfirmed ? -1 : 1;
-    setConfirmedIds(prev => { const next = new Set(prev); if (isConfirmed) next.delete(feedbackId); else next.add(feedbackId); return next; });
-    setConfirmCounts(prev => ({ ...prev, [feedbackId]: Math.max(0, (prev[feedbackId] ?? 0) + delta) }));
+  const toggleEcho = async (id: string) => {
+    const fb = feedbacks.find(f => f.id === id);
+    if (!fb || fb.is_mine) return;
+    const wasEchoed = fb.is_echoed;
+    setFeedbacks(prev => prev.map(f => f.id === id
+      ? { ...f, is_echoed: !wasEchoed, echo_count: wasEchoed ? Math.max(0, f.echo_count - 1) : f.echo_count + 1 }
+      : f));
     if (!DEV_MODE) {
-      if (isConfirmed) {
-        await supabase.from("feedback_confirmations").delete().eq("profile_id", profileId).eq("feedback_id", feedbackId);
+      if (wasEchoed) {
+        await supabase.from("feedback_confirmations").delete().eq("profile_id", profileId).eq("feedback_id", id);
       } else {
-        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: profileId, feedback_id: feedbackId });
+        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> })
+          .upsert({ profile_id: profileId, feedback_id: id });
       }
     }
+    if (!wasEchoed) showToast("Ton +1 est enregistré.");
   };
 
-  const resetForm = () => { setFormCategory("compliment"); setFormContent(""); setFormTable(""); setShowForm(false); };
+  const deleteFeedback = async (id: string) => {
+    setFeedbacks(prev => prev.filter(f => f.id !== id));
+    setDeleteTarget(null);
+    if (!DEV_MODE) await supabase.from("customer_feedback").delete().eq("id", id);
+  };
 
-  const displayedFeedbacks = filterCat === "all" ? feedbacks : feedbacks.filter(f => f.category === filterCat);
+  const addFeedback = (fb: FeedbackView, msg?: string) => {
+    setFeedbacks(prev => [fb, ...prev]);
+    showToast(msg ?? "Retour publié ✓");
+  };
+
+  const echoExisting = async (feedbackId: string, reporterName: string) => {
+    setFeedbacks(prev => prev.map(f => f.id === feedbackId
+      ? { ...f, is_echoed: true, echo_count: f.echo_count + 1 }
+      : f));
+    if (!DEV_MODE) {
+      await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> })
+        .upsert({ profile_id: profileId, feedback_id: feedbackId });
+    }
+    showToast(`Ton +1 est enregistré sur le retour de ${reporterName.split(" ")[0]}.`);
+  };
+
+  const toggleFilter = (key: FilterKey) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const catFilters = [...activeFilters].filter(f => ITEM_CATS.some(c => c.key === f)) as ItemCategory[];
+  const tonFilters = [...activeFilters].filter(f => f === "positive" || f === "negative") as Tonality[];
+  const showMine = activeFilters.has("mine");
+  const showEchoed = activeFilters.has("echoed");
+
+  const filtered = feedbacks.filter(f => {
+    if (catFilters.length > 0 && !catFilters.includes(f.item_cat)) return false;
+    if (tonFilters.length > 0 && !tonFilters.includes(f.tonality)) return false;
+    if (showMine && !f.is_mine) return false;
+    if (showEchoed && !f.is_echoed) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const aHot = a.echo_count >= 3 ? 1 : 0;
+    const bHot = b.echo_count >= 3 ? 1 : 0;
+    if (aHot !== bHot) return bHot - aHot;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   if (loading) {
     return (
-      <div className="px-4 py-8 lg:px-8">
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="rounded-xl h-24 animate-pulse" style={{ background: "var(--background-elev)" }} />)}
-        </div>
+      <div className="px-4 py-8 lg:px-8 max-w-4xl space-y-3">
+        {[1, 2, 3].map(i => <div key={i} className="rounded-xl h-40 animate-pulse" style={{ background: "var(--background-elev)" }} />)}
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl">
+    <div className="px-4 py-8 lg:px-8 max-w-4xl">
+
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <MonoLabel size="xs" className="mb-2 block">Retours clients</MonoLabel>
-          <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retours clients</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} avis au total</p>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
+          <p className="text-sm mt-0.5" style={{ color: "var(--foreground-dim)" }}>Ce que les clients ont dit cette semaine.</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-opacity"
+        <button
+          onClick={() => setShowNewModal(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl flex-shrink-0 transition-opacity hover:opacity-80"
           style={{ background: "var(--accent)", color: "#09090B" }}>
-          <Plus size={14} /> Ajouter
+          <Plus size={15} /> Nouveau retour
         </button>
       </div>
 
-      {/* Stats manager only */}
-      {isManager && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {[
-            { label: "Total", value: stats.total, color: "var(--foreground)" },
-            { label: "Ouverts", value: stats.open, color: "var(--warning)" },
-            { label: "Résolus", value: stats.resolved, color: "var(--success)" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-xl p-4 text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <p className="text-2xl font-semibold" style={{ color }}>{value}</p>
-              <p className="text-[11px] font-mono uppercase tracking-widest mt-1" style={{ color: "var(--foreground-dim)" }}>{label}</p>
-            </div>
+      {/* Filter chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: "none" }}>
+        {ITEM_CATS.map(({ key, label }) => {
+          const active = activeFilters.has(key);
+          return (
+            <button key={key} onClick={() => toggleFilter(key)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+              style={active
+                ? { background: "var(--accent)", color: "#09090B" }
+                : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+              {label}
+            </button>
+          );
+        })}
+
+        <div className="w-px flex-shrink-0 self-stretch mx-1" style={{ background: "var(--border)" }} />
+
+        <button onClick={() => toggleFilter("negative")}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+          style={activeFilters.has("negative")
+            ? { background: "rgba(245,158,11,0.2)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.4)" }
+            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+          ▼ Négatifs
+        </button>
+        <button onClick={() => toggleFilter("positive")}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+          style={activeFilters.has("positive")
+            ? { background: "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.4)" }
+            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+          ▲ Positifs
+        </button>
+
+        <div className="w-px flex-shrink-0 self-stretch mx-1" style={{ background: "var(--border)" }} />
+
+        <button onClick={() => toggleFilter("mine")}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+          style={activeFilters.has("mine")
+            ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
+            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+          Mes retours
+        </button>
+        <button onClick={() => toggleFilter("echoed")}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+          style={activeFilters.has("echoed")
+            ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
+            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+          Mes +1
+        </button>
+      </div>
+
+      {/* List */}
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-base font-medium mb-2" style={{ color: "var(--foreground)" }}>
+            {activeFilters.size > 0
+              ? "Aucun retour dans cette catégorie cette semaine."
+              : "Aucun retour pour l'instant cette semaine."}
+          </p>
+          {activeFilters.size > 0 ? (
+            <button onClick={() => setActiveFilters(new Set())} className="text-sm" style={{ color: "var(--accent)" }}>
+              Réinitialiser les filtres
+            </button>
+          ) : (
+            <>
+              <p className="text-sm mb-6" style={{ color: "var(--foreground-dim)" }}>
+                Sois le premier à noter ce que tu entends en service.
+              </p>
+              <button onClick={() => setShowNewModal(true)}
+                className="flex items-center gap-2 px-5 py-3 text-sm font-semibold rounded-xl"
+                style={{ background: "var(--accent)", color: "#09090B" }}>
+                <Plus size={14} /> Nouveau retour
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map(f => (
+            <FeedbackCard key={f.id} feedback={f}
+              onEcho={() => toggleEcho(f.id)}
+              onDelete={() => setDeleteTarget(f.id)} />
           ))}
         </div>
       )}
 
-      {/* Category filter pills */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {(["all", "compliment", "complaint", "suggestion", "incident"] as const).map(cat => {
-          const active = filterCat === cat;
-          const meta = cat !== "all" ? CATEGORY_STYLE[cat] : null;
-          const count = cat === "all" ? feedbacks.length : feedbacks.filter(f => f.category === cat).length;
-          return (
-            <button key={cat} onClick={() => setFilterCat(cat)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all"
-              style={active && meta
-                ? { background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }
-                : active
-                ? { background: "var(--background-elev)", color: "var(--foreground)", border: "1px solid var(--border)" }
-                : { background: "transparent", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-              {cat === "all" ? "Tous" : CATEGORY_LABELS[cat]}
-              <span className="opacity-70">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+          {toast}
+        </div>
+      )}
 
-      {/* Add form */}
-      {showForm && (
-        <div className="rounded-xl p-5 mb-6" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-medium mb-4" style={{ color: "var(--foreground)" }}>Nouveau retour client</p>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
-              <select value={formCategory} onChange={e => setFormCategory(e.target.value as FeedbackCategory)}
-                className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description</label>
-              <textarea value={formContent} onChange={e => setFormContent(e.target.value)}
-                placeholder="Décrivez le retour client..." rows={3}
-                className="w-full px-3 py-2 text-sm rounded-md outline-none resize-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
-            </div>
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Numéro de table <span style={{ fontWeight: 400 }}>(optionnel)</span></label>
-              <input value={formTable} onChange={e => setFormTable(e.target.value)} placeholder="Ex: 12"
-                className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button onClick={submitFeedback} disabled={submitting || !formContent.trim()}
-                className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !formContent.trim()) ? 0.5 : 1 }}>
-                {submitting ? "Envoi…" : "Soumettre"}
+      {/* Delete confirm */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
+          <div className="w-full max-w-xs rounded-2xl p-6" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <p className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Supprimer ce retour ?</p>
+            <p className="text-[12px] mb-5" style={{ color: "var(--foreground-dim)" }}>Il ne sera plus visible pour ton équipe.</p>
+            <div className="flex gap-2">
+              <button onClick={() => deleteFeedback(deleteTarget)}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl"
+                style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                Supprimer
               </button>
-              <button onClick={resetForm} className="px-4 py-2 text-sm rounded-md"
-                style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+              <button onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 text-sm font-medium rounded-xl"
+                style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
                 Annuler
               </button>
             </div>
@@ -296,98 +429,422 @@ export default function CustomerFeedbackPage() {
         </div>
       )}
 
-      {/* Feedback list */}
-      {displayedFeedbacks.length === 0 ? (
-        <div className="rounded-xl flex flex-col items-center justify-center py-16"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <MessageSquare size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 12 }} />
-          <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun retour dans cette catégorie</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {displayedFeedbacks.map(feedback => {
-            const catStyle = CATEGORY_STYLE[feedback.category];
-            const stStyle = STATUS_STYLE[feedback.status];
-            const confirmed = confirmedIds.has(feedback.id);
-            const count = confirmCounts[feedback.id] ?? 0;
-            const isMyFeedback = feedback.reported_by === profileId;
+      {/* New feedback modal */}
+      {showNewModal && (
+        <NewFeedbackModal
+          establishmentId={establishmentId}
+          profileId={profileId}
+          onClose={() => setShowNewModal(false)}
+          onAdded={addFeedback}
+          onEchoExisting={echoExisting}
+        />
+      )}
+    </div>
+  );
+}
 
-            return (
-              <div key={feedback.id} className="rounded-xl overflow-hidden"
-                style={{ background: "var(--background-elev)", border: `1px solid ${confirmed ? catStyle.border : "var(--border)"}` }}>
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
-                          style={{ background: catStyle.bg, color: catStyle.color, border: `1px solid ${catStyle.border}` }}>
-                          {CATEGORY_LABELS[feedback.category]}
-                        </span>
-                        {feedback.table_number && (
-                          <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Table {feedback.table_number}</span>
-                        )}
-                        {isMyFeedback && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                            style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA" }}>
-                            Toi
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{feedback.content}</p>
-                      <p className="text-[11px] mt-2" style={{ color: "var(--foreground-dim)" }}>
-                        {new Date(feedback.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {isManager ? (
-                        <select value={feedback.status} onChange={e => updateStatus(feedback.id, e.target.value as FeedbackStatus)}
-                          className="text-[11px] font-mono px-2 py-1 rounded-md outline-none cursor-pointer"
-                          style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: stStyle.color }}>
-                          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                            <option key={k} value={k} style={{ color: "var(--foreground)" }}>{v}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-1 rounded"
-                          style={{ color: stStyle.color }}>
-                          {STATUS_LABELS[feedback.status]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+/* ─── FEEDBACK CARD ─────────────────────────────────── */
+function FeedbackCard({ feedback: f, onEcho, onDelete }: {
+  feedback: FeedbackView;
+  onEcho: () => void;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isHot = f.echo_count >= 3;
 
-                {/* Confirm button employee only, not for own feedback */}
-                {!isManager && !isMyFeedback && (
-                  <div className="px-5 pb-4">
-                    <button onClick={() => toggleConfirm(feedback.id)}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all"
-                      style={{
-                        background: confirmed ? catStyle.bg : "var(--background-soft)",
-                        color: confirmed ? catStyle.color : "var(--foreground-dim)",
-                        border: `1px solid ${confirmed ? catStyle.border : "var(--border)"}`,
-                      }}>
-                      <ThumbsUp size={12} fill={confirmed ? "currentColor" : "none"} />
-                      {confirmed ? "Tu as eu ce retour" : "Moi aussi j'ai eu ce retour"}
-                      {count > 0 && <span className="ml-1 opacity-70">· {count}</span>}
-                    </button>
-                  </div>
-                )}
+  return (
+    <div className="rounded-xl overflow-hidden"
+      style={{
+        background: "var(--background-elev)",
+        border: `1px solid ${isHot ? "rgba(6,182,212,0.3)" : "var(--border)"}`,
+        boxShadow: isHot ? "0 0 24px rgba(6,182,212,0.06)" : undefined,
+      }}>
 
-                {/* Manager sees confirmation count */}
-                {isManager && count > 0 && (
-                  <div className="px-5 pb-4 flex items-center gap-1.5">
-                    <ThumbsUp size={11} style={{ color: "var(--foreground-dim)" }} />
-                    <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-                      {count} membre{count > 1 ? "s" : ""} ont eu le même retour
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {isHot && (
+        <div className="flex items-center gap-1.5 px-4 pt-3">
+          <RotateCcw size={10} style={{ color: "var(--accent)" }} />
+          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--accent)" }}>
+            Ça revient
+          </span>
         </div>
       )}
+
+      <div className="p-4">
+        {/* Author + time */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <KarafAvatar firstName={f.reporter_first} lastName={f.reporter_last} avatarUrl={f.reporter_avatar} size={28} />
+            <span className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{f.reporter_name}</span>
+            <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>· {formatRelativeTime(f.created_at)}</span>
+          </div>
+          {f.is_mine && (
+            <div className="relative flex-shrink-0 ml-2">
+              <button onClick={() => setMenuOpen(o => !o)} className="p-1 rounded-md" style={{ color: "var(--foreground-dim)" }}>
+                <MoreHorizontal size={16} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-8 z-10 rounded-xl overflow-hidden"
+                  style={{ background: "var(--background-elev)", border: "1px solid var(--border)", minWidth: 140, boxShadow: "0 8px 24px rgba(0,0,0,0.3)" }}>
+                  <button
+                    onClick={() => { setMenuOpen(false); onDelete(); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-sm"
+                    style={{ color: "var(--danger)" }}>
+                    <Trash2 size={13} /> Supprimer
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
+            style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border-soft)" }}>
+            {CAT_LABELS[f.item_cat]}
+          </span>
+          <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
+            style={f.tonality === "positive"
+              ? { background: "rgba(16,185,129,0.08)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.2)" }
+              : { background: "rgba(245,158,11,0.08)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.2)" }}>
+            {f.tonality === "positive" ? "▲ Positif" : "▼ Négatif"}
+          </span>
+          {f.table_number && (
+            <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Table {f.table_number}</span>
+          )}
+        </div>
+
+        {/* Item + content */}
+        {f.item && (
+          <p className="text-lg font-medium leading-snug mb-1" style={{ color: "var(--foreground)" }}>{f.item}</p>
+        )}
+        <p className="text-[15px] leading-relaxed" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>
+          « {f.content} »
+        </p>
+      </div>
+
+      {/* Separator */}
+      <div style={{ height: 1, background: "var(--border-soft)" }} />
+
+      {/* Echo section */}
+      <div className="px-4 py-3">
+        {f.echo_count > 0 && (
+          <p className="text-[12px] mb-2.5" style={{ color: "var(--foreground-dim)" }}>
+            {f.echo_count} collègue{f.echo_count > 1 ? "s" : ""} {f.echo_count > 1 ? "ont" : "a"} entendu pareil
+          </p>
+        )}
+        {f.is_mine ? (
+          <p className="text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>Tu as publié ce retour.</p>
+        ) : (
+          <button onClick={onEcho}
+            className="w-full py-2.5 text-[13px] font-medium rounded-xl transition-all active:scale-[0.98]"
+            style={f.is_echoed
+              ? { background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)" }
+              : { background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            {f.is_echoed ? "✓ Entendu (toi inclus)" : "+ J'ai entendu pareil"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+/* ─── NEW FEEDBACK MODAL ──────────────────────────────── */
+interface SimilarMatch {
+  feedback_id: string;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+  reporter_name: string;
+  reporter_first: string;
+  reporter_last: string;
+  reporter_avatar: string | null;
+  item: string;
+  content: string;
+  echo_count: number;
+  created_at: string;
+}
+
+type ModalStep = "form" | "checking" | "suggestion";
+
+function NewFeedbackModal({ establishmentId, profileId, onClose, onAdded, onEchoExisting }: {
+  establishmentId: string;
+  profileId: string;
+  onClose: () => void;
+  onAdded: (f: FeedbackView, msg?: string) => void;
+  onEchoExisting: (feedbackId: string, reporterName: string) => void;
+}) {
+  const supabase = createClient();
+  const [step, setStep] = useState<ModalStep>("form");
+  const [cat, setCat] = useState<ItemCategory>("plat");
+  const [ton, setTon] = useState<Tonality | null>(null);
+  const [item, setItem] = useState("");
+  const [content, setContent] = useState("");
+  const [table, setTable] = useState("");
+  const [matches, setMatches] = useState<SimilarMatch[]>([]);
+
+  const canSubmit = item.trim().length > 0 && content.trim().length > 0 && ton !== null;
+
+  const buildNewFeedback = (): FeedbackView => ({
+    id: `f-${Date.now()}`,
+    reported_by: profileId,
+    reporter_name: "Moi", reporter_first: "", reporter_last: "", reporter_avatar: null,
+    item_cat: cat, tonality: ton!,
+    item: item.trim(), content: content.trim(),
+    table_number: table.trim() || null,
+    echo_count: 0, is_echoed: false, is_mine: true,
+    created_at: new Date().toISOString(),
+  });
+
+  const publishDirectly = async (fb: FeedbackView) => {
+    if (!DEV_MODE) {
+      const storedContent = `${fb.item} · ${fb.content}`;
+      const { data } = await supabase.from("customer_feedback").insert({
+        establishment_id: establishmentId,
+        reported_by: profileId,
+        category: toDBCategory(fb.item_cat, fb.tonality),
+        content: storedContent,
+        table_number: fb.table_number,
+      }).select().single();
+      if (data) fb.id = (data as { id: string }).id;
+    }
+    onAdded(fb);
+    onClose();
+  };
+
+  const handlePublish = async () => {
+    if (!canSubmit || !ton) return;
+    setStep("checking");
+
+    if (DEV_MODE) {
+      await new Promise(r => setTimeout(r, 1200));
+      const itemLower = item.toLowerCase();
+      if (itemLower.includes("tarte") || itemLower.includes("sucr")) {
+        setMatches([{
+          feedback_id: "f1", confidence: "high",
+          reason: "Même item (Tarte tatin) avec une critique similaire sur le sucre",
+          reporter_name: "Rayan Dupont", reporter_first: "Rayan", reporter_last: "Dupont", reporter_avatar: null,
+          item: "Tarte tatin", content: "trop sucrée, le client a pas fini son assiette",
+          echo_count: 3, created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+        }]);
+        setStep("suggestion");
+      } else {
+        publishDirectly(buildNewFeedback());
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/feedback/check-similar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: cat, item: item.trim(), content: content.trim(),
+          tonality: ton, establishment_id: establishmentId,
+        }),
+      });
+      const data = await res.json();
+      if (data.similar_found && data.matches?.length > 0) {
+        setMatches(data.matches);
+        setStep("suggestion");
+      } else {
+        publishDirectly(buildNewFeedback());
+      }
+    } catch {
+      publishDirectly(buildNewFeedback());
+    }
+  };
+
+  const handleEchoExisting = (match: SimilarMatch) => {
+    onEchoExisting(match.feedback_id, match.reporter_name);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={e => { if (e.target === e.currentTarget && step !== "checking") onClose(); }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+        style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}>
+
+        {/* ── FORM / CHECKING ── */}
+        {(step === "form" || step === "checking") && (
+          <>
+            <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Nouveau retour client</p>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Note ce qu'un client vient de dire. Garde ça court.</p>
+              </div>
+              <button onClick={onClose} className="ml-3 flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Category */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {ITEM_CATS.map(opt => (
+                    <button key={opt.key} onClick={() => setCat(opt.key)}
+                      className="flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all active:scale-[0.96]"
+                      style={cat === opt.key
+                        ? { background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.35)" }
+                        : { background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                      <span className="text-base leading-none">{opt.icon}</span>
+                      <span className="text-[10px] font-medium" style={{ color: cat === opt.key ? "var(--accent)" : "var(--foreground-dim)" }}>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tonality */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+                  Tonalité <span className="font-sans normal-case tracking-normal text-[10px]" style={{ color: "var(--danger)" }}>*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setTon("negative")}
+                    className="py-2.5 rounded-xl text-sm font-medium transition-all"
+                    style={ton === "negative"
+                      ? { background: "rgba(245,158,11,0.12)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.35)" }
+                      : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                    ▼ Négatif
+                  </button>
+                  <button onClick={() => setTon("positive")}
+                    className="py-2.5 rounded-xl text-sm font-medium transition-all"
+                    style={ton === "positive"
+                      ? { background: "rgba(16,185,129,0.12)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.35)" }
+                      : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                    ▲ Positif
+                  </button>
+                </div>
+              </div>
+
+              {/* Item */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  Item concerné <span className="font-sans normal-case tracking-normal" style={{ fontWeight: 400 }}>(max 60)</span>
+                </label>
+                <div className="relative">
+                  <input value={item} onChange={e => setItem(e.target.value.slice(0, 60))}
+                    placeholder="Ex: Tarte tatin, Vin blanc, Accueil…"
+                    className="w-full px-3 py-2 pr-10 text-sm rounded-lg outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono pointer-events-none" style={{ color: "var(--foreground-dim)" }}>{item.length}/60</span>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  Ce qu'a dit le client <span className="font-sans normal-case tracking-normal" style={{ fontWeight: 400 }}>(max 120)</span>
+                </label>
+                <div className="relative">
+                  <textarea value={content} onChange={e => setContent(e.target.value.slice(0, 120))}
+                    placeholder="Ex: trop sucrée"
+                    rows={2}
+                    className="w-full px-3 py-2 pb-5 text-sm rounded-lg outline-none resize-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                  <span className="absolute right-3 bottom-2 text-[10px] font-mono pointer-events-none" style={{ color: "var(--foreground-dim)" }}>{content.length}/120</span>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  Table <span className="font-sans normal-case tracking-normal" style={{ fontWeight: 400 }}>(optionnel)</span>
+                </label>
+                <input value={table} onChange={e => setTable(e.target.value)} placeholder="Ex: 12"
+                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                  onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 pt-1">
+                <button onClick={onClose}
+                  className="flex-1 py-3 text-sm font-medium rounded-xl"
+                  style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                  Annuler
+                </button>
+                <button onClick={handlePublish} disabled={!canSubmit || step === "checking"}
+                  className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity flex items-center justify-center gap-2"
+                  style={{ background: "var(--accent)", color: "#09090B", opacity: (!canSubmit || step === "checking") ? 0.6 : 1 }}>
+                  {step === "checking" ? (
+                    <>
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      Vérification…
+                    </>
+                  ) : "Publier"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── SUGGESTION ── */}
+        {step === "suggestion" && (
+          <>
+            <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
+              <p className="text-base font-semibold mb-1" style={{ color: "var(--foreground)" }}>
+                On a trouvé un retour très proche.
+              </p>
+              <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>
+                C'est ce que tu voulais dire ?
+              </p>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {matches.map(m => (
+                <div key={m.feedback_id} className="rounded-xl overflow-hidden"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                  <div className="p-3.5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <KarafAvatar firstName={m.reporter_first} lastName={m.reporter_last} avatarUrl={m.reporter_avatar} size={24} />
+                      <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{m.reporter_name}</span>
+                      <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>· {formatRelativeTime(m.created_at)}</span>
+                    </div>
+                    {m.item && (
+                      <p className="text-[14px] font-medium mb-0.5" style={{ color: "var(--foreground)" }}>{m.item}</p>
+                    )}
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>
+                      « {m.content} »
+                    </p>
+                    {m.echo_count > 0 && (
+                      <p className="text-[11px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
+                        {m.echo_count} collègue{m.echo_count > 1 ? "s" : ""} ont entendu pareil
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => handleEchoExisting(m)}
+                    className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-all"
+                    style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", borderTop: "1px solid var(--border)" }}>
+                    ✓ Oui, c'est ça — +1
+                  </button>
+                </div>
+              ))}
+
+              <button onClick={() => publishDirectly(buildNewFeedback())}
+                className="w-full py-3 text-sm font-medium rounded-xl transition-all"
+                style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                Non, c'est différent — Publier mon retour
+              </button>
+
+              <button onClick={() => setStep("form")}
+                className="w-full py-2 text-[13px]"
+                style={{ color: "var(--foreground-dim)" }}>
+                ← Modifier mon retour
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
