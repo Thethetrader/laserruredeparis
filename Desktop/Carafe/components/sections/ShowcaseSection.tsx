@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { BookOpen, LayoutDashboard, User, Trophy, MessageSquare, Plus, TrendingUp } from "lucide-react";
+import { BookOpen, LayoutDashboard, User, Trophy, MessageSquare, Plus, TrendingUp, ClipboardList } from "lucide-react";
 
 const views = [
   { id: "protocols", label: "Protocoles", icon: BookOpen },
   { id: "feedback", label: "Retours clients", icon: MessageSquare },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "tasks", label: "Tâches", icon: ClipboardList },
   { id: "employee", label: "Fiche employé", icon: User },
   { id: "challenge", label: "Challenges", icon: Trophy },
 ];
@@ -242,6 +243,103 @@ function EmployeeView() {
   );
 }
 
+function TasksView() {
+  const opening = [
+    { title: "Ouverture caisse", role: "Manager", done: true, by: "Yasmine B.", critical: true },
+    { title: "Contrôle température frigos", role: "Manager", done: true, by: "Yasmine B.", critical: true },
+    { title: "Mise en place salle", role: "Salle", done: true, by: "Rayan D.", critical: false },
+    { title: "Briefing équipe", role: "Manager", done: false, by: null, critical: false },
+    { title: "Mise en place cuisine", role: "Cuisine", done: false, by: null, critical: false },
+  ];
+  const closing = [
+    { title: "Fermeture caisse", role: "Manager", done: false, by: null, critical: true },
+    { title: "Nettoyage hotte", role: "Cuisine", done: false, by: null, critical: true },
+  ];
+  const done = opening.filter(t => t.done).length;
+  const total = opening.length + closing.length;
+  const pct = Math.round((done / total) * 100);
+
+  return (
+    <AppShell activeNav={5} header={
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[7px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>TÂCHES DU JOUR</p>
+          <p className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>{done}/{total} validées · {pct}%</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <svg viewBox="0 0 36 36" style={{ width: 28, height: 28, transform: "rotate(-90deg)" }}>
+            <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border)" strokeWidth="3" />
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#06B6D4" strokeWidth="3"
+              strokeDasharray={`${pct * 0.879} 100`} strokeLinecap="round" />
+          </svg>
+        </div>
+      </div>
+    }>
+      <div className="px-3 py-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: 272 }}>
+        {/* Catchup */}
+        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid rgba(6,182,212,0.25)", background: "rgba(6,182,212,0.04)" }}>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5" style={{ borderBottom: "1px solid rgba(6,182,212,0.15)" }}>
+            <span className="text-[8px]" style={{ color: "#06B6D4" }}>↺</span>
+            <span className="text-[7px] font-semibold" style={{ color: "#06B6D4" }}>À rattraper · hier</span>
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-1.5">
+            <span style={{ color: "#3F3F46", fontSize: 10 }}>○</span>
+            <span className="text-[8px]" style={{ color: "var(--foreground-muted)" }}>Plonge terminée</span>
+            <span className="ml-auto text-[6px] px-1 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>Cuisine</span>
+          </div>
+        </div>
+
+        {/* Ouverture */}
+        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between px-2.5 py-1.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px]">🌅</span>
+              <span className="text-[8px] font-semibold" style={{ color: "var(--foreground)" }}>Ouverture</span>
+              <span className="text-[6px] px-1 py-0.5 rounded" style={{ background: done === opening.length ? "rgba(16,185,129,0.12)" : "var(--background-soft)", color: done === opening.length ? "#10B981" : "var(--foreground-dim)" }}>{done}/{opening.length}</span>
+            </div>
+          </div>
+          {opening.map((t) => (
+            <div key={t.title} className="flex items-center gap-2 px-2.5 py-1.5" style={{ background: t.done ? "rgba(16,185,129,0.04)" : "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ color: t.done ? "#10B981" : "#3F3F46", fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : "○"}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[8px]" style={{ color: t.done ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: t.done ? "line-through" : "none" }}>{t.title}</span>
+                  {t.critical && <span className="text-[5px] px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>HACCP</span>}
+                </div>
+                {t.done && t.by && <p className="text-[6px]" style={{ color: "var(--foreground-dim)" }}>{t.by}</p>}
+              </div>
+              <span className="text-[6px] px-1 py-0.5 rounded flex-shrink-0" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>{t.role}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Fermeture */}
+        <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between px-2.5 py-1.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px]">🌙</span>
+              <span className="text-[8px] font-semibold" style={{ color: "var(--foreground)" }}>Fermeture</span>
+              <span className="text-[6px] px-1 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>0/{closing.length}</span>
+            </div>
+          </div>
+          {closing.map((t) => (
+            <div key={t.title} className="flex items-center gap-2 px-2.5 py-1.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ color: "#3F3F46", fontSize: 10, flexShrink: 0 }}>○</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="text-[8px]" style={{ color: "var(--foreground)" }}>{t.title}</span>
+                  {t.critical && <span className="text-[5px] px-1 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>HACCP</span>}
+                </div>
+              </div>
+              <span className="text-[6px] px-1 py-0.5 rounded flex-shrink-0" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>{t.role}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
 function ChallengeView() {
   return (
     <AppShell activeNav={4} header={
@@ -288,7 +386,7 @@ function ChallengeView() {
   );
 }
 
-const viewComponents = [ProtocolsView, FeedbackView, DashboardView, EmployeeView, ChallengeView];
+const viewComponents = [ProtocolsView, FeedbackView, DashboardView, TasksView, EmployeeView, ChallengeView];
 
 export default function ShowcaseSection() {
   const [active, setActive] = useState(0);
