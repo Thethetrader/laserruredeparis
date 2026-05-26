@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays, ClipboardList } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
 const adminNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours clients" },
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
