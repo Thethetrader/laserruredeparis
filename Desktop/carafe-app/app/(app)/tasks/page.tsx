@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   CheckCircle2, Circle, Camera, AlertTriangle, ChevronDown, ChevronUp,
   RefreshCw, Users, UtensilsCrossed, Wine, Briefcase, Sunrise, Sunset, Zap,
-  X, Plus, Clock
+  X, Plus, Clock, Settings
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
@@ -278,14 +279,24 @@ export default function TasksManagerPage() {
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <MonoLabel size="xs">Tâches du jour</MonoLabel>
-        <button
-          onClick={() => setShowOneShotModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-          style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
-        >
-          <Plus size={12} />
-          Tâche ponctuelle
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/establishment/tasks"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+            style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
+          >
+            <Settings size={12} />
+            Configurer
+          </Link>
+          <button
+            onClick={() => setShowOneShotModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+            style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
+          >
+            <Plus size={12} />
+            Tâche ponctuelle
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
