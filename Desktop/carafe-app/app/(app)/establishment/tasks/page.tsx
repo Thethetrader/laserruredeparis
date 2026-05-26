@@ -25,6 +25,12 @@ interface TaskTemplate {
   is_critical: boolean;
   is_active: boolean;
   display_order: number;
+  assigned_to: string | null;
+}
+
+interface Member {
+  profile_id: string;
+  name: string;
 }
 
 interface ModalState {
@@ -80,7 +86,14 @@ const emptyForm = (): Omit<TaskTemplate, "id" | "display_order" | "is_active"> =
   frequency: "daily",
   requires_photo: false,
   is_critical: false,
+  assigned_to: null,
 });
+
+const DEV_MEMBERS: Member[] = [
+  { profile_id: "m1", name: "Yasmine Benali" },
+  { profile_id: "m2", name: "Rayan Dupont" },
+  { profile_id: "m3", name: "Léa Martin" },
+];
 
 export default function EstablishmentTasksPage() {
   const [tasks, setTasks] = useState<TaskTemplate[]>([]);
@@ -93,11 +106,13 @@ export default function EstablishmentTasksPage() {
   });
   const [estId, setEstId] = useState<string>(DEV_ESTABLISHMENT_ID);
   const [ownerId, setOwnerId] = useState<string>(DEV_PROFILE_ID);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     if (DEV_MODE) {
       setTasks(DEV_TASKS);
+      setMembers(DEV_MEMBERS);
       setLoading(false);
       return;
     }
@@ -110,8 +125,17 @@ export default function EstablishmentTasksPage() {
     setEstId(member.establishment_id);
     setOwnerId(userId!);
 
-    const { data } = await supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).order("display_order");
+    const [{ data }, { data: memberRows }] = await Promise.all([
+      supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).order("display_order"),
+      supabase.from("establishment_members").select("profile_id, is_active, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
+    ]);
     setTasks((data ?? []) as TaskTemplate[]);
+    setMembers(
+      ((memberRows ?? []) as Array<{ profile_id: string; profiles: { first_name: string | null; last_name: string | null } | null }>).map(m => ({
+        profile_id: m.profile_id,
+        name: [m.profiles?.first_name, m.profiles?.last_name].filter(Boolean).join(" ") || "Membre",
+      }))
+    );
     setLoading(false);
   }, []);
 
@@ -131,6 +155,7 @@ export default function EstablishmentTasksPage() {
       frequency: task.frequency,
       requires_photo: task.requires_photo,
       is_critical: task.is_critical,
+      assigned_to: task.assigned_to ?? null,
     });
     setModal({ mode: "edit", task });
   }
@@ -294,6 +319,11 @@ export default function EstablishmentTasksPage() {
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
                               {FREQ_LABEL[task.frequency]}
                             </span>
+                            {task.assigned_to && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
+                                → {members.find(m => m.profile_id === task.assigned_to)?.name ?? "Assigné"}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -403,6 +433,26 @@ export default function EstablishmentTasksPage() {
                   <option value="weekly">Hebdomadaire</option>
                   <option value="per_service">À chaque service</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] mb-1 block" style={{ color: "var(--foreground-dim)" }}>Assigner à</label>
+                <select
+                  value={form.assigned_to ?? ""}
+                  onChange={e => setForm(f => ({ ...f, assigned_to: e.target.value || null }))}
+                  className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                >
+                  <option value="">Tout le poste sélectionné</option>
+                  {members.map(m => (
+                    <option key={m.profile_id} value={m.profile_id}>{m.name}</option>
+                  ))}
+                </select>
+                {form.assigned_to && (
+                  <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>
+                    Cette tâche sera réservée à cette personne (prioritaire sur le poste).
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col gap-2 pt-1">

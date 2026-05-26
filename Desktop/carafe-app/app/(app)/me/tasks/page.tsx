@@ -25,6 +25,7 @@ interface TaskTemplate {
   requires_photo: boolean;
   is_critical: boolean;
   display_order: number;
+  assigned_to: string | null;
 }
 
 interface TaskCompletion {
@@ -49,6 +50,7 @@ interface TaskOneShot {
   due_date: string;
   requires_photo: boolean;
   is_validated: boolean;
+  assigned_to: string | null;
 }
 
 interface ValidateModalState {
@@ -154,22 +156,27 @@ export default function MyTasksPage() {
     const estId = member.establishment_id;
     const role = (member.role as "owner" | "manager" | "employee") === "employee" ? "salle" : "manager";
 
+    // Une tâche m'est destinée si elle m'est assignée nommément,
+    // ou si elle n'est assignée à personne et vise mon poste (ou "all").
+    const forMe = (t: { assigned_to: string | null; target_role: TaskTargetRole }) =>
+      t.assigned_to === userId || (!t.assigned_to && (t.target_role === role || t.target_role === "all"));
+
     const [{ data: tmpl }, { data: comp }, { data: yesterday }, { data: shots }] = await Promise.all([
-      supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).in("target_role", [role, "all"]).order("display_order"),
+      supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).order("display_order"),
       supabase.from("task_completions").select("*").eq("establishment_id", estId).eq("service_date", today),
-      supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).in("target_role", [role, "all"]),
-      supabase.from("task_one_shots").select("*").eq("establishment_id", estId).eq("due_date", today).in("target_role", [role, "all"]),
+      supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("task_one_shots").select("*").eq("establishment_id", estId).eq("due_date", today),
     ]);
 
     const completedYesterday = new Set(
       ((await supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", YESTERDAY)).data ?? []).map((c: { task_template_id: string | null }) => c.task_template_id)
     );
-    const missing = (yesterday ?? []).filter((t: TaskTemplate) => !completedYesterday.has(t.id));
+    const missing = ((yesterday ?? []) as TaskTemplate[]).filter(t => forMe(t) && !completedYesterday.has(t.id));
 
-    setTemplates((tmpl ?? []) as TaskTemplate[]);
+    setTemplates(((tmpl ?? []) as TaskTemplate[]).filter(forMe));
     setCompletions((comp ?? []) as TaskCompletion[]);
     setYesterdayMissing(missing as TaskTemplate[]);
-    setOneShots((shots ?? []) as TaskOneShot[]);
+    setOneShots(((shots ?? []) as TaskOneShot[]).filter(forMe));
     setLoading(false);
   }, [today, myRole]);
 
