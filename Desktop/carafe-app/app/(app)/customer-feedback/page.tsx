@@ -299,10 +299,10 @@ export default function CustomerFeedbackPage() {
     <div className="px-4 py-8 lg:px-8 max-w-4xl">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-5">
+      <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
-          <p className="text-sm mt-0.5" style={{ color: "var(--foreground-dim)" }}>Ce que les clients ont dit cette semaine.</p>
+          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>Ce que les clients ont dit cette semaine.</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
