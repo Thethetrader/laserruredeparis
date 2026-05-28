@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { Plus, X, RotateCcw, MoreHorizontal, Trash2 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
+import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const DEV_PROFILE_ID = "dev-user";
@@ -301,6 +302,7 @@ export default function CustomerFeedbackPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
+          <MonoLabel size="xs" className="mb-2 block">Retour client</MonoLabel>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
           <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>Ce que les clients ont dit cette semaine.</p>
         </div>
