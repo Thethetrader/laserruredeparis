@@ -61,7 +61,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 const ROLE_STYLE: Record<UserRole, { bg: string; color: string }> = {
   owner: { bg: "rgba(6,182,212,0.1)", color: "var(--accent)" },
-  manager: { bg: "rgba(139,92,246,0.1)", color: "#8B5CF6" },
+  manager: { bg: "rgba(161,161,170,0.1)", color: "var(--foreground-dim)" },
   employee: { bg: "rgba(161,161,170,0.1)", color: "var(--foreground-dim)" },
 };
 
@@ -277,7 +277,7 @@ export default function TeamPage() {
       {/* Bonus success toast */}
       {bonusSuccess && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg"
-          style={{ background: "rgba(139,92,246,0.95)", color: "#fff" }}>
+          style={{ background: "rgba(245,158,11,0.95)", color: "#09090B" }}>
           {bonusSuccess}
         </div>
       )}
@@ -305,7 +305,7 @@ export default function TeamPage() {
         <button onClick={() => setSearchMode("name")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors" style={{ background: searchMode === "name" ? "rgba(6,182,212,0.12)" : "var(--background-elev)", color: searchMode === "name" ? "var(--accent)" : "var(--foreground-dim)", border: searchMode === "name" ? "1px solid rgba(6,182,212,0.3)" : "1px solid var(--border)" }}>
           <Search size={11} /> Nom
         </button>
-        <button onClick={() => setSearchMode("availability")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors" style={{ background: searchMode === "availability" ? "rgba(139,92,246,0.12)" : "var(--background-elev)", color: searchMode === "availability" ? "#8B5CF6" : "var(--foreground-dim)", border: searchMode === "availability" ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
+        <button onClick={() => setSearchMode("availability")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors" style={{ background: searchMode === "availability" ? "rgba(6,182,212,0.12)" : "var(--background-elev)", color: searchMode === "availability" ? "var(--accent)" : "var(--foreground-dim)", border: searchMode === "availability" ? "1px solid rgba(6,182,212,0.3)" : "1px solid var(--border)" }}>
           <Calendar size={11} /> Disponibilité
         </button>
       </div>
@@ -317,8 +317,8 @@ export default function TeamPage() {
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }}><X size={13} /></button>}
         </div>
       ) : (
-        <div className="rounded-xl p-4 mb-6" style={{ background: "var(--background-elev)", border: "1px solid rgba(139,92,246,0.25)" }}>
-          <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "#8B5CF6" }}>Rechercher par disponibilité</p>
+        <div className="rounded-xl p-4 mb-6" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.25)" }}>
+          <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--accent)" }}>Rechercher par disponibilité</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Jour</label>
@@ -451,13 +451,13 @@ export default function TeamPage() {
                   <label className="text-[11px] font-mono uppercase tracking-widest cursor-pointer" style={{ color: "var(--foreground-dim)" }}>
                     Disponibilités <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
                   </label>
-                  <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: showAvailability ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: showAvailability ? "#8B5CF6" : "var(--foreground-dim)" }}>
+                  <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: showAvailability ? "rgba(6,182,212,0.12)" : "var(--background-soft)", color: showAvailability ? "var(--accent)" : "var(--foreground-dim)" }}>
                     {showAvailability ? "Masquer ▲" : "Ajouter ▼"}
                   </span>
                 </button>
 
                 {showAvailability && (
-                  <div className="mt-2 p-3 rounded-xl space-y-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                  <div className="mt-2 p-3 rounded-xl space-y-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)" }}>
                     {/* Jours */}
                     <div>
                       <p className="text-[10px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Jours</p>
@@ -467,7 +467,7 @@ export default function TeamPage() {
                           return (
                             <button key={d} type="button" onClick={() => setInviteAvailDays(prev => active ? prev.filter(x => x !== d) : [...prev, d])}
                               className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                              style={{ background: active ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                              style={{ background: active ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: active ? "var(--accent)" : "var(--foreground-dim)", border: active ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
                               {d.slice(0, 3)}
                             </button>
                           );
@@ -484,7 +484,7 @@ export default function TeamPage() {
                           return (
                             <button key={p} type="button" onClick={() => setInviteAvailPeriods(prev => active ? prev.filter(x => x !== p) : [...prev, p])}
                               className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                              style={{ background: active ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                              style={{ background: active ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: active ? "var(--accent)" : "var(--foreground-dim)", border: active ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
                               {p}
                             </button>
                           );
@@ -509,7 +509,7 @@ export default function TeamPage() {
                         </select>
                       </div>
                       {inviteAvailHourStart && inviteAvailHourEnd && (
-                        <p className="text-[11px] mt-1.5" style={{ color: "#8B5CF6" }}>
+                        <p className="text-[11px] mt-1.5" style={{ color: "var(--accent)" }}>
                           Disponible de {inviteAvailHourStart} à {inviteAvailHourEnd}
                           {inviteAvailDays.length > 0 && ` · ${inviteAvailDays.join(", ")}`}
                         </p>
@@ -544,7 +544,7 @@ export default function TeamPage() {
                   </p>
                 </div>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
-                  style={{ background: inv.role === "manager" ? "rgba(139,92,246,0.1)" : "rgba(161,161,170,0.1)", color: inv.role === "manager" ? "#8B5CF6" : "var(--foreground-dim)" }}>
+                  style={{ background: inv.role === "manager" ? "rgba(161,161,170,0.12)" : "rgba(161,161,170,0.08)", color: inv.role === "manager" ? "var(--foreground-muted)" : "var(--foreground-dim)" }}>
                   {inv.role === "manager" ? "Manager" : "Employé"}
                 </span>
               </div>
@@ -589,8 +589,8 @@ export default function TeamPage() {
                       {member.contract_type && (
                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                           style={{
-                            background: member.contract_type === "extra" ? "rgba(139,92,246,0.1)" : "rgba(6,182,212,0.08)",
-                            color: member.contract_type === "extra" ? "#8B5CF6" : "var(--accent)",
+                            background: member.contract_type === "extra" ? "rgba(245,158,11,0.1)" : "rgba(6,182,212,0.08)",
+                            color: member.contract_type === "extra" ? "var(--warning)" : "var(--accent)",
                           }}>
                           {CONTRACT_LABELS[member.contract_type]}
                         </span>
@@ -628,7 +628,7 @@ export default function TeamPage() {
                     </button>
                     <button onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); }}
                       className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
-                      style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}>
+                      style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
                       <Zap size={11} /> Bonus
                     </button>
                     <button onClick={() => toggleActive(member.id, true)}
@@ -801,7 +801,7 @@ export default function TeamPage() {
               <div>
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
                   Attribuer des points à{" "}
-                  <span style={{ color: "#8B5CF6" }}>{bonusTarget.first_name ?? bonusTarget.email}</span>
+                  <span style={{ color: "var(--warning)" }}>{bonusTarget.first_name ?? bonusTarget.email}</span>
                 </p>
                 <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Le bonus ne peut pas être retiré une fois attribué</p>
               </div>
@@ -815,8 +815,8 @@ export default function TeamPage() {
               <div className="flex items-center gap-3">
                 <input type="range" min={1} max={20} value={bonusPoints}
                   onChange={e => setBonusPoints(parseInt(e.target.value))}
-                  className="flex-1" style={{ accentColor: "#8B5CF6" }} />
-                <span className="text-2xl font-bold w-14 text-right" style={{ color: "#8B5CF6" }}>+{bonusPoints}</span>
+                  className="flex-1" style={{ accentColor: "var(--warning)" }} />
+                <span className="text-2xl font-bold w-14 text-right" style={{ color: "var(--warning)" }}>+{bonusPoints}</span>
               </div>
             </div>
 
@@ -833,7 +833,7 @@ export default function TeamPage() {
                 rows={3}
                 className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
                 style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"}
+                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
                 onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
                 autoFocus
               />
@@ -845,7 +845,7 @@ export default function TeamPage() {
 
             <button onClick={submitBonus} disabled={sendingBonus || bonusReason.trim().length < 10}
               className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity flex items-center justify-center gap-2"
-              style={{ background: "#8B5CF6", color: "#fff", opacity: (sendingBonus || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
+              style={{ background: "var(--warning)", color: "#09090B", opacity: (sendingBonus || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
               <Zap size={15} />
               {sendingBonus ? "Envoi…" : `Attribuer +${bonusPoints} pts à ${bonusTarget.first_name ?? "ce membre"}`}
             </button>

@@ -392,7 +392,7 @@ export default function DashboardPage() {
 type ProtocolCategory = "salle" | "cuisine" | "bar" | "accueil" | "hygiene" | "securite" | "ouverture" | "fermeture";
 
 const PROTO_CATEGORIES: { key: ProtocolCategory; label: string; icon: React.ElementType; color: string; text: string }[] = [
-  { key: "salle",     label: "Salle",     icon: LayoutGrid,      color: "rgba(139,92,246,0.13)", text: "#A78BFA" },
+  { key: "salle",     label: "Salle",     icon: LayoutGrid,      color: "rgba(113,113,122,0.15)", text: "#A1A1AA" },
   { key: "cuisine",   label: "Cuisine",   icon: UtensilsCrossed, color: "rgba(245,158,11,0.13)", text: "#FBBF24" },
   { key: "bar",       label: "Bar",       icon: Wine,            color: "rgba(6,182,212,0.13)",  text: "var(--accent)" },
   { key: "accueil",   label: "Accueil",   icon: Users,           color: "rgba(16,185,129,0.13)", text: "var(--success)" },
@@ -992,8 +992,8 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
           </div>
         </button>
         <button onClick={() => setModal("feedback")} className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 text-left transition-opacity active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
-            <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)" }}>
+            <MessageSquare size={15} style={{ color: "var(--accent)" }} />
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>Avis client</p>
@@ -1089,7 +1089,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                   <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setModal("feedback")} className="text-[11px] px-2.5 py-1 rounded-md font-medium" style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6" }}>+ Signaler</button>
+                  <button onClick={() => setModal("feedback")} className="text-[11px] px-2.5 py-1 rounded-md font-medium" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>+ Signaler</button>
                   <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
                 </div>
               </div>
@@ -1229,7 +1229,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                 const isMe = member.profile_id === data.my_profile_id;
                 return (
                   <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
-                    style={{ background: isMe ? "rgba(139,92,246,0.04)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+                    style={{ background: isMe ? "rgba(6,182,212,0.05)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
                     {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
                     <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
                     <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
@@ -1324,13 +1324,13 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description</label>
-                <textarea value={fbContent} onChange={e => setFbContent(e.target.value)} placeholder="Décrivez le retour client…" rows={3} className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} autoFocus />
+                <textarea value={fbContent} onChange={e => setFbContent(e.target.value)} placeholder="Décrivez le retour client…" rows={3} className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} autoFocus />
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Table <span style={{ fontWeight: 400 }}>(optionnel)</span></label>
-                <input value={fbTable} onChange={e => setFbTable(e.target.value)} placeholder="Ex: 12" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                <input value={fbTable} onChange={e => setFbTable(e.target.value)} placeholder="Ex: 12" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
-              <button onClick={submitFeedback} disabled={submitting || !fbContent.trim()} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "#8B5CF6", color: "#fff", opacity: (submitting || !fbContent.trim()) ? 0.5 : 1 }}>
+              <button onClick={submitFeedback} disabled={submitting || !fbContent.trim()} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--accent)", color: "#fff", opacity: (submitting || !fbContent.trim()) ? 0.5 : 1 }}>
                 {submitting ? "Envoi…" : "Enregistrer l'avis"}
               </button>
             </div>

@@ -53,7 +53,7 @@ const CATEGORY_ICONS: Record<ProtocolCategory, LucideIcon> = {
 };
 
 const CATEGORY_COLORS: Record<ProtocolCategory, string> = {
-  salle: "rgba(139,92,246,0.13)",
+  salle: "rgba(113,113,122,0.15)",
   cuisine: "rgba(245,158,11,0.13)",
   bar: "rgba(6,182,212,0.13)",
   accueil: "rgba(16,185,129,0.13)",
@@ -64,7 +64,7 @@ const CATEGORY_COLORS: Record<ProtocolCategory, string> = {
 };
 
 const CATEGORY_TEXT: Record<ProtocolCategory, string> = {
-  salle: "#A78BFA",
+  salle: "#A1A1AA",
   cuisine: "#FBBF24",
   bar: "var(--accent)",
   accueil: "var(--success)",
@@ -723,7 +723,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
             )}
             {hasImage && (
               <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded"
-                style={{ background: "rgba(139,92,246,0.08)", color: "#A78BFA" }}>
+                style={{ background: "rgba(6,182,212,0.08)", color: "#A1A1AA" }}>
                 <Image size={9} /> Photo
               </span>
             )}

@@ -33,7 +33,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 const ROLE_STYLE: Record<UserRole, { color: string }> = {
   owner: { color: "var(--accent)" },
-  manager: { color: "#8B5CF6" },
+  manager: { color: "var(--accent)" },
   employee: { color: "var(--foreground-dim)" },
 };
 

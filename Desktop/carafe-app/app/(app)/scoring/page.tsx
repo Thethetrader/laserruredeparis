@@ -48,7 +48,7 @@ const SOURCE_CONFIG: Record<ScoreSource, { icon: React.ElementType; color: strin
   challenge_won:     { icon: Trophy,        color: "#F59E0B",        bg: "rgba(245,158,11,0.12)", label: "Défi remporté" },
   kudo_from_peer:    { icon: Star,          color: "#F59E0B",        bg: "rgba(245,158,11,0.08)", label: "Bravo de collègue" },
   kudo_from_manager: { icon: Award,         color: "#F59E0B",        bg: "rgba(245,158,11,0.15)", label: "Bravo du manager" },
-  manual_bonus:      { icon: Zap,           color: "#8B5CF6",        bg: "rgba(139,92,246,0.12)", label: "Bonus" },
+  manual_bonus:      { icon: Zap,           color: "var(--warning)", bg: "rgba(245,158,11,0.12)", label: "Bonus" },
 };
 
 const BADGE: Record<1 | 2 | 3, { emoji: string; color: string; bg: string }> = {
@@ -250,14 +250,14 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
         <button
           onClick={() => { setBonusTarget(scored.find(m => m.profile_id !== myProfileId)?.profile_id ?? null); setBonusReason(""); setBonusPoints(5); }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
-          style={{ background: "#8B5CF6", color: "#fff" }}>
+          style={{ background: "var(--warning)", color: "#09090B" }}>
           <Plus size={14} /> Attribuer un bonus
         </button>
       </div>
 
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium"
-          style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", color: "#8B5CF6" }}>
+          style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--warning)" }}>
           {successMsg}
         </div>
       )}
@@ -322,7 +322,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
                   <button
                     onClick={() => { setBonusTarget(m.profile_id); setBonusReason(""); setBonusPoints(5); }}
                     className="text-[11px] font-medium px-2.5 py-1 rounded-md"
-                    style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6", border: "1px solid rgba(139,92,246,0.2)" }}>
+                    style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
                     Bonus
                   </button>
                 )}
@@ -345,7 +345,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
               <div>
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
                   Attribuer un bonus
-                  {bonusTargetMember && <span style={{ color: "#8B5CF6" }}> à {bonusTargetMember.first_name}</span>}
+                  {bonusTargetMember && <span style={{ color: "var(--warning)" }}> à {bonusTargetMember.first_name}</span>}
                 </p>
                 <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Le bonus ne peut pas être retiré</p>
               </div>
@@ -372,8 +372,8 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
               <div className="flex items-center gap-3">
                 <input type="range" min={settings.manual_bonus_min} max={settings.manual_bonus_max} value={bonusPoints}
                   onChange={e => setBonusPoints(parseInt(e.target.value))}
-                  className="flex-1" style={{ accentColor: "#8B5CF6" }} />
-                <span className="text-2xl font-bold w-14 text-right" style={{ color: "#8B5CF6" }}>+{bonusPoints}</span>
+                  className="flex-1" style={{ accentColor: "var(--warning)" }} />
+                <span className="text-2xl font-bold w-14 text-right" style={{ color: "var(--warning)" }}>+{bonusPoints}</span>
               </div>
             </div>
 
@@ -390,7 +390,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
                 rows={3}
                 className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
                 style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"}
+                onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"}
                 onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
                 autoFocus
               />
@@ -401,7 +401,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
 
             <button onClick={submitBonus} disabled={submitting || bonusReason.trim().length < 10}
               className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity"
-              style={{ background: "#8B5CF6", color: "#fff", opacity: (submitting || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
+              style={{ background: "var(--warning)", color: "#09090B", opacity: (submitting || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
               {submitting ? "Envoi…" : `Attribuer +${bonusPoints} pts`}
             </button>
           </div>
@@ -463,7 +463,7 @@ function EmployeeScoringView({ scored, settings, myProfileId, month }: {
               const isMe = m.profile_id === myProfileId;
               return (
                 <div key={m.profile_id} className="flex items-center gap-3 rounded-lg px-3 py-2"
-                  style={{ background: isMe ? "rgba(139,92,246,0.06)" : "var(--background-soft)" }}>
+                  style={{ background: isMe ? "rgba(6,182,212,0.05)" : "var(--background-soft)" }}>
                   <span className="text-lg w-6 text-center flex-shrink-0">{b.emoji}</span>
                   <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>

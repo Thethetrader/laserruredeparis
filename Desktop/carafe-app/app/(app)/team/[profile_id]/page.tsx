@@ -256,7 +256,7 @@ export default function MemberProfilePage() {
             <div className="flex flex-wrap gap-2 mt-1.5">
               {member.contract_type && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                  style={{ background: member.contract_type === "extra" ? "rgba(139,92,246,0.1)" : "rgba(6,182,212,0.08)", color: member.contract_type === "extra" ? "#8B5CF6" : "var(--accent)" }}>
+                  style={{ background: member.contract_type === "extra" ? "rgba(245,158,11,0.1)" : "rgba(6,182,212,0.08)", color: member.contract_type === "extra" ? "var(--warning)" : "var(--accent)" }}>
                   {CONTRACT_LABELS[member.contract_type] ?? member.contract_type}
                 </span>
               )}
@@ -308,9 +308,9 @@ export default function MemberProfilePage() {
             <div className="p-4 flex flex-wrap gap-2" style={{ background: "var(--background-elev)" }}>
               {member.availability.map((slot, i) => (
                 <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                  style={{ background: "rgba(139,92,246,0.07)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                  style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
                   <div>
-                    <p className="text-[12px] font-medium" style={{ color: "#8B5CF6" }}>{slot.day}</p>
+                    <p className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>{slot.day}</p>
                     <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
                       {slot.period}
                       {slot.hour_start && slot.hour_end && ` · ${slot.hour_start}–${slot.hour_end}`}

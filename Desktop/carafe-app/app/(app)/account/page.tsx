@@ -197,7 +197,7 @@ export default function AccountPage() {
         <p className="text-[11px] mt-3" style={{ color: "var(--foreground-dim)" }}>Appuie sur la caméra pour changer la photo</p>
         {contractType && (
           <span className="mt-2 text-[11px] font-mono px-2 py-0.5 rounded"
-            style={{ background: contractType === "extra" ? "rgba(139,92,246,0.1)" : "rgba(6,182,212,0.08)", color: contractType === "extra" ? "#8B5CF6" : "var(--accent)" }}>
+            style={{ background: contractType === "extra" ? "rgba(245,158,11,0.1)" : "rgba(6,182,212,0.08)", color: contractType === "extra" ? "var(--warning)" : "var(--accent)" }}>
             {{ cdi: "CDI", cdd: "CDD", extra: "Extra" }[contractType] ?? contractType}
           </span>
         )}
@@ -230,9 +230,9 @@ export default function AccountPage() {
 
       {/* Disponibilités — affiché pour tous mais surtout utile pour les extras */}
       {(contractType === "extra" || contractType === null) && (
-        <div className="rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(139,92,246,0.3)" }}>
+        <div className="rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.3)" }}>
           <div className="flex items-center gap-2 mb-1">
-            <Calendar size={14} style={{ color: "#8B5CF6" }} />
+            <Calendar size={14} style={{ color: "var(--accent)" }} />
             <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Mes disponibilités</p>
           </div>
           <p className="text-[11px] mb-4" style={{ color: "var(--foreground-dim)" }}>
@@ -244,14 +244,14 @@ export default function AccountPage() {
             <div className="flex flex-wrap gap-2 mb-4">
               {availability.map((slot, i) => (
                 <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-                  style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)" }}>
+                  style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)" }}>
                   <div className="text-left">
-                    <p className="text-[11px] font-semibold" style={{ color: "#8B5CF6" }}>{slot.day}</p>
+                    <p className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{slot.day}</p>
                     <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
                       {slot.period}{slot.hour_start && slot.hour_end ? ` · ${slot.hour_start}–${slot.hour_end}` : ""}
                     </p>
                   </div>
-                  <button onClick={() => removeSlot(i)} className="ml-1 flex-shrink-0" style={{ color: "rgba(139,92,246,0.6)" }}>
+                  <button onClick={() => removeSlot(i)} className="ml-1 flex-shrink-0" style={{ color: "rgba(6,182,212,0.6)" }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -274,7 +274,7 @@ export default function AccountPage() {
               {DAYS_FR.map(d => (
                 <button key={d} onClick={() => setEditDay(d)}
                   className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                  style={{ background: editDay === d ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: editDay === d ? "#8B5CF6" : "var(--foreground-dim)", border: editDay === d ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                  style={{ background: editDay === d ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: editDay === d ? "var(--accent)" : "var(--foreground-dim)", border: editDay === d ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
                   {d.slice(0, 3)}
                 </button>
               ))}
@@ -285,7 +285,7 @@ export default function AccountPage() {
               {PERIODS_FR.map(p => (
                 <button key={p} onClick={() => setEditPeriod(p)}
                   className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-                  style={{ background: editPeriod === p ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: editPeriod === p ? "#8B5CF6" : "var(--foreground-dim)", border: editPeriod === p ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                  style={{ background: editPeriod === p ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: editPeriod === p ? "var(--accent)" : "var(--foreground-dim)", border: editPeriod === p ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
                   {p}
                 </button>
               ))}
@@ -305,7 +305,7 @@ export default function AccountPage() {
             <button onClick={addSlot}
               disabled={availability.some(s => s.day === editDay && s.period === editPeriod)}
               className="w-full py-2 text-[12px] font-semibold rounded-lg transition-opacity"
-              style={{ background: "rgba(139,92,246,0.9)", color: "#fff", opacity: availability.some(s => s.day === editDay && s.period === editPeriod) ? 0.4 : 1 }}>
+              style={{ background: "var(--accent)", color: "#fff", opacity: availability.some(s => s.day === editDay && s.period === editPeriod) ? 0.4 : 1 }}>
               {availability.some(s => s.day === editDay && s.period === editPeriod) ? "Créneau déjà ajouté" : `+ Ajouter ${editDay.slice(0, 3)} ${editPeriod} ${editHourStart}–${editHourEnd}`}
             </button>
           </div>
@@ -313,7 +313,7 @@ export default function AccountPage() {
           {/* Sauvegarder */}
           <button onClick={saveAvailability} disabled={savingAvail}
             className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-opacity"
-            style={{ background: savedAvail ? "rgba(16,185,129,0.9)" : "#8B5CF6", color: "#fff", opacity: savingAvail ? 0.6 : 1 }}>
+            style={{ background: savedAvail ? "rgba(16,185,129,0.9)" : "var(--accent)", color: "#fff", opacity: savingAvail ? 0.6 : 1 }}>
             {savedAvail ? <><Check size={14} /> Disponibilités enregistrées</> : savingAvail ? "Enregistrement…" : "Enregistrer mes disponibilités"}
           </button>
         </div>
