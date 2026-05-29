@@ -17,12 +17,9 @@ interface EstablishmentOption {
 }
 
 const DEV_ESTABLISHMENTS: EstablishmentOption[] = [
-  {
-    id: "dev-establishment",
-    name: "Le Comptoir Dev",
-    city: "Paris",
-    role: "owner",
-  },
+  { id: "dev-establishment",   name: "Le Comptoir Dev",   city: "Paris",    role: "owner" },
+  { id: "dev-establishment-2", name: "La Brasserie Test", city: "Lyon",     role: "manager" },
+  { id: "dev-establishment-3", name: "Chez Marcel",       city: "Bordeaux", role: "employee" },
 ];
 
 const ROLE_LABELS: Record<UserRole, string> = {

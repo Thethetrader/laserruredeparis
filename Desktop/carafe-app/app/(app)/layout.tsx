@@ -23,23 +23,59 @@ const DEV_PROFILE: Profile = {
   updated_at: new Date().toISOString(),
 };
 
-const DEV_ESTABLISHMENT: EstablishmentWithRole = {
-  id: "dev-establishment",
-  owner_id: "dev-user",
-  name: "Le Comptoir Dev",
-  address: null,
-  city: "Paris",
-  postal_code: null,
-  country: "FR",
-  logo_url: null,
-  subscription_tier: "trial",
-  subscription_status: "active",
-  trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString(),
-  weekly_recap_day: "monday",
-  weekly_recap_enabled: true,
-  created_at: new Date().toISOString(),
-  role: "owner",
-};
+const DEV_ESTABLISHMENTS_LIST: EstablishmentWithRole[] = [
+  {
+    id: "dev-establishment",
+    owner_id: "dev-user",
+    name: "Le Comptoir Dev",
+    address: null,
+    city: "Paris",
+    postal_code: null,
+    country: "FR",
+    logo_url: null,
+    subscription_tier: "trial",
+    subscription_status: "active",
+    trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+    weekly_recap_day: "monday",
+    weekly_recap_enabled: true,
+    created_at: new Date().toISOString(),
+    role: "owner",
+  },
+  {
+    id: "dev-establishment-2",
+    owner_id: "dev-user",
+    name: "La Brasserie Test",
+    address: null,
+    city: "Lyon",
+    postal_code: null,
+    country: "FR",
+    logo_url: null,
+    subscription_tier: "pro",
+    subscription_status: "active",
+    trial_ends_at: null,
+    weekly_recap_day: "monday",
+    weekly_recap_enabled: true,
+    created_at: new Date().toISOString(),
+    role: "manager",
+  },
+  {
+    id: "dev-establishment-3",
+    owner_id: "dev-user",
+    name: "Chez Marcel",
+    address: null,
+    city: "Bordeaux",
+    postal_code: null,
+    country: "FR",
+    logo_url: null,
+    subscription_tier: "starter",
+    subscription_status: "active",
+    trial_ends_at: null,
+    weekly_recap_day: "monday",
+    weekly_recap_enabled: true,
+    created_at: new Date().toISOString(),
+    role: "employee",
+  },
+];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   let profile: Profile;
@@ -47,7 +83,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (DEV_MODE) {
     profile = DEV_PROFILE;
-    establishments = [DEV_ESTABLISHMENT];
+    establishments = DEV_ESTABLISHMENTS_LIST;
   } else {
     const supabase = await createClient();
 
