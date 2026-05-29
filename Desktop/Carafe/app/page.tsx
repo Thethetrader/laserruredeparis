@@ -1,7 +1,6 @@
 import Navigation from "@/components/sections/Navigation";
 import HeroSection from "@/components/sections/HeroSection";
 import ProblemSection from "@/components/sections/ProblemSection";
-import SolutionSection from "@/components/sections/SolutionSection";
 import PillarsSection from "@/components/sections/PillarsSection";
 import AutomationSection from "@/components/sections/AutomationSection";
 import ShowcaseSection from "@/components/sections/ShowcaseSection";
@@ -18,7 +17,6 @@ export default function Home() {
       <main>
         <HeroSection />
         <ProblemSection />
-        <SolutionSection />
         <PillarsSection />
         <AutomationSection />
         <ShowcaseSection />
