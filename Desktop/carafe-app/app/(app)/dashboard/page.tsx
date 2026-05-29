@@ -569,6 +569,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
   const [showAddProtocol, setShowAddProtocol] = useState(false);
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
+  const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -587,18 +588,18 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
-          { icon: Clock, value: data.today_delays, label: "Retards aujourd'hui", warn: data.today_delays > 0, href: "/delays" },
-          { icon: MessageSquare, value: data.today_feedback, label: "Avis clients aujourd'hui", warn: false, href: "/customer-feedback" },
-          { icon: Trophy, value: data.active_challenges, label: "Défis actifs", warn: false, href: "/challenges" },
-          { icon: BookOpen, value: data.leaderboard.reduce((s, m) => s + Math.max(0, m.protocols_total - m.protocols_read), 0), label: "Lectures en attente", warn: true, href: "/protocols" },
-        ].map(({ icon: Icon, value, label, warn, href }) => (
-          <a key={label} href={href} className="rounded-xl p-4 transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          { icon: Clock, value: data.today_delays, label: "Retards aujourd'hui", warn: data.today_delays > 0, popup: "delays" as const },
+          { icon: MessageSquare, value: data.today_feedback, label: "Avis clients aujourd'hui", warn: false, popup: "feedback" as const },
+          { icon: Trophy, value: data.active_challenges, label: "Défis actifs", warn: false, popup: "challenges" as const },
+          { icon: BookOpen, value: data.leaderboard.reduce((s, m) => s + Math.max(0, m.protocols_total - m.protocols_read), 0), label: "Lectures en attente", warn: true, popup: "protocols" as const },
+        ].map(({ icon: Icon, value, label, warn, popup }) => (
+          <button key={label} onClick={() => setKpiPopup(popup)} className="rounded-xl p-4 text-left transition-opacity hover:opacity-75 active:scale-[0.98]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-1">
               <p className="text-2xl font-semibold" style={{ color: warn && value > 0 ? "var(--warning)" : "var(--foreground)" }}>{value}</p>
               <Icon size={15} style={{ color: "var(--foreground-dim)" }} />
             </div>
             <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>{label}</p>
-          </a>
+          </button>
         ))}
       </div>
 
@@ -865,6 +866,178 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
 
       {showAddProtocol && <AddProtocolModal data={data} onClose={() => setShowAddProtocol(false)} onAdded={handleProtocolAdded} />}
       {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
+
+      {/* KPI Popup */}
+      {kpiPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setKpiPopup(null); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                {kpiPopup === "delays" && <><Clock size={14} style={{ color: "var(--warning)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retards aujourd'hui</p></>}
+                {kpiPopup === "feedback" && <><MessageSquare size={14} style={{ color: "var(--accent)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avis clients aujourd'hui</p></>}
+                {kpiPopup === "challenges" && <><Trophy size={14} style={{ color: "var(--warning)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis actifs</p></>}
+                {kpiPopup === "protocols" && <><BookOpen size={14} style={{ color: "var(--accent)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Lectures en attente</p></>}
+              </div>
+              <button onClick={() => setKpiPopup(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+
+            {/* Corps */}
+            <div className="overflow-y-auto flex-1">
+
+              {/* RETARDS */}
+              {kpiPopup === "delays" && (
+                <div className="p-5">
+                  {data.today_delays === 0 ? (
+                    <div className="text-center py-6">
+                      <p className="text-2xl mb-1">✓</p>
+                      <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Aucun retard aujourd'hui</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                        <Clock size={20} style={{ color: "var(--warning)" }} />
+                        <div>
+                          <p className="text-2xl font-bold" style={{ color: "var(--warning)" }}>{data.today_delays}</p>
+                          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>retard{data.today_delays > 1 ? "s" : ""} déclaré{data.today_delays > 1 ? "s" : ""} ce jour</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {data.leaderboard.filter(m => m.delays_count > 0).map(m => (
+                          <div key={m.profile_id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                            <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
+                            <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
+                              {m.delays_count} retard{m.delays_count > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* AVIS CLIENTS */}
+              {kpiPopup === "feedback" && (
+                <div>
+                  <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
+                    {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
+                      const meta = CATEGORY_META[cat];
+                      const count = data.feedback_summary[cat];
+                      return (
+                        <div key={cat} className="px-5 py-4" style={{ background: "var(--background-elev)" }}>
+                          <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
+                          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    {data.feedback_items.slice(0, 5).map(item => {
+                      const meta = CATEGORY_META[item.category];
+                      return (
+                        <div key={item.id} className="px-5 py-3.5">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
+                            {item.table_number && <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
+                            <span className="text-[10px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                          </div>
+                          <p className="text-[13px] leading-snug" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                        </div>
+                      );
+                    })}
+                    {data.feedback_items.length === 0 && (
+                      <div className="px-5 py-10 text-center"><p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis pour le moment</p></div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* DÉFIS */}
+              {kpiPopup === "challenges" && (
+                <div>
+                  {data.active_challenges_list.length === 0 ? (
+                    <div className="px-5 py-10 text-center"><p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun défi actif</p></div>
+                  ) : (
+                    <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                      {data.active_challenges_list.map(c => {
+                        const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
+                        const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+                        return (
+                          <div key={c.id} className="px-5 py-4">
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
+                              {daysLeft !== null && <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>{daysLeft}j</span>}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "var(--background-soft)" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? "var(--success)" : "var(--warning)" }} />
+                              </div>
+                              <span className="text-[12px] font-mono font-semibold flex-shrink-0" style={{ color: "var(--foreground)" }}>{pct}%</span>
+                            </div>
+                            <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{c.current_value}{c.target_value ? ` / ${c.target_value}` : ""}{c.unit ? ` ${c.unit}` : ""}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PROTOCOLES — lectures en attente */}
+              {kpiPopup === "protocols" && (
+                <div>
+                  {protocols.filter(p => p.read_count < p.total_members && p.total_members > 0).length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-2xl mb-1">✓</p>
+                      <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Tous les protocoles ont été lus</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                      {protocols.filter(p => p.read_count < p.total_members).map(p => {
+                        const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                        const remaining = p.total_members - p.read_count;
+                        return (
+                          <div key={p.id} className="px-5 py-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-sm font-medium flex-1" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                              {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} />
+                              </div>
+                              <span className="text-[11px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+                                {p.read_count}/{p.total_members} · {remaining} en attente
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer — lien vers la page complète */}
+            <div className="px-5 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+              <a
+                href={kpiPopup === "delays" ? "/delays" : kpiPopup === "feedback" ? "/customer-feedback" : kpiPopup === "challenges" ? "/challenges" : "/protocols"}
+                className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg"
+                style={{ background: "var(--accent)", color: "#09090B" }}
+                onClick={() => setKpiPopup(null)}>
+                Voir tout →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
