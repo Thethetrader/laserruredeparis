@@ -3,7 +3,6 @@ import Navigation from "@/components/landing/sections/Navigation";
 import HeroSection from "@/components/landing/sections/HeroSection";
 import ProblemSection from "@/components/landing/sections/ProblemSection";
 import PillarsSection from "@/components/landing/sections/PillarsSection";
-import AutomationSection from "@/components/landing/sections/AutomationSection";
 import ShowcaseSection from "@/components/landing/sections/ShowcaseSection";
 import EmployeeSection from "@/components/landing/sections/EmployeeSection";
 import PricingSection from "@/components/landing/sections/PricingSection";
@@ -20,7 +19,6 @@ export default function Home() {
         <HeroSection />
         <ProblemSection />
         <PillarsSection />
-        <AutomationSection />
         <ShowcaseSection />
         <EmployeeSection />
         <PricingSection />
