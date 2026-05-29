@@ -1041,99 +1041,57 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {/* Actions rapides */}
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            <div className="px-5 py-4" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Actions rapides</p>
-            </div>
-            <div className="p-4 space-y-2" style={{ background: "var(--background-elev)" }}>
-              <button onClick={() => setModal("delay")} className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
-                  <Clock size={14} style={{ color: "var(--warning)" }} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Déclarer un retard</p>
-                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Signale un retard ou une absence</p>
-                </div>
-                <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-              </button>
-              <button onClick={() => setModal("feedback")} className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
-                  <MessageSquare size={14} style={{ color: "#8B5CF6" }} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
-                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
-                </div>
-                <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Colonne droite */}
-        <div className="space-y-6">
-
-          {/* Score card compact */}
-          <div className="rounded-xl p-5" style={{ background: myBadge ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score</p>
-              {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={24} />}
-            </div>
-            <div className="flex items-end gap-3 mb-3">
-              <p className="text-4xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
-                {myStats?.score ?? "—"}
-              </p>
-              <p className="text-[12px] pb-0.5" style={{ color: "var(--foreground-dim)" }}>
-                {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : ""}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
-                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Retards</p>
-                <p className="text-lg font-semibold" style={{ color: (myStats?.delays_count ?? 0) === 0 ? "var(--success)" : "var(--warning)" }}>
-                  {myStats?.delays_count ?? 0}
-                </p>
-              </div>
-              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
-                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
-                <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
-                  {myStats?.protocols_read ?? 0}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{myStats?.protocols_total ?? 0}</span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Classement */}
-          {data.leaderboard.length > 1 && (
+          {/* Protocoles */}
+          {data.protocols.length > 0 && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
                 <div className="flex items-center gap-2">
-                  <TrendingUp size={14} style={{ color: "var(--accent)" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement</p>
+                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
                 </div>
-                <a href="/scoring" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
               </div>
-              {data.leaderboard.slice(0, 3).map((member, i) => {
-                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
-                const isMe = member.profile_id === data.my_profile_id;
-                return (
-                  <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
-                    style={{ background: isMe ? "rgba(139,92,246,0.04)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                    {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
-                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
-                    <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
-                      {member.name}{isMe ? " (toi)" : ""}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <Star size={10} style={{ color: b?.color ?? "var(--foreground-dim)" }} />
-                      <p className="text-sm font-semibold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
-                    </div>
+              {data.protocols.slice(0, 3).map((p, i) => (
+                <a key={p.id} href="/protocols" className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
+                  style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                    {p.is_read ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
                   </div>
-                );
-              })}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                    <p className="text-[11px]" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>{p.is_read ? "Lu ✓" : "Non lu"}</p>
+                  </div>
+                  <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                </a>
+              ))}
             </div>
           )}
+
+          {/* Actions rapides */}
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => setModal("delay")} className="flex items-center gap-2.5 rounded-xl px-3 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
+                <Clock size={13} style={{ color: "var(--warning)" }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium leading-tight" style={{ color: "var(--foreground)" }}>Retard</p>
+                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Déclarer</p>
+              </div>
+            </button>
+            <button onClick={() => setModal("feedback")} className="flex items-center gap-2.5 rounded-xl px-3 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
+                <MessageSquare size={13} style={{ color: "#8B5CF6" }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium leading-tight" style={{ color: "var(--foreground)" }}>Avis client</p>
+                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Signaler</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Colonne droite : Défis + Classement + Score */}
+        <div className="space-y-6">
 
           {/* Défis en cours */}
           {data.active_challenges_list.length > 0 && (
@@ -1166,31 +1124,66 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {/* Protocoles */}
-          {data.protocols.length > 0 && (
+          {/* Classement */}
+          {data.leaderboard.length > 1 && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
                 <div className="flex items-center gap-2">
-                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
+                  <TrendingUp size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement</p>
                 </div>
-                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+                <a href="/scoring" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
               </div>
-              {data.protocols.slice(0, 3).map((p, i) => (
-                <a key={p.id} href="/protocols" className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
-                  style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
-                    {p.is_read ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
+              {data.leaderboard.slice(0, 3).map((member, i) => {
+                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
+                const isMe = member.profile_id === data.my_profile_id;
+                return (
+                  <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
+                    style={{ background: isMe ? "rgba(139,92,246,0.04)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+                    {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
+                    <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
+                      {member.name}{isMe ? " (toi)" : ""}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Star size={10} style={{ color: b?.color ?? "var(--foreground-dim)" }} />
+                      <p className="text-sm font-semibold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                    <p className="text-[11px]" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>{p.is_read ? "Lu ✓" : "Non lu"}</p>
-                  </div>
-                  <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                </a>
-              ))}
+                );
+              })}
             </div>
           )}
+
+          {/* Score / Ponctualité */}
+          <div className="rounded-xl p-5" style={{ background: myBadge ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score</p>
+              {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={24} />}
+            </div>
+            <div className="flex items-end gap-3 mb-3">
+              <p className="text-4xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
+                {myStats?.score ?? "—"}
+              </p>
+              <p className="text-[12px] pb-0.5" style={{ color: "var(--foreground-dim)" }}>
+                {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : ""}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
+                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Retards</p>
+                <p className="text-lg font-semibold" style={{ color: (myStats?.delays_count ?? 0) === 0 ? "var(--success)" : "var(--warning)" }}>
+                  {myStats?.delays_count === 0 ? "✓ 0" : myStats?.delays_count ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
+                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
+                <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+                  {myStats?.protocols_read ?? 0}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{myStats?.protocols_total ?? 0}</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>

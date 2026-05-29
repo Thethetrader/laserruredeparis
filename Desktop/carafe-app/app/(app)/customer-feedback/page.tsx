@@ -143,6 +143,7 @@ export default function CustomerFeedbackPage() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
   const [showSummary, setShowSummary] = useState(false);
   const [userRole, setUserRole] = useState<string>("employee");
@@ -255,6 +256,9 @@ export default function CustomerFeedbackPage() {
   };
 
   const unreadCount = feedbacks.filter(f => !readIds.has(f.id)).length;
+  const dismissFeedback = (id: string) => {
+    setDismissedIds(prev => new Set([...prev, id]));
+  };
 
   const toggleEcho = async (id: string) => {
     const fb = feedbacks.find(f => f.id === id);
@@ -506,13 +510,14 @@ export default function CustomerFeedbackPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map(f => (
+          {sorted.filter(f => !dismissedIds.has(f.id)).map(f => (
             <FeedbackCard key={f.id} feedback={f}
               isRead={readIds.has(f.id)}
               isManager={isManager}
               onEcho={() => toggleEcho(f.id)}
               onDelete={() => setDeleteTarget(f.id)}
-              onMarkRead={() => markAsRead(f.id)} />
+              onMarkRead={() => markAsRead(f.id)}
+              onDismiss={() => dismissFeedback(f.id)} />
           ))}
         </div>
       )}
@@ -564,25 +569,66 @@ export default function CustomerFeedbackPage() {
 }
 
 /* ─── FEEDBACK CARD ─────────────────────────────────── */
-function FeedbackCard({ feedback: f, isRead, isManager, onEcho, onDelete, onMarkRead }: {
+function FeedbackCard({ feedback: f, isRead, isManager, onEcho, onDelete, onMarkRead, onDismiss }: {
   feedback: FeedbackView;
   isRead: boolean;
   isManager: boolean;
   onEcho: () => void;
   onDelete: () => void;
   onMarkRead: () => void;
+  onDismiss: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const SWIPE_THRESHOLD = 100;
   const isHot = f.echo_count >= 3;
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+    setSwipeX(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX;
+    if (dx < 0) setSwipeX(dx);
+  };
+
+  const handleTouchEnd = () => {
+    if (swipeX < -SWIPE_THRESHOLD) {
+      setIsDismissing(true);
+      setTimeout(() => onDismiss(), 250);
+    } else {
+      setSwipeX(0);
+    }
+  };
+
+  if (isDismissing) return null;
+
   return (
-    <div className="rounded-xl overflow-hidden"
-      style={{
-        background: "var(--background-elev)",
-        border: `1px solid ${isHot ? "rgba(6,182,212,0.3)" : !isRead ? "rgba(6,182,212,0.15)" : "var(--border)"}`,
-        boxShadow: isHot ? "0 0 24px rgba(6,182,212,0.06)" : undefined,
-        opacity: isRead && !isHot ? 0.85 : 1,
-      }}>
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Fond swipe "Pas eu" */}
+      <div className="absolute inset-0 flex items-center justify-end pr-5 rounded-xl"
+        style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", opacity: Math.min(1, Math.abs(swipeX) / SWIPE_THRESHOLD) }}>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-semibold" style={{ color: "var(--danger)" }}>Pas eu ce retour</span>
+          <X size={16} style={{ color: "var(--danger)" }} />
+        </div>
+      </div>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: `translateX(${swipeX}px)`,
+          transition: swipeX === 0 ? "transform 0.25s ease" : "none",
+          background: "var(--background-elev)",
+          border: `1px solid ${isHot ? "rgba(6,182,212,0.3)" : !isRead ? "rgba(6,182,212,0.15)" : "var(--border)"}`,
+          boxShadow: isHot ? "0 0 24px rgba(6,182,212,0.06)" : undefined,
+          opacity: isRead && !isHot ? 0.85 : 1,
+          borderRadius: "0.75rem",
+        }}>
 
       {/* Unread indicator */}
       {!isRead && isManager && (
@@ -687,6 +733,12 @@ function FeedbackCard({ feedback: f, isRead, isManager, onEcho, onDelete, onMark
             {f.is_echoed ? "✓ Entendu (toi inclus)" : "+ J'ai entendu pareil"}
           </button>
         )}
+        {!f.is_mine && (
+          <p className="text-[10px] text-center mt-2" style={{ color: "var(--foreground-dim)" }}>
+            ← Glisse à gauche si tu n'as pas eu ce retour
+          </p>
+        )}
+      </div>
       </div>
     </div>
   );
