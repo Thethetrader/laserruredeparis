@@ -4,10 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, BookOpen, Award } from "lucide-react";
+import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, BookOpen, Award, Phone, Mail, Calendar, Briefcase } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+
+interface AvailabilitySlot {
+  day: string;
+  period: string;
+  hour_start?: string;
+  hour_end?: string;
+}
 
 interface MemberProfile {
   profile_id: string;
@@ -18,6 +25,9 @@ interface MemberProfile {
   job_title: string | null;
   hired_at: string | null;
   establishment_name: string;
+  phone?: string | null;
+  contract_type?: string | null;
+  availability?: AvailabilitySlot[];
 }
 
 interface Kudos {
@@ -38,14 +48,16 @@ interface Stats {
   protocols_total: number;
 }
 
+const CONTRACT_LABELS: Record<string, string> = { cdi: "CDI", cdd: "CDD", extra: "Extra" };
+
 const DEV_DATA: Record<string, { member: MemberProfile; kudos: Kudos[]; stats: Stats }> = {
   "dev-user": {
-    member: { profile_id: "dev-user", first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, job_title: "Responsable", hired_at: "2022-03-01", establishment_name: "Le Comptoir Dev" },
+    member: { profile_id: "dev-user", first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, job_title: "Responsable", hired_at: "2022-03-01", establishment_name: "Le Comptoir Dev", phone: null, contract_type: "cdi", availability: [] },
     kudos: [],
     stats: { score: 45, rank: 2, total_members: 3, delays_this_month: 1, protocols_read: 3, protocols_total: 3 },
   },
   "profile-2": {
-    member: { profile_id: "profile-2", first_name: "Yasmine", last_name: "Benali", email: "yasmine@restaurant.fr", avatar_url: null, job_title: "Chef de salle", hired_at: "2023-01-15", establishment_name: "Le Comptoir Dev" },
+    member: { profile_id: "profile-2", first_name: "Yasmine", last_name: "Benali", email: "yasmine@restaurant.fr", avatar_url: null, job_title: "Chef de salle", hired_at: "2023-01-15", establishment_name: "Le Comptoir Dev", phone: "06 12 34 56 78", contract_type: "cdi", availability: [] },
     kudos: [
       { id: "k1", message: "Excellent service ce soir, les clients ont adoré. Yasmine a su gérer une table difficile avec beaucoup de professionnalisme.", type: "positive", from_name: "Dev Mode", created_at: new Date(Date.now() - 2 * 86400000).toISOString() },
       { id: "k3", message: "Très bonne gestion du rush du vendredi soir, toute l'équipe était bien coordinée.", type: "positive", from_name: "Dev Mode", created_at: new Date(Date.now() - 10 * 86400000).toISOString() },
@@ -53,12 +65,17 @@ const DEV_DATA: Record<string, { member: MemberProfile; kudos: Kudos[]; stats: S
     stats: { score: 68, rank: 1, total_members: 3, delays_this_month: 0, protocols_read: 3, protocols_total: 3 },
   },
   "profile-3": {
-    member: { profile_id: "profile-3", first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null, job_title: "Serveur", hired_at: "2024-06-01", establishment_name: "Le Comptoir Dev" },
+    member: { profile_id: "profile-3", first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null, job_title: "Serveur", hired_at: "2024-06-01", establishment_name: "Le Comptoir Dev", phone: "06 98 76 54 32", contract_type: "extra", availability: [{ day: "Vendredi", period: "Soir", hour_start: "18h", hour_end: "23h" }, { day: "Samedi", period: "Soir", hour_start: "18h", hour_end: "23h" }, { day: "Dimanche", period: "Matin", hour_start: "9h", hour_end: "13h" }] },
     kudos: [
       { id: "k2", message: "Bonne réactivité pendant le rush du samedi. Les clients ont été servis rapidement.", type: "positive", from_name: "Dev Mode", created_at: new Date(Date.now() - 5 * 86400000).toISOString() },
       { id: "k4", message: "Attention à la communication avec la cuisine pendant les périodes chargées.", type: "negative", from_name: "Dev Mode", created_at: new Date(Date.now() - 15 * 86400000).toISOString() },
     ],
     stats: { score: 23, rank: 3, total_members: 3, delays_this_month: 2, protocols_read: 1, protocols_total: 3 },
+  },
+  "profile-4": {
+    member: { profile_id: "profile-4", first_name: "Léa", last_name: "Martin", email: "lea@restaurant.fr", avatar_url: null, job_title: "Serveuse", hired_at: "2024-09-01", establishment_name: "Le Comptoir Dev", phone: "07 11 22 33 44", contract_type: "cdd", availability: [{ day: "Samedi", period: "Matin", hour_start: "9h", hour_end: "14h" }, { day: "Samedi", period: "Après-midi", hour_start: "14h", hour_end: "19h" }, { day: "Dimanche", period: "Matin", hour_start: "9h", hour_end: "13h" }] },
+    kudos: [],
+    stats: { score: 35, rank: 3, total_members: 4, delays_this_month: 0, protocols_read: 2, protocols_total: 3 },
   },
 };
 
@@ -103,20 +120,19 @@ export default function MemberProfilePage() {
       job_title: string | null;
       hired_at: string | null;
       establishment_id: string;
-      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null } | null;
+      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null } | null;
       establishments: { name: string } | null;
     };
 
     const { data: memberDataRaw } = await supabase
       .from("establishment_members")
-      .select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url), establishments(name)")
+      .select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
       .eq("profile_id", profileId)
       .eq("is_active", true)
       .single();
 
     if (!memberDataRaw) { setLoading(false); return; }
     const memberData = memberDataRaw as unknown as MemberRow;
-
     const p = memberData.profiles;
     const est = memberData.establishments;
 
@@ -129,9 +145,9 @@ export default function MemberProfilePage() {
       job_title: memberData.job_title,
       hired_at: memberData.hired_at,
       establishment_name: est?.name ?? "",
+      phone: p?.phone ?? null,
     });
 
-    // Stats
     const estId = memberData.establishment_id;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -201,7 +217,6 @@ export default function MemberProfilePage() {
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
           body { background: #fff !important; color: #09090B !important; }
@@ -215,7 +230,7 @@ export default function MemberProfilePage() {
         }
       `}</style>
 
-      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-4xl">
+      <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-2xl">
         {/* Back + Export */}
         <div className="no-print flex items-center justify-between mb-6">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-dim)" }}>
@@ -228,31 +243,84 @@ export default function MemberProfilePage() {
           </button>
         </div>
 
-        {/* Print header (only shown when printing) */}
-        <div className="hidden" style={{ display: "none" }}>
-          <style>{`@media print { .print-header { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e4e4e7; } }`}</style>
-        </div>
-        <div className="print-header" style={{ display: "none" }}>
-          <p style={{ fontSize: 11, fontFamily: "monospace", letterSpacing: 2, color: "#71717A", textTransform: "uppercase" }}>Fiche de performance Karaf</p>
-          <p style={{ fontSize: 11, fontFamily: "monospace", color: "#71717A" }}>{new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
-        </div>
-
         {/* Hero */}
-        <div className="print-card rounded-2xl p-6 mb-4 flex items-center gap-5"
+        <div className="print-card rounded-2xl p-5 mb-4 flex items-center gap-4"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={64} />
+          <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={60} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="print-text text-xl font-bold" style={{ color: "var(--foreground)" }}>{fullName}</h1>
-              {badgeConfig && <span className="text-2xl">{badgeConfig.emoji}</span>}
+              {badgeConfig && <span className="text-xl">{badgeConfig.emoji}</span>}
             </div>
             {member.job_title && <p className="text-sm mt-0.5" style={{ color: "var(--accent)" }}>{member.job_title}</p>}
-            <div className="flex flex-wrap gap-3 mt-2 text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>
-              <span>{member.establishment_name}</span>
-              {hiredDate && <span>· Depuis {hiredDate}</span>}
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {member.contract_type && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                  style={{ background: member.contract_type === "extra" ? "rgba(139,92,246,0.1)" : "rgba(6,182,212,0.08)", color: member.contract_type === "extra" ? "#8B5CF6" : "var(--accent)" }}>
+                  {CONTRACT_LABELS[member.contract_type] ?? member.contract_type}
+                </span>
+              )}
+              {hiredDate && (
+                <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Depuis {hiredDate}</span>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Coordonnées */}
+        <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid var(--border)" }}>
+          <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Coordonnées</p>
+          </div>
+          <div className="divide-y" style={{ background: "var(--background-elev)", borderColor: "var(--border)" }}>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <Mail size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+              <p className="text-sm" style={{ color: "var(--foreground)" }}>{member.email}</p>
+            </div>
+            {member.phone ? (
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Phone size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                <a href={`tel:${member.phone}`} className="text-sm" style={{ color: "var(--accent)" }}>{member.phone}</a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Phone size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Téléphone non renseigné</p>
+              </div>
+            )}
+            {member.hired_at && (
+              <div className="flex items-center gap-3 px-4 py-3">
+                <Calendar size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                <p className="text-sm" style={{ color: "var(--foreground)" }}>
+                  Arrivé{member.first_name?.endsWith("e") ? "e" : ""} le {new Date(member.hired_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Disponibilités */}
+        {member.availability && member.availability.length > 0 && (
+          <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Disponibilités</p>
+            </div>
+            <div className="p-4 flex flex-wrap gap-2" style={{ background: "var(--background-elev)" }}>
+              {member.availability.map((slot, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                  style={{ background: "rgba(139,92,246,0.07)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                  <div>
+                    <p className="text-[12px] font-medium" style={{ color: "#8B5CF6" }}>{slot.day}</p>
+                    <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                      {slot.period}
+                      {slot.hour_start && slot.hour_end && ` · ${slot.hour_start}–${slot.hour_end}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Score + Stats */}
         {stats && (
@@ -261,13 +329,13 @@ export default function MemberProfilePage() {
               style={{ background: badgeConfig ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${badgeConfig ? "rgba(245,158,11,0.25)" : "var(--border)"}` }}>
               <p className="text-[11px] font-mono uppercase tracking-widest mb-2 print-dim" style={{ color: "var(--foreground-dim)" }}>Score ce mois</p>
               <div className="flex items-end gap-4">
-                <p className="text-5xl font-bold print-text" style={{ color: badgeConfig?.color ?? "var(--foreground)" }}>{stats.score}</p>
-                <div className="pb-1">
+                <p className="text-3xl font-bold print-text" style={{ color: badgeConfig?.color ?? "var(--foreground)" }}>{stats.score}</p>
+                <div className="pb-0.5">
                   <p className="text-sm print-text" style={{ color: "var(--foreground)" }}>
                     {stats.rank}{stats.rank === 1 ? "er" : "ème"} sur {stats.total_members}
                     {badgeConfig && <span className="ml-2 text-[11px] font-mono" style={{ color: badgeConfig.color }}>{badgeConfig.label}</span>}
                   </p>
-                  <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>Score = somme des points gagnés ce mois · protocoles, bravos, défis, bonus</p>
+                  <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>protocoles · bravos · défis · bonus</p>
                 </div>
               </div>
             </div>
@@ -367,10 +435,6 @@ export default function MemberProfilePage() {
           </div>
         )}
 
-        {/* Print footer */}
-        <div style={{ display: "none" }}>
-          <style>{`@media print { .print-footer { display: block !important; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e4e4e7; font-size: 10px; font-family: monospace; color: #71717A; text-align: center; } }`}</style>
-        </div>
         <div className="print-footer" style={{ display: "none" }}>
           Généré par Karaf · {new Date().toLocaleDateString("fr-FR")}
         </div>

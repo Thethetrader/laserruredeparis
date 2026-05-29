@@ -88,6 +88,8 @@ interface DashboardData {
   feedback_items: FeedbackItem[];
   my_confirmed_feedback: string[];
   delays_this_month: number;
+  today_delays: number;
+  today_feedback: number;
   active_challenges: number;
   active_challenges_list: ChallengeItem[];
   unread_mandatory: number;
@@ -159,7 +161,23 @@ const DEV_TASK_STATS: TaskStat[] = [
       { title: "Plonge terminée", done: false, category: "Fermeture" },
     ],
   },
-  { label: "Cette semaine", done: 31, total: 63, period: "week" },
+  {
+    label: "Cette semaine",
+    done: 31,
+    total: 63,
+    period: "week",
+    tasks: [
+      { title: "Ouverture caisse", done: true, category: "Récurrent" },
+      { title: "Contrôle frigos", done: true, category: "Récurrent" },
+      { title: "Briefing équipe", done: true, category: "Récurrent" },
+      { title: "Mise en place salle", done: true, category: "Récurrent" },
+      { title: "Mise en place cuisine", done: false, category: "Récurrent" },
+      { title: "Fermeture caisse", done: false, category: "Récurrent" },
+      { title: "Nettoyage salle", done: false, category: "Récurrent" },
+      { title: "Nettoyage hotte", done: false, category: "Récurrent" },
+      { title: "Plonge terminée", done: false, category: "Récurrent" },
+    ],
+  },
 ];
 
 const DEV_DATA_MANAGER: DashboardData = {
@@ -173,7 +191,7 @@ const DEV_DATA_MANAGER: DashboardData = {
   feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
   feedback_items: DEV_FEEDBACK_ITEMS,
   my_confirmed_feedback: [],
-  delays_this_month: 3, active_challenges: 2, unread_mandatory: 1, unread_total: 2,
+  delays_this_month: 3, today_delays: 1, today_feedback: 2, active_challenges: 2, unread_mandatory: 1, unread_total: 2,
   active_challenges_list: [
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
@@ -192,16 +210,39 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
   feedback_items: DEV_FEEDBACK_ITEMS,
   my_confirmed_feedback: ["f2"],
-  delays_this_month: 2, active_challenges: 2, unread_mandatory: 2, unread_total: 2,
+  delays_this_month: 2, today_delays: 0, today_feedback: 2, active_challenges: 2, unread_mandatory: 2, unread_total: 2,
   active_challenges_list: [
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
   task_stats: [
-    { label: "Aujourd'hui", done: 3, total: 5, period: "today" },
-    { label: "Cette semaine", done: 18, total: 35, period: "week" },
+    {
+      label: "Aujourd'hui",
+      done: 3,
+      total: 5,
+      period: "today",
+      tasks: [
+        { title: "Briefing équipe", done: true, category: "Ouverture" },
+        { title: "Mise en place salle", done: true, category: "Ouverture" },
+        { title: "Mise en place cuisine", done: true, category: "Ouverture" },
+        { title: "Nettoyage salle", done: false, category: "Fermeture" },
+        { title: "Plonge terminée", done: false, category: "Fermeture" },
+      ],
+    },
+    { label: "Cette semaine", done: 18, total: 35, period: "week", tasks: [
+      { title: "Briefing équipe", done: true, category: "Récurrent" },
+      { title: "Mise en place salle", done: true, category: "Récurrent" },
+      { title: "Mise en place cuisine", done: true, category: "Récurrent" },
+      { title: "Nettoyage salle", done: false, category: "Récurrent" },
+      { title: "Plonge terminée", done: false, category: "Récurrent" },
+    ]},
   ],
 };
+
+const DEV_TODAY_FEEDBACK: FeedbackItem[] = [
+  { id: "ft1", category: "compliment", content: "Table 4 ravie du service, a demandé à féliciter le serveur.", table_number: "4", created_at: new Date(Date.now() - 3600000).toISOString(), confirmation_count: 0 },
+  { id: "ft2", category: "complaint", content: "Plat servi froid à la table 7, client mécontent.", table_number: "7", created_at: new Date(Date.now() - 7200000).toISOString(), confirmation_count: 1 },
+];
 
 export default function DashboardPage() {
   const supabase = createClient();
@@ -308,10 +349,19 @@ export default function DashboardPage() {
       },
     ];
 
+    const todayStart = now.toISOString().split("T")[0];
+    const todayDelays = delays.filter(d => {
+      const delay = d as unknown as { employee_id: string; shift_date?: string };
+      return delay.shift_date === todayStart;
+    }).length;
+    const todayFeedbackCount = rawFeedback.filter(f => f.created_at.startsWith(todayStart)).length;
+
     setData({
       role: memberData.role, my_profile_id: user.id, my_first_name: myFirstName, establishment_id: estId,
       protocols, leaderboard, feedback_summary: fbSummary, feedback_items: feedbackItems, my_confirmed_feedback: myConfirmed,
       delays_this_month: delays.filter(d => d.employee_id === user.id).length,
+      today_delays: todayDelays,
+      today_feedback: todayFeedbackCount,
       active_challenges: challengesRes.data?.length ?? 0,
       active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
@@ -531,8 +581,8 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
-          { icon: Clock, value: data.delays_this_month, label: "Retards", warn: data.delays_this_month > 3, href: "/delays" },
-          { icon: MessageSquare, value: data.feedback_summary.total, label: "Avis clients", warn: false, href: "/customer-feedback" },
+          { icon: Clock, value: data.today_delays, label: "Retards aujourd'hui", warn: data.today_delays > 0, href: "/delays" },
+          { icon: MessageSquare, value: data.today_feedback, label: "Avis clients aujourd'hui", warn: false, href: "/customer-feedback" },
           { icon: Trophy, value: data.active_challenges, label: "Défis actifs", warn: false, href: "/challenges" },
           { icon: BookOpen, value: data.leaderboard.reduce((s, m) => s + Math.max(0, m.protocols_total - m.protocols_read), 0), label: "Lectures en attente", warn: true, href: "/protocols" },
         ].map(({ icon: Icon, value, label, warn, href }) => (
@@ -828,6 +878,9 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set(data.my_confirmed_feedback));
+  const [confirmCounts, setConfirmCounts] = useState<Record<string, number>>(
+    Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
+  );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
 
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
@@ -861,79 +914,31 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const todayPct = todayStat && todayStat.total > 0 ? Math.round((todayStat.done / todayStat.total) * 100) : 0;
   const todayAllDone = todayStat ? todayStat.done >= todayStat.total && todayStat.total > 0 : false;
 
-  const QUICK_ACTIONS = [
-    {
-      href: "/protocols",
-      icon: BookOpen,
-      title: "Protocoles",
-      sub: data.unread_mandatory > 0 ? `${data.unread_mandatory} à lire obligatoirement` : "Tous à jour ✓",
-      color: "rgba(6,182,212,0.1)",
-      iconColor: "var(--accent)",
-      badge: data.unread_mandatory > 0 ? data.unread_mandatory : null,
-      badgeColor: "var(--danger)",
-    },
-    {
-      onClick: () => setModal("feedback"),
-      icon: MessageSquare,
-      title: "Retour client",
-      sub: "Signaler un compliment, plainte ou incident",
-      color: "rgba(139,92,246,0.1)",
-      iconColor: "#8B5CF6",
-    },
-    {
-      href: "/me/tasks",
-      icon: CheckCircle2,
-      title: "Mes tâches",
-      sub: todayStat ? `${todayStat.done}/${todayStat.total} aujourd'hui` : "Voir mes tâches",
-      color: todayAllDone ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)",
-      iconColor: todayAllDone ? "var(--success)" : "var(--accent)",
-      gauge: todayStat ? { done: todayStat.done, total: todayStat.total, pct: todayPct, allDone: todayAllDone } : null,
-      gaugePopup: todayStat,
-    },
-    {
-      href: "/challenges",
-      icon: Trophy,
-      title: "Défis",
-      sub: data.active_challenges > 0 ? `${data.active_challenges} défi${data.active_challenges > 1 ? "s" : ""} en cours` : "Aucun défi actif",
-      color: "rgba(245,158,11,0.1)",
-      iconColor: "#F59E0B",
-    },
-    {
-      href: "/scoring",
-      icon: TrendingUp,
-      title: "Classement",
-      sub: myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : "Voir le classement",
-      color: "rgba(245,158,11,0.08)",
-      iconColor: myBadge?.color ?? "var(--foreground-dim)",
-    },
-    {
-      href: "/scoring",
-      icon: Star,
-      title: "Mon score",
-      sub: myStats ? `${myStats.score} pts ce mois` : "Voir mon score",
-      color: myBadge ? `rgba(245,158,11,0.1)` : "rgba(161,161,170,0.08)",
-      iconColor: myBadge?.color ?? "var(--foreground-dim)",
-      score: myStats?.score,
-      badge: myBadge?.rank ? `#${myBadge.rank}` : null,
-      badgeColor: myBadge?.color,
-    },
-  ] as Array<{
-    href?: string; onClick?: () => void; icon: React.ElementType; title: string; sub: string;
-    color: string; iconColor: string; badge?: number | string | null; badgeColor?: string;
-    gauge?: { done: number; total: number; pct: number; allDone: boolean } | null;
-    gaugePopup?: TaskStat | null; score?: number;
-  }>;
+  const toggleConfirm = async (feedbackId: string) => {
+    const isConfirmed = confirmedIds.has(feedbackId);
+    const delta = isConfirmed ? -1 : 1;
+    setConfirmedIds(prev => { const next = new Set(prev); if (isConfirmed) next.delete(feedbackId); else next.add(feedbackId); return next; });
+    setConfirmCounts(prev => ({ ...prev, [feedbackId]: (prev[feedbackId] ?? 0) + delta }));
+    if (!DEV_MODE) {
+      if (isConfirmed) {
+        await supabase.from("feedback_confirmations").delete().eq("profile_id", data.my_profile_id).eq("feedback_id", feedbackId);
+      } else {
+        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: data.my_profile_id, feedback_id: feedbackId });
+      }
+    }
+  };
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-2xl">
+    <div className="px-4 py-8 lg:px-10 max-w-7xl">
       {/* Greeting */}
       <div className="mb-8">
-        <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
-          {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-        </p>
+        <MonoLabel size="xs" className="mb-2 block">Mon tableau de bord</MonoLabel>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
           {greeting}{data.my_first_name ? `, ${data.my_first_name}` : ""} 👋
         </h1>
+        <p className="text-sm mt-1 capitalize" style={{ color: "var(--foreground-dim)" }}>
+          {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+        </p>
       </div>
 
       {successMsg && (
@@ -954,52 +959,240 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </a>
       )}
 
-      {/* Quick action cards */}
-      <div className="space-y-2.5">
-        {QUICK_ACTIONS.map((action, i) => {
-          const Icon = action.icon;
-          const content = (
-            <>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: action.color }}>
-                <Icon size={16} style={{ color: action.iconColor }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{action.title}</p>
-                  {action.badge !== null && action.badge !== undefined && (
-                    <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full" style={{ background: action.badgeColor ? `${action.badgeColor}20` : "var(--background-soft)", color: action.badgeColor ?? "var(--foreground-dim)" }}>
-                      {action.badge}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{action.sub}</p>
-                {action.gauge && (
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `${action.gauge.pct}%`, background: action.gauge.allDone ? "var(--success)" : "var(--accent)" }} />
-                    </div>
-                    <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{action.gauge.pct}%</span>
-                  </div>
-                )}
-              </div>
-              <ChevronRight size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-            </>
-          );
-          const cls = "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-opacity hover:opacity-75";
-          const style = { background: "var(--background-elev)", border: "1px solid var(--border)" };
+      {/* 2 colonnes */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
 
-          if (action.gauge && action.gaugePopup) {
-            return (
-              <button key={i} onClick={() => setTaskGaugePopup(action.gaugePopup!)} className={cls} style={style}>
-                {content}
+        {/* Colonne gauche */}
+        <div className="space-y-6">
+
+          {/* Tâches — jauge */}
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={14} style={{ color: todayAllDone ? "var(--success)" : "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Mes tâches</p>
+              </div>
+              <a href="/me/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+            </div>
+            <div className="p-5 space-y-4" style={{ background: "var(--background-elev)" }}>
+              {data.task_stats.map(stat => {
+                const pct = stat.total > 0 ? Math.round((stat.done / stat.total) * 100) : 0;
+                const allDone = stat.done >= stat.total && stat.total > 0;
+                const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
+                return (
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
+                        <ChevronRight size={12} style={{ color: "var(--foreground-dim)" }} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-mono" style={{ color: allDone ? "var(--success)" : "var(--foreground-dim)" }}>{stat.done}/{stat.total}</span>
+                        <span className="text-[11px] font-mono font-semibold" style={{ color }}>{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="rounded-full overflow-hidden" style={{ height: 6, background: "var(--background-soft)" }}>
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </button>
+                );
+              })}
+              {data.task_stats.length === 0 && (
+                <p className="text-sm text-center py-4" style={{ color: "var(--foreground-dim)" }}>Aucune tâche assignée</p>
+              )}
+            </div>
+          </div>
+
+          {/* Retours clients récents */}
+          {data.feedback_items.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <MessageSquare size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setModal("feedback")} className="text-[11px] px-2.5 py-1 rounded-md font-medium" style={{ background: "rgba(139,92,246,0.1)", color: "#8B5CF6" }}>+ Signaler</button>
+                  <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+                </div>
+              </div>
+              <div style={{ background: "var(--background-elev)" }}>
+                {data.feedback_items.slice(0, 3).map((item, i) => {
+                  const meta = CATEGORY_META[item.category];
+                  const confirmed = confirmedIds.has(item.id);
+                  const count = confirmCounts[item.id] ?? 0;
+                  return (
+                    <div key={item.id} className="px-5 py-3.5" style={{ borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>{meta.label}</span>
+                        {item.table_number && <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
+                        <span className="text-[11px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                      </div>
+                      <p className="text-[13px] leading-snug mb-2" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                      <button onClick={() => toggleConfirm(item.id)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md transition-all" style={{ background: confirmed ? meta.bg : "var(--background-soft)", color: confirmed ? meta.color : "var(--foreground-dim)", border: `1px solid ${confirmed ? meta.border : "var(--border)"}` }}>
+                        <ThumbsUp size={10} fill={confirmed ? "currentColor" : "none"} />
+                        {confirmed ? "Confirmé" : "Moi aussi"}
+                        {count > 0 && <span className="opacity-70">· {count}</span>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Actions rapides */}
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-5 py-4" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Actions rapides</p>
+            </div>
+            <div className="p-4 space-y-2" style={{ background: "var(--background-elev)" }}>
+              <button onClick={() => setModal("delay")} className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
+                  <Clock size={14} style={{ color: "var(--warning)" }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Déclarer un retard</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Signale un retard ou une absence</p>
+                </div>
+                <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
               </button>
-            );
-          }
-          if (action.onClick) {
-            return <button key={i} onClick={action.onClick} className={cls} style={style}>{content}</button>;
-          }
-          return <a key={i} href={action.href!} className={cls} style={style}>{content}</a>;
-        })}
+              <button onClick={() => setModal("feedback")} className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
+                  <MessageSquare size={14} style={{ color: "#8B5CF6" }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
+                </div>
+                <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Colonne droite */}
+        <div className="space-y-6">
+
+          {/* Score card compact */}
+          <div className="rounded-xl p-5" style={{ background: myBadge ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score</p>
+              {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={24} />}
+            </div>
+            <div className="flex items-end gap-3 mb-3">
+              <p className="text-4xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
+                {myStats?.score ?? "—"}
+              </p>
+              <p className="text-[12px] pb-0.5" style={{ color: "var(--foreground-dim)" }}>
+                {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : ""}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
+                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Retards</p>
+                <p className="text-lg font-semibold" style={{ color: (myStats?.delays_count ?? 0) === 0 ? "var(--success)" : "var(--warning)" }}>
+                  {myStats?.delays_count ?? 0}
+                </p>
+              </div>
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
+                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
+                <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+                  {myStats?.protocols_read ?? 0}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{myStats?.protocols_total ?? 0}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Classement */}
+          {data.leaderboard.length > 1 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement</p>
+                </div>
+                <a href="/scoring" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+              </div>
+              {data.leaderboard.slice(0, 3).map((member, i) => {
+                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
+                const isMe = member.profile_id === data.my_profile_id;
+                return (
+                  <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
+                    style={{ background: isMe ? "rgba(139,92,246,0.04)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
+                    {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
+                    <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
+                      {member.name}{isMe ? " (toi)" : ""}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Star size={10} style={{ color: b?.color ?? "var(--foreground-dim)" }} />
+                      <p className="text-sm font-semibold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Défis en cours */}
+          {data.active_challenges_list.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <Trophy size={14} style={{ color: "#F59E0B" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis en cours</p>
+                </div>
+                <a href="/challenges" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+              </div>
+              {data.active_challenges_list.map((c, i) => {
+                const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
+                const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+                return (
+                  <div key={c.id} className="px-4 py-3.5" style={{ background: "var(--background-elev)", borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
+                      {daysLeft !== null && <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>{daysLeft}j</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#F59E0B" }} />
+                      </div>
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Protocoles */}
+          {data.protocols.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
+                </div>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+              </div>
+              {data.protocols.slice(0, 3).map((p, i) => (
+                <a key={p.id} href="/protocols" className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
+                  style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                    {p.is_read ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                    <p className="text-[11px]" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>{p.is_read ? "Lu ✓" : "Non lu"}</p>
+                  </div>
+                  <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                </a>
+              ))}
+            </div>
+          )}
+
+        </div>
       </div>
 
       {/* Delay modal */}
