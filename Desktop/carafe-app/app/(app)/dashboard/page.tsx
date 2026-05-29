@@ -925,7 +925,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
   const [delayMinutes, setDelayMinutes] = useState("15");
   const [delayReason, setDelayReason] = useState<"transport" | "personal" | "health" | "other">("transport");
-  const [fbCategory, setFbCategory] = useState<FeedbackCategory>("compliment");
+  const [fbCategory, setFbCategory] = useState<FeedbackCategory>("complaint");
   const [fbContent, setFbContent] = useState("");
   const [fbTable, setFbTable] = useState("");
 
@@ -1316,10 +1316,9 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
                 <select value={fbCategory} onChange={e => setFbCategory(e.target.value as FeedbackCategory)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                  <option value="complaint">Plainte</option>
                   <option value="compliment">Compliment</option>
-                  <option value="complaint">Réclamation</option>
                   <option value="suggestion">Suggestion</option>
-                  <option value="incident">Incident</option>
                 </select>
               </div>
               <div>
