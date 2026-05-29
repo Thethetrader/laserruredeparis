@@ -199,9 +199,15 @@ const DEV_DATA_MANAGER: DashboardData = {
   task_stats: DEV_TASK_STATS,
 };
 
+const DEV_PROTOCOLS_EMPLOYEE: Protocol[] = [
+  { id: "p1", title: "Normes HACCP Températures", is_mandatory: true, is_read: false, read_count: 2, total_members: 3, content: "Contrôler chaque frigo au thermomètre sonde avant le service.\n\n• Frigos 1 & 2 : 2°C – 4°C\n• Congélateur : -18°C max\n• Zone chaude : +63°C min\n\nSi hors norme : alerter immédiatement le responsable et ne pas utiliser les produits. Consigner l'incident dans le cahier HACCP." },
+  { id: "p2", title: "Procédure ouverture salle",  is_mandatory: true, is_read: false, read_count: 1, total_members: 3, content: "1. Allumer les lumières et la climatisation\n2. Vérifier la propreté de toutes les tables\n3. Dresser les couverts selon le plan de salle\n4. Remplir les carafes d'eau et les moulins à sel/poivre\n5. Vérifier la carte et les suggestions du jour avec le chef\n6. Briefing équipe 15 min avant l'ouverture" },
+  { id: "p3", title: "Gestion des allergènes",     is_mandatory: true, is_read: false, read_count: 0, total_members: 3, content: "Les 14 allergènes majeurs à connaître :\n\nGluten · Crustacés · Œufs · Poissons · Arachides · Soja · Lait · Fruits à coque · Céleri · Moutarde · Graines de sésame · Anhydride sulfureux · Lupin · Mollusques\n\nEn cas de demande client :\n1. Consulter la fiche allergènes en cuisine\n2. Ne jamais donner une réponse incertaine\n3. Contacter le chef en cas de doute\n4. Proposer une alternative sûre si possible" },
+];
+
 const DEV_DATA_EMPLOYEE: DashboardData = {
   role: "employee", my_profile_id: "profile-3", my_first_name: "Rayan", establishment_id: "dev-establishment",
-  protocols: DEV_PROTOCOLS,
+  protocols: DEV_PROTOCOLS_EMPLOYEE,
   leaderboard: [
     { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
     { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
@@ -210,7 +216,7 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
   feedback_items: DEV_FEEDBACK_ITEMS,
   my_confirmed_feedback: ["f2"],
-  delays_this_month: 2, today_delays: 0, today_feedback: 2, active_challenges: 2, unread_mandatory: 2, unread_total: 2,
+  delays_this_month: 2, today_delays: 0, today_feedback: 2, active_challenges: 2, unread_mandatory: 3, unread_total: 3,
   active_challenges_list: [
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
