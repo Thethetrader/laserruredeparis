@@ -1259,20 +1259,6 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                 {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : ""}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
-                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Retards</p>
-                <p className="text-lg font-semibold" style={{ color: (myStats?.delays_count ?? 0) === 0 ? "var(--success)" : "var(--warning)" }}>
-                  {myStats?.delays_count === 0 ? "✓ 0" : myStats?.delays_count ?? 0}
-                </p>
-              </div>
-              <div className="rounded-lg px-3 py-2" style={{ background: "var(--background-soft)" }}>
-                <p className="text-[10px] font-mono uppercase mb-0.5" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
-                <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
-                  {myStats?.protocols_read ?? 0}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{myStats?.protocols_total ?? 0}</span>
-                </p>
-              </div>
-            </div>
           </div>
 
         </div>
