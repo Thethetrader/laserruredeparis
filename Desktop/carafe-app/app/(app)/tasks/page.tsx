@@ -330,8 +330,10 @@ export default function TasksManagerPage() {
 
   return (
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <MonoLabel size="xs">Tâches du jour</MonoLabel>
+      <div className="mb-6">
+        <MonoLabel size="xs" className="mb-1 block">Tâches du jour</MonoLabel>
+        <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Tâches</h1>
         {isManager && (
           <div className="flex items-center gap-2">
             <Link
@@ -352,6 +354,7 @@ export default function TasksManagerPage() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Stats */}
