@@ -2,7 +2,6 @@ import CustomCursor from "@/components/landing/CustomCursor";
 import Navigation from "@/components/landing/sections/Navigation";
 import HeroSection from "@/components/landing/sections/HeroSection";
 import ProblemSection from "@/components/landing/sections/ProblemSection";
-import SolutionSection from "@/components/landing/sections/SolutionSection";
 import PillarsSection from "@/components/landing/sections/PillarsSection";
 import AutomationSection from "@/components/landing/sections/AutomationSection";
 import ShowcaseSection from "@/components/landing/sections/ShowcaseSection";
@@ -20,7 +19,6 @@ export default function Home() {
       <main>
         <HeroSection />
         <ProblemSection />
-        <SolutionSection />
         <PillarsSection />
         <AutomationSection />
         <ShowcaseSection />
