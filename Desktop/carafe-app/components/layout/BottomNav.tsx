@@ -10,10 +10,9 @@ const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const managerNav = [
   { href: "/dashboard",         icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tasks",             icon: ClipboardList,   label: "Tâches" },
-  { href: "/scoring",           icon: Zap,             label: "Score" },
+  { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/team",              icon: Users,           label: "Équipe" },
-  { href: "/schedule",          icon: CalendarDays,    label: "RDV" },
 ];
 
 const employeeNav = [

@@ -423,6 +423,10 @@ function TaskGaugePopup({ stats, onClose }: { stats: TaskStat; onClose: () => vo
   const tasks = stats.tasks ?? [];
   const done = tasks.filter(t => t.done);
   const todo = tasks.filter(t => !t.done);
+  const pct = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+  const allDone = stats.done >= stats.total && stats.total > 0;
+  const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
@@ -430,48 +434,67 @@ function TaskGaugePopup({ stats, onClose }: { stats: TaskStat; onClose: () => vo
           <div className="flex items-center gap-2">
             <BarChart2 size={14} style={{ color: "var(--accent)" }} />
             <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avancement · {stats.label}</p>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: stats.done >= stats.total ? "rgba(16,185,129,0.12)" : "rgba(6,182,212,0.1)", color: stats.done >= stats.total ? "var(--success)" : "var(--accent)" }}>
-              {stats.done}/{stats.total}
-            </span>
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
         </div>
-        <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 60px)" }}>
-          {todo.length > 0 && (
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire</p>
-              <div className="space-y-1.5">
-                {todo.map((t, i) => (
-                  <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                    <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
-                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+
+        {/* Gauge visuelle */}
+        <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-4xl font-bold" style={{ color }}>{pct}%</p>
+            <div className="text-right">
+              <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>{stats.done}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{stats.total}</span></p>
+              <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>tâches validées</p>
             </div>
+          </div>
+          <div className="rounded-full overflow-hidden" style={{ height: 8, background: "var(--background-soft)" }}>
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+          </div>
+          {allDone && (
+            <p className="text-[12px] mt-2 text-center" style={{ color: "var(--success)" }}>✓ Toutes les tâches sont faites !</p>
           )}
-          {done.length > 0 && (
-            <div className="px-4 pt-3 pb-4">
-              <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Terminé</p>
-              <div className="space-y-1.5">
-                {done.map((t, i) => (
-                  <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
-                    <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
-                    <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+        </div>
+
+        <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 200px)" }}>
+          {tasks.length > 0 ? (
+            <>
+              {todo.length > 0 && (
+                <div className="px-4 pt-4 pb-2">
+                  <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire ({todo.length})</p>
+                  <div className="space-y-1.5">
+                    {todo.map((t, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                        <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
+                          <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {tasks.length === 0 && (
-            <div className="px-5 py-12 text-center">
-              <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucune tâche pour le moment</p>
+                </div>
+              )}
+              {done.length > 0 && (
+                <div className="px-4 pt-3 pb-4">
+                  <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Terminé ({done.length})</p>
+                  <div className="space-y-1.5">
+                    {done.map((t, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                        <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
+                        <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Résumé {stats.label.toLowerCase()} · {stats.done} tâches validées sur {stats.total}</p>
             </div>
           )}
         </div>
+
         <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
           <a href="/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
             Voir toutes les tâches →
@@ -544,11 +567,11 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.period} onClick={() => stat.tasks ? setTaskGaugePopup(stat) : undefined} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
-                        {stat.tasks && <ChevronRight size={12} style={{ color: "var(--foreground-dim)" }} />}
+                        <ChevronRight size={12} style={{ color: "var(--foreground-dim)" }} />
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-mono" style={{ color: allDone ? "var(--success)" : "var(--foreground-dim)" }}>

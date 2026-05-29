@@ -18,6 +18,8 @@ type ContractType = "cdi" | "cdd" | "extra" | null;
 interface AvailabilitySlot {
   day: string;
   period: string;
+  hour_start?: string;
+  hour_end?: string;
 }
 
 interface TeamMember {
@@ -38,6 +40,7 @@ interface TeamMember {
 
 const DAYS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const PERIODS_FR = ["Matin", "Après-midi", "Soir"];
+const HOURS_FR = ["7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"];
 const CONTRACT_LABELS: Record<string, string> = { cdi: "CDI", cdd: "CDD", extra: "Extra" };
 
 interface Kudos {
@@ -65,8 +68,8 @@ const ROLE_STYLE: Record<UserRole, { bg: string; color: string }> = {
 const DEV_MEMBERS: TeamMember[] = [
   { id: "m1", profile_id: DEV_PROFILE_ID, role: "owner", job_title: "Responsable", hired_at: "2022-03-01", is_active: true, first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, contract_type: "cdi", phone: null, availability: [] },
   { id: "m2", profile_id: "profile-2", role: "manager", job_title: "Chef de salle", hired_at: "2023-01-15", is_active: true, first_name: "Yasmine", last_name: "Benali", email: "yasmine@restaurant.fr", avatar_url: null, contract_type: "cdi", phone: "06 12 34 56 78", availability: [] },
-  { id: "m3", profile_id: "profile-3", role: "employee", job_title: "Serveur", hired_at: "2024-06-01", is_active: true, first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null, contract_type: "extra", phone: "06 98 76 54 32", availability: [{ day: "Vendredi", period: "Soir" }, { day: "Samedi", period: "Soir" }, { day: "Dimanche", period: "Matin" }, { day: "Dimanche", period: "Après-midi" }] },
-  { id: "m4", profile_id: "profile-4", role: "employee", job_title: "Serveuse", hired_at: "2024-09-01", is_active: true, first_name: "Léa", last_name: "Martin", email: "lea@restaurant.fr", avatar_url: null, contract_type: "cdd", phone: "07 11 22 33 44", availability: [{ day: "Samedi", period: "Matin" }, { day: "Samedi", period: "Après-midi" }, { day: "Dimanche", period: "Matin" }] },
+  { id: "m3", profile_id: "profile-3", role: "employee", job_title: "Serveur", hired_at: "2024-06-01", is_active: true, first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null, contract_type: "extra", phone: "06 98 76 54 32", availability: [{ day: "Vendredi", period: "Soir", hour_start: "18h", hour_end: "23h" }, { day: "Samedi", period: "Soir", hour_start: "18h", hour_end: "23h" }, { day: "Dimanche", period: "Matin", hour_start: "9h", hour_end: "13h" }] },
+  { id: "m4", profile_id: "profile-4", role: "employee", job_title: "Serveuse", hired_at: "2024-09-01", is_active: true, first_name: "Léa", last_name: "Martin", email: "lea@restaurant.fr", avatar_url: null, contract_type: "cdd", phone: "07 11 22 33 44", availability: [{ day: "Samedi", period: "Matin", hour_start: "9h", hour_end: "14h" }, { day: "Samedi", period: "Après-midi", hour_start: "14h", hour_end: "19h" }, { day: "Dimanche", period: "Matin", hour_start: "9h", hour_end: "13h" }] },
 ];
 
 const DEV_KUDOS: Kudos[] = [
@@ -113,6 +116,9 @@ export default function TeamPage() {
   const [inviteContract, setInviteContract] = useState<ContractType>(null);
   const [inviteAvailDays, setInviteAvailDays] = useState<string[]>([]);
   const [inviteAvailPeriods, setInviteAvailPeriods] = useState<string[]>([]);
+  const [inviteAvailHourStart, setInviteAvailHourStart] = useState("9h");
+  const [inviteAvailHourEnd, setInviteAvailHourEnd] = useState("18h");
+  const [showAvailability, setShowAvailability] = useState(false);
 
   useEffect(() => {
     if (DEV_MODE) { setRole(devRole); setMembers(DEV_MEMBERS); setLoading(false); return; }
@@ -435,37 +441,83 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              {/* Disponibilités (extras) */}
-              {inviteContract === "extra" && (
-                <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Jours disponibles</label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {DAYS_FR.map(d => {
-                      const active = inviteAvailDays.includes(d);
-                      return (
-                        <button key={d} onClick={() => setInviteAvailDays(prev => active ? prev.filter(x => x !== d) : [...prev, d])}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                          style={{ background: active ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
-                          {d.slice(0, 3)}
-                        </button>
-                      );
-                    })}
+              {/* Disponibilités — visible pour tous */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAvailability(v => !v)}
+                  className="w-full flex items-center justify-between py-2"
+                >
+                  <label className="text-[11px] font-mono uppercase tracking-widest cursor-pointer" style={{ color: "var(--foreground-dim)" }}>
+                    Disponibilités <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
+                  </label>
+                  <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: showAvailability ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: showAvailability ? "#8B5CF6" : "var(--foreground-dim)" }}>
+                    {showAvailability ? "Masquer ▲" : "Ajouter ▼"}
+                  </span>
+                </button>
+
+                {showAvailability && (
+                  <div className="mt-2 p-3 rounded-xl space-y-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                    {/* Jours */}
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Jours</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {DAYS_FR.map(d => {
+                          const active = inviteAvailDays.includes(d);
+                          return (
+                            <button key={d} type="button" onClick={() => setInviteAvailDays(prev => active ? prev.filter(x => x !== d) : [...prev, d])}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                              style={{ background: active ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                              {d.slice(0, 3)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Périodes */}
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Créneaux</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PERIODS_FR.map(p => {
+                          const active = inviteAvailPeriods.includes(p);
+                          return (
+                            <button key={p} type="button" onClick={() => setInviteAvailPeriods(prev => active ? prev.filter(x => x !== p) : [...prev, p])}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                              style={{ background: active ? "rgba(139,92,246,0.15)" : "var(--background-elev)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.35)" : "1px solid var(--border)" }}>
+                              {p}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Heures */}
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Horaires</p>
+                      <div className="flex items-center gap-2">
+                        <select value={inviteAvailHourStart} onChange={e => setInviteAvailHourStart(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                          {HOURS_FR.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                        <span className="text-sm" style={{ color: "var(--foreground-dim)" }}>→</span>
+                        <select value={inviteAvailHourEnd} onChange={e => setInviteAvailHourEnd(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                          {HOURS_FR.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                      {inviteAvailHourStart && inviteAvailHourEnd && (
+                        <p className="text-[11px] mt-1.5" style={{ color: "#8B5CF6" }}>
+                          Disponible de {inviteAvailHourStart} à {inviteAvailHourEnd}
+                          {inviteAvailDays.length > 0 && ` · ${inviteAvailDays.join(", ")}`}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Horaires</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PERIODS_FR.map(p => {
-                      const active = inviteAvailPeriods.includes(p);
-                      return (
-                        <button key={p} onClick={() => setInviteAvailPeriods(prev => active ? prev.filter(x => x !== p) : [...prev, p])}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                          style={{ background: active ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
-                          {p}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
 
               <button onClick={sendInvite} disabled={inviting}
                 className="w-full py-2.5 text-sm font-medium rounded-md transition-opacity flex items-center justify-center gap-2"
@@ -550,10 +602,13 @@ export default function TeamPage() {
                           <Star size={10} fill="#F59E0B" /> {positiveCount} bravo{positiveCount > 1 ? "s" : ""}
                         </button>
                       )}
-                      {member.contract_type === "extra" && member.availability && member.availability.length > 0 && (
+                      {member.availability && member.availability.length > 0 && (
                         <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                          {member.availability.slice(0, 2).map(s => `${s.day.slice(0, 3)} ${s.period.slice(0, 3).toLowerCase()}`).join(" · ")}
-                          {member.availability.length > 2 && " …"}
+                          {member.availability.slice(0, 2).map(s => {
+                            const h = s.hour_start && s.hour_end ? ` ${s.hour_start}-${s.hour_end}` : "";
+                            return `${s.day.slice(0, 3)}${h}`;
+                          }).join(" · ")}
+                          {member.availability.length > 2 && ` +${member.availability.length - 2}`}
                         </span>
                       )}
                     </div>
