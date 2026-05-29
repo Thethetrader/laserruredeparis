@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
@@ -74,7 +74,7 @@ interface TaskStat {
   done: number;
   total: number;
   period: "today" | "week";
-  tasks?: { title: string; done: boolean; category: string }[];
+  tasks?: { title: string; done: boolean; category: string; id?: string; requires_photo?: boolean }[];
 }
 
 interface DashboardData {
@@ -150,15 +150,15 @@ const DEV_TASK_STATS: TaskStat[] = [
     total: 9,
     period: "today",
     tasks: [
-      { title: "Ouverture caisse", done: true, category: "Ouverture" },
-      { title: "Contrôle frigos", done: true, category: "Ouverture" },
-      { title: "Briefing équipe", done: true, category: "Ouverture" },
-      { title: "Mise en place salle", done: true, category: "Ouverture" },
-      { title: "Mise en place cuisine", done: true, category: "Ouverture" },
-      { title: "Fermeture caisse", done: false, category: "Fermeture" },
-      { title: "Nettoyage salle", done: false, category: "Fermeture" },
-      { title: "Nettoyage hotte", done: false, category: "Fermeture" },
-      { title: "Plonge terminée", done: false, category: "Fermeture" },
+      { id: "t1", title: "Ouverture caisse", done: true, category: "Ouverture", requires_photo: true },
+      { id: "t2", title: "Contrôle frigos", done: true, category: "Ouverture", requires_photo: true },
+      { id: "t3", title: "Briefing équipe", done: true, category: "Ouverture", requires_photo: false },
+      { id: "t4", title: "Mise en place salle", done: true, category: "Ouverture", requires_photo: false },
+      { id: "t5", title: "Mise en place cuisine", done: true, category: "Ouverture", requires_photo: false },
+      { id: "t6", title: "Fermeture caisse", done: false, category: "Fermeture", requires_photo: true },
+      { id: "t7", title: "Nettoyage salle", done: false, category: "Fermeture", requires_photo: false },
+      { id: "t8", title: "Nettoyage hotte", done: false, category: "Fermeture", requires_photo: true },
+      { id: "t9", title: "Plonge terminée", done: false, category: "Fermeture", requires_photo: false },
     ],
   },
   {
@@ -289,7 +289,7 @@ export default function DashboardPage() {
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
-      supabase.from("task_templates").select("id, title, category, is_active").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("task_templates").select("id, title, category, is_active, requires_photo").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
     ]);
 
@@ -300,7 +300,7 @@ export default function DashboardPage() {
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
-    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean }>;
+    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean }>;
     const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
 
     const delayCounts: Record<string, number> = {};
@@ -351,7 +351,7 @@ export default function DashboardPage() {
         done: todayDone,
         total: rawTasks.length,
         period: "today",
-        tasks: rawTasks.map(t => ({ title: t.title, done: completedTodayIds.has(t.id), category: t.category })),
+        tasks: rawTasks.map(t => ({ id: t.id, title: t.title, done: completedTodayIds.has(t.id), category: t.category, requires_photo: t.requires_photo })),
       },
     ];
 
@@ -385,7 +385,9 @@ export default function DashboardPage() {
   }
 
   const isManager = data.role === "owner" || data.role === "manager";
-  return isManager ? <ManagerDashboard data={data} /> : <EmployeeDashboard data={data} />;
+  return isManager
+    ? <ManagerDashboard data={data} onTaskValidated={loadDashboard} />
+    : <EmployeeDashboard data={data} onTaskValidated={loadDashboard} />;
 }
 
 /* ─── PROTOCOL CREATION MODAL ───────────────────────── */
@@ -475,94 +477,216 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
 }
 
 /* ─── TASK GAUGE POPUP ──────────────────────────────── */
-function TaskGaugePopup({ stats, onClose }: { stats: TaskStat; onClose: () => void }) {
-  const tasks = stats.tasks ?? [];
-  const done = tasks.filter(t => t.done);
-  const todo = tasks.filter(t => !t.done);
-  const pct = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
-  const allDone = stats.done >= stats.total && stats.total > 0;
+function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidated }: {
+  stats: TaskStat;
+  onClose: () => void;
+  establishmentId: string;
+  profileId: string;
+  onValidated: () => void;
+}) {
+  const [taskList, setTaskList] = useState(stats.tasks ?? []);
+  const todo = taskList.filter(t => !t.done);
+  const done = taskList.filter(t => t.done);
+  const localDone = done.length;
+  const total = taskList.length || stats.total;
+  const pct = total > 0 ? Math.round((localDone / total) * 100) : 0;
+  const allDone = localDone >= total && total > 0;
   const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
 
+  const [validating, setValidating] = useState<{ id: string; title: string; requiresPhoto: boolean } | null>(null);
+  const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const canValidate = stats.period === "today";
+
+  async function submitValidation() {
+    if (!validating) return;
+    setSubmitting(true);
+    const today = new Date().toISOString().split("T")[0];
+
+    if (DEV_MODE) {
+      setTaskList(prev => prev.map(t => t.id === validating.id ? { ...t, done: true } : t));
+      setValidating(null);
+      setNotes("");
+      setPhoto(null);
+      setSubmitting(false);
+      onValidated();
+      return;
+    }
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSubmitting(false); return; }
+
+    let photoUrl: string | null = null;
+    if (photo) {
+      const fileName = `${establishmentId}/${today}/${validating.id}-${Date.now()}.${photo.name.split(".").pop()}`;
+      const { data: uploadData } = await supabase.storage.from("task-photos").upload(fileName, photo);
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from("task-photos").getPublicUrl(fileName);
+        photoUrl = urlData.publicUrl;
+      }
+    }
+
+    await supabase.from("task_completions").insert({
+      establishment_id: establishmentId,
+      task_template_id: validating.id,
+      validated_by: user.id,
+      service_date: today,
+      photo_url: photoUrl,
+      notes: notes || null,
+      is_catchup: false,
+    });
+
+    setTaskList(prev => prev.map(t => t.id === validating.id ? { ...t, done: true } : t));
+    setValidating(null);
+    setNotes("");
+    setPhoto(null);
+    setSubmitting(false);
+    onValidated();
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) { if (validating) setValidating(null); else onClose(); } }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2">
-            <BarChart2 size={14} style={{ color: "var(--accent)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avancement · {stats.label}</p>
+            {validating ? (
+              <button onClick={() => setValidating(null)} style={{ color: "var(--foreground-dim)" }}>
+                <ArrowLeft size={16} />
+              </button>
+            ) : (
+              <BarChart2 size={14} style={{ color: "var(--accent)" }} />
+            )}
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              {validating ? validating.title : `Avancement · ${stats.label}`}
+            </p>
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
         </div>
 
-        {/* Gauge visuelle */}
-        <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-4xl font-bold" style={{ color }}>{pct}%</p>
-            <div className="text-right">
-              <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>{stats.done}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{stats.total}</span></p>
-              <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>tâches validées</p>
+        {validating ? (
+          /* Mini form de validation */
+          <div className="p-5 space-y-3">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-[13px] font-medium"
+              style={{
+                background: photo ? "rgba(16,185,129,0.08)" : "var(--background)",
+                border: photo ? "1px solid rgba(16,185,129,0.3)" : "2px dashed var(--border-strong)",
+                color: photo ? "var(--success)" : "var(--foreground-dim)",
+              }}
+            >
+              {photo
+                ? <><CheckCircle2 size={14} />{photo.name}</>
+                : <><Circle size={14} />{validating.requiresPhoto ? "Ajouter une photo" : "Photo (optionnel)"}</>
+              }
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
+            <input
+              type="text"
+              placeholder="Notes (optionnel)"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            />
+            <button
+              onClick={submitValidation}
+              disabled={submitting || (validating.requiresPhoto && !photo)}
+              className="w-full py-3 rounded-xl text-[13px] font-semibold transition-opacity"
+              style={{ background: "var(--success)", color: "#09090B", opacity: submitting || (validating.requiresPhoto && !photo) ? 0.5 : 1 }}
+            >
+              {submitting ? "Validation…" : "Tâche validée ✓"}
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Gauge visuelle */}
+            <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-4xl font-bold" style={{ color }}>{pct}%</p>
+                <div className="text-right">
+                  <p className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>{localDone}<span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{total}</span></p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>tâches validées</p>
+                </div>
+              </div>
+              <div className="rounded-full overflow-hidden" style={{ height: 8, background: "var(--background-soft)" }}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+              </div>
+              {allDone && (
+                <p className="text-[12px] mt-2 text-center" style={{ color: "var(--success)" }}>✓ Toutes les tâches sont faites !</p>
+              )}
             </div>
-          </div>
-          <div className="rounded-full overflow-hidden" style={{ height: 8, background: "var(--background-soft)" }}>
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
-          </div>
-          {allDone && (
-            <p className="text-[12px] mt-2 text-center" style={{ color: "var(--success)" }}>✓ Toutes les tâches sont faites !</p>
-          )}
-        </div>
 
-        <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 200px)" }}>
-          {tasks.length > 0 ? (
-            <>
-              {todo.length > 0 && (
-                <div className="px-4 pt-4 pb-2">
-                  <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire ({todo.length})</p>
-                  <div className="space-y-1.5">
-                    {todo.map((t, i) => (
-                      <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                        <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
-                          <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
-                        </div>
+            <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 220px)" }}>
+              {taskList.length > 0 ? (
+                <>
+                  {todo.length > 0 && (
+                    <div className="px-4 pt-4 pb-2">
+                      <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire ({todo.length})</p>
+                      <div className="space-y-1.5">
+                        {todo.map((t, i) => (
+                          <div
+                            key={i}
+                            onClick={() => canValidate && t.id && setValidating({ id: t.id, title: t.title, requiresPhoto: t.requires_photo ?? false })}
+                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-opacity"
+                            style={{
+                              background: "var(--background-soft)",
+                              border: "1px solid var(--border)",
+                              cursor: canValidate && t.id ? "pointer" : "default",
+                            }}
+                          >
+                            <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
+                              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
+                            </div>
+                            {canValidate && t.id && (
+                              <span className="text-[11px] font-medium flex-shrink-0" style={{ color: "var(--accent)" }}>Valider →</span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+                  {done.length > 0 && (
+                    <div className="px-4 pt-3 pb-4">
+                      <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Terminé ({done.length})</p>
+                      <div className="space-y-1.5">
+                        {done.map((t, i) => (
+                          <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                            <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
+                            <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="px-5 py-8 text-center">
+                  <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Résumé {stats.label.toLowerCase()} · {stats.done} tâches validées sur {stats.total}</p>
                 </div>
               )}
-              {done.length > 0 && (
-                <div className="px-4 pt-3 pb-4">
-                  <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Terminé ({done.length})</p>
-                  <div className="space-y-1.5">
-                    {done.map((t, i) => (
-                      <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
-                        <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
-                        <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Résumé {stats.label.toLowerCase()} · {stats.done} tâches validées sur {stats.total}</p>
             </div>
-          )}
-        </div>
 
-        <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
-          <a href="/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
-            Voir toutes les tâches →
-          </a>
-        </div>
+            <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+              <a href="/me/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
+                Voir toutes les tâches →
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 /* ─── MANAGER VIEW ─────────────────────────────────── */
-function ManagerDashboard({ data }: { data: DashboardData }) {
+function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTaskValidated: () => void }) {
   const [month, setMonth] = useState("");
   useEffect(() => { setMonth(new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })); }, []);
   const [feedbackModal, setFeedbackModal] = useState<FeedbackCategory | null>(null);
@@ -865,7 +989,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
       )}
 
       {showAddProtocol && <AddProtocolModal data={data} onClose={() => setShowAddProtocol(false)} onAdded={handleProtocolAdded} />}
-      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
+      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} establishmentId={data.establishment_id} profileId={data.my_profile_id} onValidated={() => { onTaskValidated(); }} />}
 
       {/* KPI Popup */}
       {kpiPopup && (
@@ -1045,7 +1169,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
 /* ─── EMPLOYEE VIEW ────────────────────────────────── */
 type QuickModal = "delay" | "feedback" | null;
 
-function EmployeeDashboard({ data }: { data: DashboardData }) {
+function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onTaskValidated: () => void }) {
   const supabase = createClient();
   const myStats = data.leaderboard.find(m => m.profile_id === data.my_profile_id);
   const myRank = data.leaderboard.findIndex(m => m.profile_id === data.my_profile_id) + 1;
@@ -1630,7 +1754,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
+      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} establishmentId={data.establishment_id} profileId={data.my_profile_id} onValidated={() => { onTaskValidated(); }} />}
     </div>
   );
 }
