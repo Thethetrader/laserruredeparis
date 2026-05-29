@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid } from "lucide-react";
+import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -28,6 +28,7 @@ interface Protocol {
   attachment_url?: string | null;
   attachment_type?: AttachmentType;
   attachment_name?: string | null;
+  steps?: string[] | null;
 }
 
 const CATEGORY_LABELS: Record<ProtocolCategory, string> = {
@@ -221,6 +222,8 @@ export default function ProtocolsPage() {
   const [formCategory, setFormCategory] = useState<ProtocolCategory>("salle");
   const [formMandatory, setFormMandatory] = useState(false);
   const [formFile, setFormFile] = useState<File | null>(null);
+  const [formSteps, setFormSteps] = useState<string[]>([]);
+  const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -281,6 +284,20 @@ export default function ProtocolsPage() {
     setFormFile(file);
   };
 
+  const extractSteps = async () => {
+    if (!formFile || formFile.type !== "application/pdf") return;
+    setExtracting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", formFile);
+      const res = await fetch("/api/protocols/extract-steps", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.steps) setFormSteps(data.steps);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const getAttachmentType = (file: File): AttachmentType => {
     if (file.type === "application/pdf") return "pdf";
     if (file.type.startsWith("image/")) return "image";
@@ -332,6 +349,7 @@ export default function ProtocolsPage() {
         attachment_url: attachmentUrl,
         attachment_type: attachmentType,
         attachment_name: attachmentName,
+        steps: formSteps.length > 0 ? formSteps : null,
       };
       setProtocols(prev => [newP, ...prev]);
       resetForm();
@@ -349,6 +367,7 @@ export default function ProtocolsPage() {
       attachment_url: attachmentUrl ?? undefined,
       attachment_type: attachmentType ?? undefined,
       attachment_name: attachmentName ?? undefined,
+      steps: formSteps.length > 0 ? formSteps : null,
     }).select().single();
 
     if (data) setProtocols(prev => [data as Protocol, ...prev]);
@@ -358,7 +377,7 @@ export default function ProtocolsPage() {
 
   const resetForm = () => {
     setFormTitle(""); setFormContent(""); setFormCategory("salle");
-    setFormMandatory(false); setFormFile(null);
+    setFormMandatory(false); setFormFile(null); setFormSteps([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setShowForm(false);
   };
@@ -448,6 +467,8 @@ export default function ProtocolsPage() {
             formCategory={formCategory} setFormCategory={setFormCategory}
             formMandatory={formMandatory} setFormMandatory={setFormMandatory}
             formFile={formFile} setFormFile={setFormFile}
+            formSteps={formSteps} setFormSteps={setFormSteps}
+            extracting={extracting} onExtractSteps={extractSteps}
             fileInputRef={fileInputRef} handleFileChange={handleFileChange}
             submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
           />
@@ -694,6 +715,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
   const needsValidation = !isManager && !isRead;
   const hasPdf = protocol.attachment_type === "pdf";
   const hasImage = protocol.attachment_type === "image";
+  const hasSteps = Array.isArray(protocol.steps) && protocol.steps.length > 0;
 
   return (
     <div className="rounded-xl overflow-hidden"
@@ -725,6 +747,12 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
               <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded"
                 style={{ background: "rgba(6,182,212,0.08)", color: "#A1A1AA" }}>
                 <Image size={9} /> Photo
+              </span>
+            )}
+            {hasSteps && (
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded"
+                style={{ background: "rgba(139,92,246,0.08)", color: "#A78BFA" }}>
+                <CheckCircle size={9} /> {protocol.steps!.length} étapes
               </span>
             )}
             {isRead && !isManager && <CheckCircle size={12} style={{ color: "var(--success)" }} />}
@@ -789,6 +817,24 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
               </div>
             </div>
           )}
+          {hasSteps && (
+            <div className="px-5 py-4" style={{ borderTop: hasPdf || hasImage ? "1px solid var(--border)" : undefined }}>
+              <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>
+                Étapes
+              </p>
+              <ol className="space-y-2">
+                {protocol.steps!.map((step, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="flex-shrink-0 text-[11px] font-mono font-semibold rounded-md px-1.5 py-0.5 mt-0.5"
+                      style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", minWidth: 24, textAlign: "center" }}>
+                      {i + 1}
+                    </span>
+                    <span className="text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           {protocol.content && (
             <div className="px-5 py-4">
               <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed"
@@ -824,6 +870,8 @@ interface ProtocolFormProps {
   formCategory: ProtocolCategory; setFormCategory: (v: ProtocolCategory) => void;
   formMandatory: boolean; setFormMandatory: (v: boolean) => void;
   formFile: File | null; setFormFile: (v: File | null) => void;
+  formSteps: string[]; setFormSteps: (v: string[]) => void;
+  extracting: boolean; onExtractSteps: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   submitting: boolean; onSubmit: () => void; onCancel: () => void;
@@ -832,9 +880,24 @@ interface ProtocolFormProps {
 function ProtocolForm({
   formTitle, setFormTitle, formContent, setFormContent,
   formCategory, setFormCategory, formMandatory, setFormMandatory,
-  formFile, setFormFile, fileInputRef, handleFileChange,
+  formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
+  fileInputRef, handleFileChange,
   submitting, onSubmit, onCancel,
 }: ProtocolFormProps) {
+  const updateStep = (index: number, value: string) => {
+    const next = [...formSteps];
+    next[index] = value;
+    setFormSteps(next);
+  };
+
+  const removeStep = (index: number) => {
+    setFormSteps(formSteps.filter((_, i) => i !== index));
+  };
+
+  const addStep = () => {
+    setFormSteps([...formSteps, ""]);
+  };
+
   return (
     <div className="rounded-xl p-5 mb-6" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
       <p className="text-sm font-medium mb-4" style={{ color: "var(--foreground)" }}>Nouveau protocole</p>
@@ -860,14 +923,29 @@ function ProtocolForm({
           <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
             onChange={handleFileChange} className="hidden" />
           {formFile ? (
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-md"
-              style={{ background: "var(--background-soft)", border: "1px solid var(--accent)" }}>
-              {formFile.type === "application/pdf"
-                ? <FileText size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                : <Image size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />}
-              <p className="text-sm flex-1 truncate" style={{ color: "var(--foreground)" }}>{formFile.name}</p>
-              <button onClick={() => { setFormFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>✕</button>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-md"
+                style={{ background: "var(--background-soft)", border: "1px solid var(--accent)" }}>
+                {formFile.type === "application/pdf"
+                  ? <FileText size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                  : <Image size={16} style={{ color: "var(--accent)", flexShrink: 0 }} />}
+                <p className="text-sm flex-1 truncate" style={{ color: "var(--foreground)" }}>{formFile.name}</p>
+                <button onClick={() => { setFormFile(null); setFormSteps([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>✕</button>
+              </div>
+              {formFile.type === "application/pdf" && formSteps.length === 0 && (
+                <button onClick={onExtractSteps} disabled={extracting}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
+                  style={{
+                    background: "rgba(139,92,246,0.1)",
+                    border: "1px solid rgba(139,92,246,0.25)",
+                    color: "#A78BFA",
+                    opacity: extracting ? 0.6 : 1,
+                  }}>
+                  <Wand2 size={14} />
+                  {extracting ? "Analyse en cours…" : "Analyser avec l'IA"}
+                </button>
+              )}
             </div>
           ) : (
             <button onClick={() => fileInputRef.current?.click()}
@@ -878,6 +956,52 @@ function ProtocolForm({
             </button>
           )}
         </div>
+
+        {/* Steps editor */}
+        {formSteps.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
+                Étapes extraites
+              </label>
+              {formFile?.type === "application/pdf" && (
+                <button onClick={onExtractSteps} disabled={extracting}
+                  className="flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded transition-opacity"
+                  style={{ color: "#A78BFA", opacity: extracting ? 0.5 : 1 }}>
+                  <Wand2 size={10} /> {extracting ? "…" : "Ré-analyser"}
+                </button>
+              )}
+            </div>
+            <div className="space-y-1.5 rounded-xl p-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(139,92,246,0.2)" }}>
+              {formSteps.map((step, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="flex-shrink-0 text-[11px] font-mono font-semibold rounded px-1.5 py-1 mt-0.5"
+                    style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", minWidth: 22, textAlign: "center" }}>
+                    {i + 1}
+                  </span>
+                  <input
+                    value={step}
+                    onChange={e => updateStep(i, e.target.value)}
+                    className="flex-1 px-2 py-1 text-sm rounded outline-none"
+                    style={{ background: "transparent", border: "1px solid transparent", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "transparent"}
+                  />
+                  <button onClick={() => removeStep(i)} className="flex-shrink-0 mt-1 p-1 rounded transition-opacity hover:opacity-100 opacity-40"
+                    style={{ color: "var(--foreground-dim)" }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              <button onClick={addStep}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[12px] mt-1 transition-opacity"
+                style={{ color: "#A78BFA", border: "1px dashed rgba(139,92,246,0.3)" }}>
+                <Plus size={11} /> Ajouter une étape
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <div className="flex-1">
             <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
