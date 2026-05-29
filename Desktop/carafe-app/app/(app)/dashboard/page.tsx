@@ -1441,7 +1441,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                     className="w-full flex items-center gap-3 px-5 py-4 text-left transition-opacity"
                     style={{ opacity: isRead ? 0.5 : 1, cursor: isRead ? "default" : "pointer" }}>
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border:  }}>
+                      style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: isRead ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(239,68,68,0.2)" }}>
                       {isRead
                         ? <Check size={14} style={{ color: "var(--success)" }} />
                         : <BookOpen size={13} style={{ color: "var(--danger)" }} />}
