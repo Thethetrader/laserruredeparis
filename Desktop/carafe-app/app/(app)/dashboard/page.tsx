@@ -980,6 +980,28 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </p>
       </div>
 
+      {/* Actions rapides — tout en haut */}
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <button onClick={() => setModal("delay")} className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 text-left transition-opacity active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
+            <Clock size={15} style={{ color: "var(--warning)" }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>Retard</p>
+            <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Déclarer</p>
+          </div>
+        </button>
+        <button onClick={() => setModal("feedback")} className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 text-left transition-opacity active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.12)" }}>
+            <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-tight" style={{ color: "var(--foreground)" }}>Avis client</p>
+            <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Signaler</p>
+          </div>
+        </button>
+      </div>
+
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
           {successMsg}
@@ -1156,27 +1178,6 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {/* Actions rapides */}
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setModal("delay")} className="flex items-center gap-2.5 rounded-xl px-3 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
-                <Clock size={13} style={{ color: "var(--warning)" }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-medium leading-tight" style={{ color: "var(--foreground)" }}>Retard</p>
-                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Déclarer</p>
-              </div>
-            </button>
-            <button onClick={() => setModal("feedback")} className="flex items-center gap-2.5 rounded-xl px-3 py-3 text-left transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
-                <MessageSquare size={13} style={{ color: "#8B5CF6" }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12px] font-medium leading-tight" style={{ color: "var(--foreground)" }}>Avis client</p>
-                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Signaler</p>
-              </div>
-            </button>
-          </div>
         </div>
 
         {/* Colonne droite : Défis + Classement + Score */}
