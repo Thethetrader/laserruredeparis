@@ -883,6 +883,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
+  const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
 
@@ -980,16 +981,32 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
       )}
 
       {/* Alert protocoles */}
-      {data.unread_mandatory > 0 && (
-        <a href="/protocols" className="flex items-start gap-3 rounded-xl px-4 py-4 mb-6 transition-opacity hover:opacity-80" style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
-          <AlertCircle size={18} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
-          <div className="flex-1">
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{data.unread_mandatory} protocole{data.unread_mandatory > 1 ? "s" : ""} obligatoire{data.unread_mandatory > 1 ? "s" : ""} à lire</p>
-            <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Ouvre-les et confirme ta lecture</p>
-          </div>
-          <ChevronRight size={16} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginTop: 2 }} />
-        </a>
-      )}
+      {(() => {
+        const unreadMandatory = data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id));
+        return unreadMandatory.length > 0 && (
+          <button
+            onClick={() => {
+              if (unreadMandatory.length === 1) {
+                openProtocol(unreadMandatory[0]);
+              } else {
+                setMandatoryListOpen(true);
+              }
+            }}
+            className="w-full flex items-start gap-3 rounded-xl px-4 py-4 mb-6 transition-opacity hover:opacity-80 text-left"
+            style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
+            <AlertCircle size={18} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                {unreadMandatory.length} protocole{unreadMandatory.length > 1 ? "s" : ""} obligatoire{unreadMandatory.length > 1 ? "s" : ""} à lire
+              </p>
+              <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+                Appuie pour {unreadMandatory.length === 1 ? "lire et confirmer" : "voir la liste"}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 2 }} />
+          </button>
+        );
+      })()}
 
       {/* 2 colonnes */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
@@ -1396,6 +1413,58 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
           </div>
         </div>
       )}
+
+      {/* Liste protocoles obligatoires */}
+      {mandatoryListOpen && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setMandatoryListOpen(false); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <AlertCircle size={14} style={{ color: "var(--danger)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Lectures obligatoires</p>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
+                  {data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id)).length} restant{data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id)).length > 1 ? "s" : ""}
+                </span>
+              </div>
+              <button onClick={() => setMandatoryListOpen(false)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+              {data.protocols.filter(p => p.is_mandatory).map(p => {
+                const isRead = readProtocols.has(p.id);
+                return (
+                  <button key={p.id}
+                    onClick={() => { setMandatoryListOpen(false); if (!isRead) openProtocol(p); }}
+                    disabled={isRead}
+                    className="w-full flex items-center gap-3 px-5 py-4 text-left transition-opacity"
+                    style={{ opacity: isRead ? 0.5 : 1, cursor: isRead ? "default" : "pointer" }}>
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border:  }}>
+                      {isRead
+                        ? <Check size={14} style={{ color: "var(--success)" }} />
+                        : <BookOpen size={13} style={{ color: "var(--danger)" }} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                      <p className="text-[11px]" style={{ color: isRead ? "var(--success)" : "var(--danger)" }}>
+                        {isRead ? "Confirmé ✓" : "À lire →"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {data.protocols.filter(p => p.is_mandatory).every(p => readProtocols.has(p.id)) && (
+              <div className="px-5 py-4 text-center" style={{ borderTop: "1px solid var(--border)" }}>
+                <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Tous les protocoles obligatoires sont lus ✓</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
     </div>
   );
