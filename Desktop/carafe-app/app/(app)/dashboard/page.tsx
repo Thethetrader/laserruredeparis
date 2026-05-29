@@ -923,40 +923,40 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
               )}
 
               {/* AVIS CLIENTS */}
-              {kpiPopup === "feedback" && (
-                <div>
-                  <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
-                    {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
-                      const meta = CATEGORY_META[cat];
-                      const count = data.feedback_summary[cat];
-                      return (
-                        <div key={cat} className="px-5 py-4" style={{ background: "var(--background-elev)" }}>
-                          <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
-                          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                    {data.feedback_items.slice(0, 5).map(item => {
-                      const meta = CATEGORY_META[item.category];
-                      return (
-                        <div key={item.id} className="px-5 py-3.5">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
-                            {item.table_number && <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
-                            <span className="text-[10px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
-                          </div>
-                          <p className="text-[13px] leading-snug" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
-                        </div>
-                      );
-                    })}
-                    {data.feedback_items.length === 0 && (
-                      <div className="px-5 py-10 text-center"><p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis pour le moment</p></div>
+              {kpiPopup === "feedback" && (() => {
+                const today = new Date().toISOString().split("T")[0];
+                const todayItems = data.feedback_items.filter(f => f.created_at.startsWith(today));
+                return (
+                  <div>
+                    {todayItems.length === 0 ? (
+                      <div className="px-5 py-10 text-center">
+                        <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis signalé aujourd'hui</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                        {todayItems.map(item => {
+                          const meta = CATEGORY_META[item.category];
+                          return (
+                            <div key={item.id} className="px-5 py-4">
+                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>{meta.label}</span>
+                                {item.table_number && <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
+                                <span className="text-[10px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                              </div>
+                              <p className="text-[13px] leading-snug" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                              {item.confirmation_count > 0 && (
+                                <p className="text-[11px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
+                                  +{item.confirmation_count} collègue{item.confirmation_count > 1 ? "s" : ""} confirme{item.confirmation_count > 1 ? "nt" : ""}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* DÉFIS */}
               {kpiPopup === "challenges" && (
