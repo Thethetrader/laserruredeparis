@@ -130,9 +130,9 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 }
 
 const DEV_PROTOCOLS: Protocol[] = [
-  { id: "p1", title: "Normes HACCP Températures", is_mandatory: true,  is_read: true,  read_count: 3, total_members: 3 },
-  { id: "p2", title: "Procédure ouverture salle",  is_mandatory: true,  is_read: true,  read_count: 2, total_members: 3 },
-  { id: "p3", title: "Gestion des allergènes",     is_mandatory: false, is_read: false, read_count: 1, total_members: 3 },
+  { id: "p1", title: "Normes HACCP Températures", is_mandatory: true,  is_read: true,  read_count: 3, total_members: 3, content: "Contrôler chaque frigo au thermomètre sonde avant le service.\n\n• Frigos 1 & 2 : 2°C – 4°C\n• Congélateur : -18°C max\n• Zone chaude : +63°C min\n\nSi hors norme : alerter immédiatement le responsable et ne pas utiliser les produits. Consigner l'incident dans le cahier HACCP." },
+  { id: "p2", title: "Procédure ouverture salle",  is_mandatory: true,  is_read: true,  read_count: 2, total_members: 3, content: "1. Allumer les lumières et la climatisation\n2. Vérifier la propreté de toutes les tables\n3. Dresser les couverts selon le plan de salle\n4. Remplir les carafes d'eau et les moulins à sel/poivre\n5. Vérifier la carte et les suggestions du jour avec le chef\n6. Briefing équipe 15 min avant l'ouverture" },
+  { id: "p3", title: "Gestion des allergènes",     is_mandatory: false, is_read: false, read_count: 1, total_members: 3, content: "Les 14 allergènes majeurs à connaître :\n\nGluten · Crustacés · Œufs · Poissons · Arachides · Soja · Lait · Fruits à coque · Céleri · Moutarde · Graines de sésame · Anhydride sulfureux · Lupin · Mollusques\n\nEn cas de demande client :\n1. Consulter la fiche allergènes en cuisine\n2. Ne jamais donner une réponse incertaine\n3. Contacter le chef en cas de doute\n4. Proposer une alternative sûre si possible" },
 ];
 
 const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
@@ -277,7 +277,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, is_mandatory").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -289,7 +289,7 @@ export default function DashboardPage() {
 
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; is_mandatory: boolean }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -313,7 +313,7 @@ export default function DashboardPage() {
     reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
 
     const protocols: Protocol[] = rawProtocols.map(p => ({
-      id: p.id, title: p.title, is_mandatory: p.is_mandatory,
+      id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
@@ -883,6 +883,20 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
+  const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
+  const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
+
+  const openProtocol = async (p: Protocol) => {
+    setProtocolPopup(p);
+    if (!readProtocols.has(p.id)) {
+      setReadProtocols(prev => new Set([...prev, p.id]));
+      if (!DEV_MODE) {
+        const sb = createClient();
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: p.id, profile_id: user.id });
+      }
+    }
+  };
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
   const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
   const SWIPE_THRESHOLD = 90;
@@ -1097,19 +1111,25 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                 </div>
                 <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
               </div>
-              {data.protocols.slice(0, 3).map((p, i) => (
-                <a key={p.id} href="/protocols" className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
-                  style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
-                    {p.is_read ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                    <p className="text-[11px]" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>{p.is_read ? "Lu ✓" : "Non lu"}</p>
-                  </div>
-                  <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                </a>
-              ))}
+              {data.protocols.slice(0, 3).map((p, i) => {
+                const isRead = readProtocols.has(p.id);
+                return (
+                  <button key={p.id} onClick={() => openProtocol(p)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-75"
+                    style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${isRead ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                      {isRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                      <p className="text-[11px]" style={{ color: isRead ? "var(--success)" : "var(--foreground-dim)" }}>
+                        {p.is_mandatory && !isRead ? "⚠ Obligatoire · " : ""}{isRead ? "Lu ✓" : "Appuie pour lire"}
+                      </p>
+                    </div>
+                    <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -1308,6 +1328,74 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
         </div>
       )}
 
+
+      {/* Popup protocole */}
+      {protocolPopup && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div className="flex items-start justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: readProtocols.has(protocolPopup.id) ? "rgba(16,185,129,0.12)" : "rgba(6,182,212,0.1)" }}>
+                  <BookOpen size={13} style={{ color: readProtocols.has(protocolPopup.id) ? "var(--success)" : "var(--accent)" }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--foreground)" }}>{protocolPopup.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {protocolPopup.is_mandatory && (
+                      <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        Obligatoire
+                      </span>
+                    )}
+                    {readProtocols.has(protocolPopup.id) && (
+                      <span className="text-[10px] font-medium" style={{ color: "var(--success)" }}>Lu ✓</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {protocolPopup.content ? (
+                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>
+                  {protocolPopup.content}
+                </p>
+              ) : (
+                <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun contenu pour ce protocole.</p>
+              )}
+            </div>
+            <div className="px-5 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+              {readProtocols.has(protocolPopup.id) ? (
+                <div className="flex items-center justify-center gap-2 py-2">
+                  <Check size={14} style={{ color: "var(--success)" }} />
+                  <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Lecture confirmée</p>
+                </div>
+              ) : (
+                <button
+                  onClick={async () => {
+                    setReadProtocols(prev => new Set([...prev, protocolPopup.id]));
+                    setProtocolPopup(null);
+                    if (!DEV_MODE) {
+                      const sb = createClient();
+                      const { data: { user } } = await sb.auth.getUser();
+                      if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: protocolPopup.id, profile_id: user.id });
+                    }
+                  }}
+                  className="w-full py-2.5 text-sm font-semibold rounded-lg"
+                  style={{ background: "var(--accent)", color: "#09090B" }}>
+                  Confirmer la lecture ✓
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
     </div>
   );
