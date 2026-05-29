@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -70,7 +71,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (establishments.length === 0) redirect("/onboarding");
   }
 
-  const establishment = establishments[0];
+  const cookieStore = cookies();
+  const activeId = cookieStore.get("active_establishment_id")?.value;
+  const establishment =
+    (activeId && establishments.find(e => e.id === activeId)) || establishments[0];
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)" }}>

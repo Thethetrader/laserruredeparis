@@ -80,10 +80,10 @@ export default function SwitchEstablishmentPage() {
     setEstablishments(mapped);
 
     const stored = localStorage.getItem("active_establishment_id");
-    if (stored && mapped.find(e => e.id === stored)) {
-      setActiveId(stored);
-    } else if (mapped.length > 0) {
-      setActiveId(mapped[0].id);
+    const validId = (stored && mapped.find(e => e.id === stored)) ? stored : mapped[0]?.id;
+    if (validId) {
+      setActiveId(validId);
+      document.cookie = `active_establishment_id=${validId}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     }
 
     setLoading(false);
@@ -91,6 +91,7 @@ export default function SwitchEstablishmentPage() {
 
   const selectEstablishment = (id: string) => {
     localStorage.setItem("active_establishment_id", id);
+    document.cookie = `active_establishment_id=${id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     setActiveId(id);
     router.push("/dashboard");
   };
