@@ -441,11 +441,13 @@ export default function MyTasksPage() {
                     return (
                       <div
                         key={task.id}
+                        onClick={() => { if (!isDone) openModal(task); }}
                         className="flex items-start gap-3 px-4 py-3 rounded-xl transition-all duration-300"
                         style={{
                           background: isDone ? "rgba(16,185,129,0.06)" : "var(--background-elev)",
                           border: justDone ? "1px solid rgba(16,185,129,0.4)" : isDone ? "1px solid rgba(16,185,129,0.15)" : "1px solid var(--border)",
                           boxShadow: justDone ? "0 0 12px rgba(16,185,129,0.15)" : "none",
+                          cursor: isDone ? "default" : "pointer",
                         }}
                       >
                         <div className="mt-0.5 flex-shrink-0">
@@ -509,7 +511,7 @@ export default function MyTasksPage() {
                               )}
                               {linkedProtocol && (
                                 <button
-                                  onClick={() => setProtocolModal(linkedProtocol)}
+                                  onClick={e => { e.stopPropagation(); setProtocolModal(linkedProtocol); }}
                                   className="inline-flex items-center gap-1 mt-1 text-[11px] font-medium transition-opacity hover:opacity-80"
                                   style={{ color: "var(--accent)" }}
                                 >
@@ -523,7 +525,7 @@ export default function MyTasksPage() {
 
                         {!isDone && (
                           <button
-                            onClick={() => openModal(task)}
+                            onClick={e => { e.stopPropagation(); openModal(task); }}
                             className="flex-shrink-0 px-3 py-1.5 rounded-base text-[12px] font-medium"
                             style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
                           >
