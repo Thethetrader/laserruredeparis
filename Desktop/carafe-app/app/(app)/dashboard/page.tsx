@@ -882,6 +882,24 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
     Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
+  const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
+  const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
+  const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
+  const SWIPE_THRESHOLD = 90;
+
+  const handleFbTouchStart = (id: string, clientX: number) => {
+    setFbTouchStartX(prev => ({ ...prev, [id]: clientX }));
+  };
+  const handleFbTouchMove = (id: string, clientX: number) => {
+    const dx = clientX - (fbTouchStartX[id] ?? clientX);
+    if (dx < 0) setFbSwipeX(prev => ({ ...prev, [id]: dx }));
+  };
+  const handleFbTouchEnd = (id: string) => {
+    if ((fbSwipeX[id] ?? 0) < -SWIPE_THRESHOLD) {
+      setFbDismissed(prev => new Set([...prev, id]));
+    }
+    setFbSwipeX(prev => ({ ...prev, [id]: 0 }));
+  };
 
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
   const [delayMinutes, setDelayMinutes] = useState("15");
@@ -1017,26 +1035,54 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
                 </div>
               </div>
               <div style={{ background: "var(--background-elev)" }}>
-                {data.feedback_items.slice(0, 3).map((item, i) => {
+                {data.feedback_items.slice(0, 3).filter(item => !fbDismissed.has(item.id)).map((item, i, arr) => {
                   const meta = CATEGORY_META[item.category];
                   const confirmed = confirmedIds.has(item.id);
                   const count = confirmCounts[item.id] ?? 0;
+                  const swipeX = fbSwipeX[item.id] ?? 0;
+                  const swipeProgress = Math.min(1, Math.abs(swipeX) / SWIPE_THRESHOLD);
                   return (
-                    <div key={item.id} className="px-5 py-3.5" style={{ borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>{meta.label}</span>
-                        {item.table_number && <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
-                        <span className="text-[11px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                    <div key={item.id} className="relative overflow-hidden" style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      {/* Fond swipe */}
+                      <div className="absolute inset-0 flex items-center justify-end pr-4" style={{ background: "rgba(239,68,68,0.1)", opacity: swipeProgress }}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] font-semibold" style={{ color: "var(--danger)" }}>Pas eu ce retour</span>
+                          <X size={14} style={{ color: "var(--danger)" }} />
+                        </div>
                       </div>
-                      <p className="text-[13px] leading-snug mb-2" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
-                      <button onClick={() => toggleConfirm(item.id)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md transition-all" style={{ background: confirmed ? meta.bg : "var(--background-soft)", color: confirmed ? meta.color : "var(--foreground-dim)", border: `1px solid ${confirmed ? meta.border : "var(--border)"}` }}>
-                        <ThumbsUp size={10} fill={confirmed ? "currentColor" : "none"} />
-                        {confirmed ? "Confirmé" : "Moi aussi"}
-                        {count > 0 && <span className="opacity-70">· {count}</span>}
-                      </button>
+                      {/* Carte */}
+                      <div
+                        className="px-5 py-3.5"
+                        style={{
+                          transform: `translateX(${swipeX}px)`,
+                          transition: swipeX === 0 ? "transform 0.2s ease" : "none",
+                          background: "var(--background-elev)",
+                        }}
+                        onTouchStart={e => handleFbTouchStart(item.id, e.touches[0].clientX)}
+                        onTouchMove={e => handleFbTouchMove(item.id, e.touches[0].clientX)}
+                        onTouchEnd={() => handleFbTouchEnd(item.id)}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>{meta.label}</span>
+                          {item.table_number && <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
+                          <span className="text-[11px] ml-auto" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                        </div>
+                        <p className="text-[13px] leading-snug mb-2" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
+                        <button onClick={() => toggleConfirm(item.id)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md transition-all" style={{ background: confirmed ? meta.bg : "var(--background-soft)", color: confirmed ? meta.color : "var(--foreground-dim)", border: `1px solid ${confirmed ? meta.border : "var(--border)"}` }}>
+                          <ThumbsUp size={10} fill={confirmed ? "currentColor" : "none"} />
+                          {confirmed ? "Confirmé" : "Moi aussi"}
+                          {count > 0 && <span className="opacity-70">· {count}</span>}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
+                {data.feedback_items.slice(0, 3).every(item => fbDismissed.has(item.id)) && (
+                  <div className="px-5 py-6 text-center">
+                    <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Tous les retours ont été traités ✓</p>
+                    <a href="/customer-feedback" className="text-[12px] mt-1 block" style={{ color: "var(--accent)" }}>Voir l'historique</a>
+                  </div>
+                )}
               </div>
             </div>
           )}
