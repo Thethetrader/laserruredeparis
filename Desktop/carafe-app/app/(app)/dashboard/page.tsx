@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight, Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft } from "lucide-react";
+import {
+  Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
+  Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
+  Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
+  BarChart2,
+} from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -64,6 +69,14 @@ interface ChallengeItem {
   ends_at: string | null;
 }
 
+interface TaskStat {
+  label: string;
+  done: number;
+  total: number;
+  period: "today" | "week";
+  tasks?: { title: string; done: boolean; category: string }[];
+}
+
 interface DashboardData {
   role: string;
   my_profile_id: string;
@@ -79,6 +92,7 @@ interface DashboardData {
   active_challenges_list: ChallengeItem[];
   unread_mandatory: number;
   unread_total: number;
+  task_stats: TaskStat[];
 }
 
 const BADGE_CONFIG = {
@@ -120,11 +134,32 @@ const DEV_PROTOCOLS: Protocol[] = [
 ];
 
 const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
-  { id: "f1", category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons. Il a demandé à féliciter le chef.", table_number: "5", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
-  { id: "f2", category: "complaint",  content: "Attente trop longue table 12 a attendu 45 minutes pour les entrées. Le groupe était mécontent.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
-  { id: "f3", category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes au menu.", table_number: null, created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
-  { id: "f4", category: "incident",   content: "Verre cassé en salle, client légèrement blessé pris en charge immédiatement.", table_number: "8", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
-  { id: "f5", category: "compliment", content: "Service excellent ce soir, accueil très chaleureux selon le client. Il reviendra.", table_number: null, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
+  { id: "f1", category: "compliment", content: "Le client de la table 5 a adoré le risotto aux champignons.", table_number: "5", created_at: new Date(Date.now() - 86400000).toISOString(), confirmation_count: 2 },
+  { id: "f2", category: "complaint",  content: "Attente trop longue table 12, 45 minutes pour les entrées.", table_number: "12", created_at: new Date(Date.now() - 2 * 86400000).toISOString(), confirmation_count: 3 },
+  { id: "f3", category: "suggestion", content: "Un client suggère d'ajouter des options végétaliennes.", table_number: null, created_at: new Date(Date.now() - 3 * 86400000).toISOString(), confirmation_count: 1 },
+  { id: "f4", category: "incident",   content: "Verre cassé en salle, client légèrement blessé.", table_number: "8", created_at: new Date(Date.now() - 4 * 86400000).toISOString(), confirmation_count: 4 },
+  { id: "f5", category: "compliment", content: "Service excellent ce soir, accueil très chaleureux.", table_number: null, created_at: new Date(Date.now() - 86400000 * 0.5).toISOString(), confirmation_count: 1 },
+];
+
+const DEV_TASK_STATS: TaskStat[] = [
+  {
+    label: "Aujourd'hui",
+    done: 5,
+    total: 9,
+    period: "today",
+    tasks: [
+      { title: "Ouverture caisse", done: true, category: "Ouverture" },
+      { title: "Contrôle frigos", done: true, category: "Ouverture" },
+      { title: "Briefing équipe", done: true, category: "Ouverture" },
+      { title: "Mise en place salle", done: true, category: "Ouverture" },
+      { title: "Mise en place cuisine", done: true, category: "Ouverture" },
+      { title: "Fermeture caisse", done: false, category: "Fermeture" },
+      { title: "Nettoyage salle", done: false, category: "Fermeture" },
+      { title: "Nettoyage hotte", done: false, category: "Fermeture" },
+      { title: "Plonge terminée", done: false, category: "Fermeture" },
+    ],
+  },
+  { label: "Cette semaine", done: 31, total: 63, period: "week" },
 ];
 
 const DEV_DATA_MANAGER: DashboardData = {
@@ -143,6 +178,7 @@ const DEV_DATA_MANAGER: DashboardData = {
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
+  task_stats: DEV_TASK_STATS,
 };
 
 const DEV_DATA_EMPLOYEE: DashboardData = {
@@ -160,6 +196,10 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   active_challenges_list: [
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
+  ],
+  task_stats: [
+    { label: "Aujourd'hui", done: 3, total: 5, period: "today" },
+    { label: "Cette semaine", done: 18, total: 35, period: "week" },
   ],
 };
 
@@ -191,8 +231,9 @@ export default function DashboardPage() {
     const estId = memberData.establishment_id;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const today = now.toISOString().split("T")[0];
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, is_mandatory").eq("establishment_id", estId),
@@ -201,6 +242,8 @@ export default function DashboardPage() {
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
+      supabase.from("task_templates").select("id, title, category, is_active").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
     ]);
 
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
@@ -210,6 +253,8 @@ export default function DashboardPage() {
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
+    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean }>;
+    const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
 
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
@@ -227,9 +272,7 @@ export default function DashboardPage() {
     reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
 
     const protocols: Protocol[] = rawProtocols.map(p => ({
-      id: p.id,
-      title: p.title,
-      is_mandatory: p.is_mandatory,
+      id: p.id, title: p.title, is_mandatory: p.is_mandatory,
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
@@ -254,6 +297,17 @@ export default function DashboardPage() {
 
     const feedbackItems: FeedbackItem[] = rawFeedback.map(f => ({ ...f, category: f.category as FeedbackCategory, confirmation_count: 0 }));
 
+    const todayDone = rawTasks.filter(t => completedTodayIds.has(t.id)).length;
+    const task_stats: TaskStat[] = [
+      {
+        label: "Aujourd'hui",
+        done: todayDone,
+        total: rawTasks.length,
+        period: "today",
+        tasks: rawTasks.map(t => ({ title: t.title, done: completedTodayIds.has(t.id), category: t.category })),
+      },
+    ];
+
     setData({
       role: memberData.role, my_profile_id: user.id, my_first_name: myFirstName, establishment_id: estId,
       protocols, leaderboard, feedback_summary: fbSummary, feedback_items: feedbackItems, my_confirmed_feedback: myConfirmed,
@@ -261,6 +315,7 @@ export default function DashboardPage() {
       active_challenges: challengesRes.data?.length ?? 0,
       active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
+      task_stats,
     });
     setLoading(false);
   }
@@ -305,133 +360,123 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
   const submit = async () => {
     if (!title.trim()) return;
     setSubmitting(true);
-
     if (DEV_MODE) {
-      const newP: Protocol = {
-        id: `p-${Date.now()}`, title, content, category,
-        is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length,
-      };
-      onAdded(newP);
-      onClose();
-      return;
+      const newP: Protocol = { id: `p-${Date.now()}`, title, content, category, is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length };
+      onAdded(newP); onClose(); return;
     }
-
-    const { data: inserted } = await supabase.from("protocols").insert({
-      establishment_id: data.establishment_id,
-      author_id: data.my_profile_id,
-      title, content: content || "",
-      category: category as unknown as undefined,
-      is_mandatory: mandatory,
-    }).select().single();
-
+    const { data: inserted } = await supabase.from("protocols").insert({ establishment_id: data.establishment_id, author_id: data.my_profile_id, title, content: content || "", category: category as unknown as undefined, is_mandatory: mandatory }).select().single();
     if (inserted) {
-      const newP: Protocol = {
-        id: (inserted as { id: string }).id, title, content, category,
-        is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length,
-      };
-      onAdded(newP);
+      onAdded({ id: (inserted as { id: string }).id, title, content, category, is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length });
     }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2">
-            {step === "form" && (
-              <button onClick={() => setStep("category")} style={{ color: "var(--foreground-dim)", marginRight: 2 }}>
-                <ArrowLeft size={16} />
-              </button>
-            )}
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-              {step === "category" ? "Choisir une catégorie" : "Nouveau protocole"}
-            </p>
-            {step === "form" && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded"
-                style={{ background: selectedCat.color, color: selectedCat.text }}>
-                {selectedCat.label}
-              </span>
-            )}
+            {step === "form" && <button onClick={() => setStep("category")} style={{ color: "var(--foreground-dim)", marginRight: 2 }}><ArrowLeft size={16} /></button>}
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{step === "category" ? "Choisir une catégorie" : "Nouveau protocole"}</p>
+            {step === "form" && <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: selectedCat.color, color: selectedCat.text }}>{selectedCat.label}</span>}
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
         </div>
-
-        {/* Step 1: catégorie */}
         {step === "category" && (
           <div className="p-4 grid grid-cols-2 gap-2">
-            {PROTO_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              return (
-                <button key={cat.key}
-                  onClick={() => { setCategory(cat.key); setStep("form"); }}
-                  className="flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.97]"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: cat.color }}>
-                    <Icon size={14} strokeWidth={1.5} style={{ color: cat.text }} />
-                  </div>
-                  <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{cat.label}</span>
-                </button>
-              );
-            })}
+            {PROTO_CATEGORIES.map(cat => { const Icon = cat.icon; return (
+              <button key={cat.key} onClick={() => { setCategory(cat.key); setStep("form"); }} className="flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all active:scale-[0.97]" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: cat.color }}><Icon size={14} strokeWidth={1.5} style={{ color: cat.text }} /></div>
+                <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{cat.label}</span>
+              </button>
+            ); })}
           </div>
         )}
-
-        {/* Step 2: formulaire */}
         {step === "form" && (
           <div className="p-5 space-y-3">
             <div>
               <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre</label>
-              <input
-                value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="Ex: Procédure de nettoyage"
-                autoFocus
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-              />
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Procédure de nettoyage" autoFocus className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
             </div>
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
-                Contenu <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
-              </label>
-              <textarea
-                value={content} onChange={e => setContent(e.target.value)}
-                placeholder="Décrivez le protocole..."
-                rows={4}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-              />
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Contenu <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
+              <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Décrivez le protocole..." rows={4} className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
             </div>
             <label className="flex items-center gap-2.5 cursor-pointer">
-              <div onClick={() => setMandatory(!mandatory)}
-                className="relative flex-shrink-0 rounded-sm transition-colors cursor-pointer"
-                style={{ width: 18, height: 18, background: mandatory ? "var(--accent)" : "var(--background-soft)", border: `1px solid ${mandatory ? "var(--accent)" : "var(--border)"}` }}>
-                {mandatory && (
-                  <svg className="absolute inset-0 m-auto" width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5l2.5 2.5L8 3" stroke="#09090B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
+              <div onClick={() => setMandatory(!mandatory)} className="relative flex-shrink-0 rounded-sm transition-colors cursor-pointer" style={{ width: 18, height: 18, background: mandatory ? "var(--accent)" : "var(--background-soft)", border: `1px solid ${mandatory ? "var(--accent)" : "var(--border)"}` }}>
+                {mandatory && <svg className="absolute inset-0 m-auto" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#09090B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               <span className="text-sm" style={{ color: "var(--foreground-muted)" }}>Lecture obligatoire</span>
             </label>
-            <button
-              onClick={submit}
-              disabled={submitting || !title.trim()}
-              className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !title.trim()) ? 0.5 : 1 }}>
+            <button onClick={submit} disabled={submitting || !title.trim()} className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !title.trim()) ? 0.5 : 1 }}>
               {submitting ? "Création…" : "Créer le protocole"}
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── TASK GAUGE POPUP ──────────────────────────────── */
+function TaskGaugePopup({ stats, onClose }: { stats: TaskStat; onClose: () => void }) {
+  const tasks = stats.tasks ?? [];
+  const done = tasks.filter(t => t.done);
+  const todo = tasks.filter(t => !t.done);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2">
+            <BarChart2 size={14} style={{ color: "var(--accent)" }} />
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avancement · {stats.label}</p>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: stats.done >= stats.total ? "rgba(16,185,129,0.12)" : "rgba(6,182,212,0.1)", color: stats.done >= stats.total ? "var(--success)" : "var(--accent)" }}>
+              {stats.done}/{stats.total}
+            </span>
+          </div>
+          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 60px)" }}>
+          {todo.length > 0 && (
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire</p>
+              <div className="space-y-1.5">
+                {todo.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                    <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {done.length > 0 && (
+            <div className="px-4 pt-3 pb-4">
+              <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Terminé</p>
+              <div className="space-y-1.5">
+                {done.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                    <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
+                    <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {tasks.length === 0 && (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucune tâche pour le moment</p>
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
+          <a href="/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
+            Voir toutes les tâches →
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -444,11 +489,14 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
   const [feedbackModal, setFeedbackModal] = useState<FeedbackCategory | null>(null);
   const [showAddProtocol, setShowAddProtocol] = useState(false);
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
+  const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
-
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
   const modalMeta = feedbackModal ? CATEGORY_META[feedbackModal] : null;
+
+  const todayStat = data.task_stats.find(s => s.period === "today");
+  const weekStat = data.task_stats.find(s => s.period === "week");
 
   return (
     <div className="px-4 py-8 lg:px-10 max-w-7xl">
@@ -457,7 +505,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
       </div>
 
-      {/* KPIs — pleine largeur */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {[
           { icon: Clock, value: data.delays_this_month, label: "Retards", warn: data.delays_this_month > 3, href: "/delays" },
@@ -465,8 +513,7 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
           { icon: Trophy, value: data.active_challenges, label: "Défis actifs", warn: false, href: "/challenges" },
           { icon: BookOpen, value: data.leaderboard.reduce((s, m) => s + Math.max(0, m.protocols_total - m.protocols_read), 0), label: "Lectures en attente", warn: true, href: "/protocols" },
         ].map(({ icon: Icon, value, label, warn, href }) => (
-          <a key={label} href={href} className="rounded-xl p-4 transition-opacity hover:opacity-75"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <a key={label} href={href} className="rounded-xl p-4 transition-opacity hover:opacity-75" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-1">
               <p className="text-2xl font-semibold" style={{ color: warn && value > 0 ? "var(--warning)" : "var(--foreground)" }}>{value}</p>
               <Icon size={15} style={{ color: "var(--foreground-dim)" }} />
@@ -476,72 +523,50 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         ))}
       </div>
 
-      {/* 2 colonnes sur desktop */}
+      {/* 2 colonnes */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
 
-        {/* Colonne gauche */}
+        {/* Colonne gauche : Tâches + Avis clients + Protocoles */}
         <div className="space-y-6">
 
-          {/* 1. Protocoles */}
+          {/* 1. Tâches — jauge */}
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
             <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2">
-                <BookOpen size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
+                <CheckCircle2 size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avancement des tâches</p>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowAddProtocol(true)}
-                  className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md transition-opacity hover:opacity-75"
-                  style={{ background: "var(--accent)", color: "#09090B" }}>
-                  <Plus size={12} /> Ajouter
-                </button>
-                <a href="/protocols" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Gérer</a>
-              </div>
+              <a href="/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
             </div>
-            {protocols.length === 0 ? (
-              <div className="px-5 py-10 text-center" style={{ background: "var(--background-elev)" }}>
-                <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun protocole pour le moment</p>
-                <button onClick={() => setShowAddProtocol(true)} className="mt-2 text-[12px]" style={{ color: "var(--accent)" }}>
-                  Créer le premier protocole
-                </button>
-              </div>
-            ) : (
-              <div style={{ background: "var(--background-elev)" }}>
-                {protocols.map((p, i) => {
-                  const allRead = p.read_count >= p.total_members && p.total_members > 0;
-                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
-                  return (
-                    <div key={p.id} className="px-5 py-3.5 flex items-center gap-4"
-                      style={{ borderBottom: i < protocols.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: allRead ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)", border: `1px solid ${allRead ? "rgba(16,185,129,0.25)" : "var(--border)"}` }}>
-                        {allRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--accent)" }} />}
+            <div className="p-5 space-y-4" style={{ background: "var(--background-elev)" }}>
+              {data.task_stats.map(stat => {
+                const pct = stat.total > 0 ? Math.round((stat.done / stat.total) * 100) : 0;
+                const allDone = stat.done >= stat.total && stat.total > 0;
+                const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
+                return (
+                  <button key={stat.period} onClick={() => stat.tasks ? setTaskGaugePopup(stat) : undefined} className="w-full text-left transition-opacity hover:opacity-80">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
+                        {stat.tasks && <ChevronRight size={12} style={{ color: "var(--foreground-dim)" }} />}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                          {p.is_mandatory && (
-                            <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
-                              style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                              Obligatoire
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: allRead ? "var(--success)" : "var(--accent)" }} />
-                          </div>
-                          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
-                            {p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-mono" style={{ color: allDone ? "var(--success)" : "var(--foreground-dim)" }}>
+                          {stat.done}/{stat.total}
+                        </span>
+                        <span className="text-[11px] font-mono font-semibold" style={{ color }}>{pct}%</span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <div className="rounded-full overflow-hidden" style={{ height: 6, background: "var(--background-soft)" }}>
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                    </div>
+                  </button>
+                );
+              })}
+              {data.task_stats.length === 0 && (
+                <p className="text-sm text-center py-4" style={{ color: "var(--foreground-dim)" }}>Aucune tâche configurée</p>
+              )}
+            </div>
           </div>
 
           {/* 2. Retours clients */}
@@ -572,53 +597,58 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-        </div>
-
-        {/* Colonne droite */}
-        <div className="space-y-6">
-
-          {/* 3. Classement équipe */}
-          {data.leaderboard.length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <TrendingUp size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement équipe</p>
+          {/* 3. Protocoles */}
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
               </div>
-              {data.leaderboard.map((member, i) => {
-                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
-                return (
-                  <div key={member.profile_id} className="px-4 py-3.5 flex items-center gap-3"
-                    style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div className="w-6 text-center flex-shrink-0">
-                      {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
-                    </div>
-                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
-                      </div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
-                          {member.delays_count === 0 ? "✓" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
-                        </span>
-                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                          {member.protocols_read}/{member.protocols_total} proto
-                        </span>
-                      </div>
-                      <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
-                      <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="px-4 py-2 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-                Score = protocoles + bravos + défis + bonus
+              <div className="flex items-center gap-3">
+                <button onClick={() => setShowAddProtocol(true)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md transition-opacity hover:opacity-75" style={{ background: "var(--accent)", color: "#09090B" }}>
+                  <Plus size={12} /> Ajouter
+                </button>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Gérer</a>
               </div>
             </div>
-          )}
+            {protocols.length === 0 ? (
+              <div className="px-5 py-10 text-center" style={{ background: "var(--background-elev)" }}>
+                <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun protocole pour le moment</p>
+                <button onClick={() => setShowAddProtocol(true)} className="mt-2 text-[12px]" style={{ color: "var(--accent)" }}>Créer le premier protocole</button>
+              </div>
+            ) : (
+              <div style={{ background: "var(--background-elev)" }}>
+                {protocols.map((p, i) => {
+                  const allRead = p.read_count >= p.total_members && p.total_members > 0;
+                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                  return (
+                    <div key={p.id} className="px-5 py-3.5 flex items-center gap-4" style={{ borderBottom: i < protocols.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: allRead ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)", border: `1px solid ${allRead ? "rgba(16,185,129,0.25)" : "var(--border)"}` }}>
+                        {allRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--accent)" }} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: allRead ? "var(--success)" : "var(--accent)" }} />
+                          </div>
+                          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Colonne droite : Défis + Classement + Ponctualité */}
+        <div className="space-y-6">
 
           {/* 4. Défis en cours */}
           {data.active_challenges_list.length > 0 && (
@@ -635,24 +665,16 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                   const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
                   const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
                   return (
-                    <div key={c.id} className="px-4 py-3.5"
-                      style={{ borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div key={c.id} className="px-4 py-3.5" style={{ borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
-                        {daysLeft !== null && (
-                          <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded"
-                            style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>
-                            {daysLeft}j
-                          </span>
-                        )}
+                        {daysLeft !== null && <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>{daysLeft}j</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
                           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? "var(--success)" : "#F59E0B" }} />
                         </div>
-                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
-                          {c.current_value}{c.target_value ? `/${c.target_value}` : ""}
-                        </span>
+                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{c.current_value}{c.target_value ? `/${c.target_value}` : ""}</span>
                       </div>
                     </div>
                   );
@@ -661,7 +683,47 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
             </div>
           )}
 
-          {/* 5. Ponctualité */}
+          {/* 5. Classement équipe */}
+          {data.leaderboard.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <TrendingUp size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Classement équipe</p>
+              </div>
+              {data.leaderboard.map((member, i) => {
+                const b = member.badge ? BADGE_CONFIG[member.badge] : null;
+                return (
+                  <div key={member.profile_id} className="px-4 py-3.5 flex items-center gap-3" style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div className="w-6 text-center flex-shrink-0">
+                      {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
+                    </div>
+                    <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
+                          {member.delays_count === 0 ? "✓" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{member.protocols_read}/{member.protocols_total} proto</span>
+                      </div>
+                      <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-lg font-bold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
+                      <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="px-4 py-2 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+                Score = protocoles + bravos + défis + bonus
+              </div>
+            </div>
+          )}
+
+          {/* 6. Ponctualité */}
           {data.leaderboard.length > 0 && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
@@ -669,14 +731,10 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Ponctualité équipe</p>
               </div>
               {data.leaderboard.map((m, i) => (
-                <div key={m.profile_id} className="px-4 py-3 flex items-center gap-3"
-                  style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <div key={m.profile_id} className="px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
                   <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={26} />
                   <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
-                  <span className="text-[11px] font-medium px-2 py-1 rounded"
-                    style={m.delays_count === 0
-                      ? { background: "rgba(16,185,129,0.1)", color: "var(--success)" }
-                      : { background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
+                  <span className="text-[11px] font-medium px-2 py-1 rounded" style={m.delays_count === 0 ? { background: "rgba(16,185,129,0.1)", color: "var(--success)" } : { background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
                     {m.delays_count === 0 ? "✓ OK" : `${m.delays_count} retard${m.delays_count > 1 ? "s" : ""}`}
                   </span>
                 </div>
@@ -687,50 +745,34 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {/* Feedback modal */}
+      {/* Modals */}
       {feedbackModal && modalMeta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: modalMeta.color }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{modalMeta.label}</p>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
-                  style={{ background: modalMeta.bg, color: modalMeta.color }}>
-                  {modalItems.length}
-                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: modalMeta.bg, color: modalMeta.color }}>{modalItems.length}</span>
               </div>
               <button onClick={() => setFeedbackModal(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: "calc(80vh - 60px)" }}>
               {modalItems.length === 0 ? (
-                <div className="px-5 py-12 text-center">
-                  <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis dans cette catégorie</p>
-                </div>
+                <div className="px-5 py-12 text-center"><p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis dans cette catégorie</p></div>
               ) : (
                 <div className="divide-y" style={{ borderColor: "var(--border)" }}>
                   {modalItems.map(item => (
                     <div key={item.id} className="px-5 py-4">
                       <div className="flex items-center gap-2 mb-2">
-                        {item.table_number && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded"
-                            style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>
-                            Table {item.table_number}
-                          </span>
-                        )}
-                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                          {new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
+                        {item.table_number && <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)" }}>Table {item.table_number}</span>}
+                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                       <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
                       {item.confirmation_count > 0 && (
                         <div className="flex items-center gap-1.5 mt-2">
                           <ThumbsUp size={11} style={{ color: "var(--foreground-dim)" }} />
-                          <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-                            {item.confirmation_count} collègue{item.confirmation_count > 1 ? "s" : ""} ont eu le même retour
-                          </span>
+                          <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{item.confirmation_count} collègue{item.confirmation_count > 1 ? "s" : ""} ont eu le même retour</span>
                         </div>
                       )}
                     </div>
@@ -741,6 +783,9 @@ function ManagerDashboard({ data }: { data: DashboardData }) {
           </div>
         </div>
       )}
+
+      {showAddProtocol && <AddProtocolModal data={data} onClose={() => setShowAddProtocol(false)} onAdded={handleProtocolAdded} />}
+      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
     </div>
   );
 }
@@ -760,9 +805,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set(data.my_confirmed_feedback));
-  const [confirmCounts, setConfirmCounts] = useState<Record<string, number>>(
-    Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
-  );
+  const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
 
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
   const [delayMinutes, setDelayMinutes] = useState("15");
@@ -791,28 +834,75 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
     showSuccess("Avis client enregistré ✓");
   };
 
-  const toggleConfirm = async (feedbackId: string) => {
-    const isConfirmed = confirmedIds.has(feedbackId);
-    const delta = isConfirmed ? -1 : 1;
+  const todayStat = data.task_stats.find(s => s.period === "today");
+  const todayPct = todayStat && todayStat.total > 0 ? Math.round((todayStat.done / todayStat.total) * 100) : 0;
+  const todayAllDone = todayStat ? todayStat.done >= todayStat.total && todayStat.total > 0 : false;
 
-    setConfirmedIds(prev => {
-      const next = new Set(prev);
-      if (isConfirmed) next.delete(feedbackId); else next.add(feedbackId);
-      return next;
-    });
-    setConfirmCounts(prev => ({ ...prev, [feedbackId]: (prev[feedbackId] ?? 0) + delta }));
-
-    if (!DEV_MODE) {
-      if (isConfirmed) {
-        await supabase.from("feedback_confirmations").delete().eq("profile_id", data.my_profile_id).eq("feedback_id", feedbackId);
-      } else {
-        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: data.my_profile_id, feedback_id: feedbackId });
-      }
-    }
-  };
+  const QUICK_ACTIONS = [
+    {
+      href: "/protocols",
+      icon: BookOpen,
+      title: "Protocoles",
+      sub: data.unread_mandatory > 0 ? `${data.unread_mandatory} à lire obligatoirement` : "Tous à jour ✓",
+      color: "rgba(6,182,212,0.1)",
+      iconColor: "var(--accent)",
+      badge: data.unread_mandatory > 0 ? data.unread_mandatory : null,
+      badgeColor: "var(--danger)",
+    },
+    {
+      onClick: () => setModal("feedback"),
+      icon: MessageSquare,
+      title: "Retour client",
+      sub: "Signaler un compliment, plainte ou incident",
+      color: "rgba(139,92,246,0.1)",
+      iconColor: "#8B5CF6",
+    },
+    {
+      href: "/me/tasks",
+      icon: CheckCircle2,
+      title: "Mes tâches",
+      sub: todayStat ? `${todayStat.done}/${todayStat.total} aujourd'hui` : "Voir mes tâches",
+      color: todayAllDone ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)",
+      iconColor: todayAllDone ? "var(--success)" : "var(--accent)",
+      gauge: todayStat ? { done: todayStat.done, total: todayStat.total, pct: todayPct, allDone: todayAllDone } : null,
+      gaugePopup: todayStat,
+    },
+    {
+      href: "/challenges",
+      icon: Trophy,
+      title: "Défis",
+      sub: data.active_challenges > 0 ? `${data.active_challenges} défi${data.active_challenges > 1 ? "s" : ""} en cours` : "Aucun défi actif",
+      color: "rgba(245,158,11,0.1)",
+      iconColor: "#F59E0B",
+    },
+    {
+      href: "/scoring",
+      icon: TrendingUp,
+      title: "Classement",
+      sub: myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : "Voir le classement",
+      color: "rgba(245,158,11,0.08)",
+      iconColor: myBadge?.color ?? "var(--foreground-dim)",
+    },
+    {
+      href: "/scoring",
+      icon: Star,
+      title: "Mon score",
+      sub: myStats ? `${myStats.score} pts ce mois` : "Voir mon score",
+      color: myBadge ? `rgba(245,158,11,0.1)` : "rgba(161,161,170,0.08)",
+      iconColor: myBadge?.color ?? "var(--foreground-dim)",
+      score: myStats?.score,
+      badge: myBadge?.rank ? `#${myBadge.rank}` : null,
+      badgeColor: myBadge?.color,
+    },
+  ] as Array<{
+    href?: string; onClick?: () => void; icon: React.ElementType; title: string; sub: string;
+    color: string; iconColor: string; badge?: number | string | null; badgeColor?: string;
+    gauge?: { done: number; total: number; pct: number; allDone: boolean } | null;
+    gaugePopup?: TaskStat | null; score?: number;
+  }>;
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-7xl">
+    <div className="px-4 py-8 lg:px-8 max-w-2xl">
       {/* Greeting */}
       <div className="mb-8">
         <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
@@ -824,259 +914,74 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
       </div>
 
       {successMsg && (
-        <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium"
-          style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
+        <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
           {successMsg}
         </div>
       )}
 
-      {/* Alert protocoles obligatoires */}
+      {/* Alert protocoles */}
       {data.unread_mandatory > 0 && (
-        <a href="/protocols"
-          className="flex items-start gap-3 rounded-xl px-4 py-4 mb-4 transition-opacity hover:opacity-80"
-          style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
+        <a href="/protocols" className="flex items-start gap-3 rounded-xl px-4 py-4 mb-6 transition-opacity hover:opacity-80" style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)" }}>
           <AlertCircle size={18} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
           <div className="flex-1">
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-              {data.unread_mandatory} protocole{data.unread_mandatory > 1 ? "s" : ""} obligatoire{data.unread_mandatory > 1 ? "s" : ""} à lire
-            </p>
+            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{data.unread_mandatory} protocole{data.unread_mandatory > 1 ? "s" : ""} obligatoire{data.unread_mandatory > 1 ? "s" : ""} à lire</p>
             <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Ouvre-les et confirme ta lecture</p>
           </div>
           <ChevronRight size={16} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginTop: 2 }} />
         </a>
       )}
 
-      {/* Score card */}
-      <div className="rounded-xl p-5 mb-6"
-        style={{ background: "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score ce mois</p>
-          {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={28} />}
-        </div>
-        <div className="flex items-end gap-4 mb-4">
-          <div>
-            <p className="text-5xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
-              {myStats?.score ?? "-"}
-            </p>
-            <p className="text-[11px] font-mono mt-1" style={{ color: "var(--foreground-dim)" }}>
-              {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : "-"}
-            </p>
-          </div>
-          <div className="flex-1 pb-1">
-            <ScoreBar value={myStats?.score ?? 0} color={myBadge?.color ?? "var(--accent)"} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--background-soft)" }}>
-            <p className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Retards</p>
-            <p className="text-xl font-semibold" style={{ color: (myStats?.delays_count ?? 0) === 0 ? "var(--success)" : "var(--warning)" }}>
-              {myStats?.delays_count ?? 0}
-            </p>
-          </div>
-          <div className="rounded-lg px-3 py-2.5" style={{ background: "var(--background-soft)" }}>
-            <p className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Protocoles lus</p>
-            <p className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>
-              {myStats?.protocols_read ?? 0}
-              <span className="text-sm font-normal" style={{ color: "var(--foreground-dim)" }}>/{myStats?.protocols_total ?? 0}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 1. Protocoles */}
-      {data.protocols.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
-            <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-          </div>
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            {data.protocols.map((p, i) => (
-              <a key={p.id} href="/protocols"
-                className="flex items-center gap-3 px-4 py-3.5 transition-opacity hover:opacity-75"
-                style={{ background: "var(--background-elev)", borderBottom: i < data.protocols.length - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: p.is_read ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${p.is_read ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
-                  {p.is_read
-                    ? <Check size={13} style={{ color: "var(--success)" }} />
-                    : <BookOpen size={12} style={{ color: "var(--danger)" }} />
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                    {p.is_mandatory && !p.is_read && (
-                      <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
-                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                        Obligatoire
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] mt-0.5" style={{ color: p.is_read ? "var(--success)" : "var(--foreground-dim)" }}>
-                    {p.is_read ? "Signé ✓" : "Non lu"}
-                  </p>
-                </div>
-                <ChevronRight size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 2. Retours clients récents */}
-      {data.feedback_items.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Retours clients récents</p>
-            <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-          </div>
-          <div className="space-y-2">
-            {data.feedback_items.slice(0, 4).map(item => {
-              const meta = CATEGORY_META[item.category];
-              const confirmed = confirmedIds.has(item.id);
-              const count = confirmCounts[item.id] ?? 0;
-              return (
-                <div key={item.id} className="rounded-xl p-4"
-                  style={{ background: "var(--background-elev)", border: `1px solid ${confirmed ? meta.border : "var(--border)"}` }}>
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded"
-                          style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
-                          {meta.label}
-                        </span>
-                        {item.table_number && (
-                          <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Table {item.table_number}</span>
-                        )}
-                      </div>
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{item.content}</p>
-                      <p className="text-[10px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
-                        {new Date(item.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => toggleConfirm(item.id)}
-                    className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all"
-                    style={{
-                      background: confirmed ? meta.bg : "var(--background-soft)",
-                      color: confirmed ? meta.color : "var(--foreground-dim)",
-                      border: `1px solid ${confirmed ? meta.border : "var(--border)"}`,
-                    }}>
-                    <ThumbsUp size={12} fill={confirmed ? "currentColor" : "none"} />
-                    {confirmed ? "Tu as eu ce retour" : "Moi aussi j'ai eu ce retour"}
-                    {count > 0 && <span className="ml-1 opacity-70">· {count}</span>}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Défis en cours */}
-      {data.active_challenges_list.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Défis en cours</p>
-            <a href="/challenges" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-          </div>
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            {data.active_challenges_list.map((c, i) => {
-              const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
-              const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
-              return (
-                <a key={c.id} href="/challenges"
-                  className="flex items-center gap-4 px-4 py-3.5 transition-opacity hover:opacity-75"
-                  style={{ background: "var(--background-elev)", borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none", display: "flex" }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
-                    <Trophy size={12} style={{ color: "#F59E0B" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate mb-1" style={{ color: "var(--foreground)" }}>{c.title}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#F59E0B" }} />
-                      </div>
-                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{pct}%</span>
-                    </div>
-                  </div>
-                  {daysLeft !== null && (
-                    <span className="text-[10px] font-mono flex-shrink-0"
-                      style={{ color: daysLeft <= 2 ? "var(--danger)" : "var(--foreground-dim)" }}>
-                      {daysLeft}j
+      {/* Quick action cards */}
+      <div className="space-y-2.5">
+        {QUICK_ACTIONS.map((action, i) => {
+          const Icon = action.icon;
+          const content = (
+            <>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: action.color }}>
+                <Icon size={16} style={{ color: action.iconColor }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{action.title}</p>
+                  {action.badge !== null && action.badge !== undefined && (
+                    <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full" style={{ background: action.badgeColor ? `${action.badgeColor}20` : "var(--background-soft)", color: action.badgeColor ?? "var(--foreground-dim)" }}>
+                      {action.badge}
                     </span>
                   )}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 4. Classement équipe */}
-      {data.leaderboard.length > 1 && (
-        <div className="mb-8">
-          <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Classement équipe</p>
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            {data.leaderboard.slice(0, 3).map((member, i) => {
-              const b = member.badge ? BADGE_CONFIG[member.badge] : null;
-              const isMe = member.profile_id === data.my_profile_id;
-              return (
-                <div key={member.profile_id} className="px-4 py-3 flex items-center gap-3"
-                  style={{ background: isMe ? "rgba(139,92,246,0.05)" : "var(--background-elev)", borderBottom: i < 2 ? "1px solid var(--border)" : "none" }}>
-                  {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono w-6 text-center flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
-                  <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={28} />
-                  <p className="text-sm flex-1" style={{ color: "var(--foreground)", fontWeight: isMe ? 600 : 400 }}>
-                    {member.name}{isMe ? " (toi)" : ""}
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    <Star size={11} style={{ color: b?.color ?? "var(--foreground-dim)" }} />
-                    <p className="text-sm font-semibold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{action.sub}</p>
+                {action.gauge && (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${action.gauge.pct}%`, background: action.gauge.allDone ? "var(--success)" : "var(--accent)" }} />
+                    </div>
+                    <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{action.gauge.pct}%</span>
+                  </div>
+                )}
+              </div>
+              <ChevronRight size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+            </>
+          );
+          const cls = "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-opacity hover:opacity-75";
+          const style = { background: "var(--background-elev)", border: "1px solid var(--border)" };
 
-      {/* Quick actions */}
-      <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Actions rapides</p>
-      <div className="space-y-2">
-        <button onClick={() => setModal("delay")}
-          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
-            <Clock size={15} style={{ color: "var(--warning)" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Déclarer un retard</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Signale un retard ou une absence</p>
-          </div>
-          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-        </button>
-
-        <button onClick={() => setModal("feedback")}
-          className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-opacity hover:opacity-75 text-left"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(139,92,246,0.1)" }}>
-            <MessageSquare size={15} style={{ color: "#8B5CF6" }} />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
-            <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
-          </div>
-          <Plus size={14} style={{ color: "var(--foreground-dim)" }} />
-        </button>
-
+          if (action.gauge && action.gaugePopup) {
+            return (
+              <button key={i} onClick={() => setTaskGaugePopup(action.gaugePopup!)} className={cls} style={style}>
+                {content}
+              </button>
+            );
+          }
+          if (action.onClick) {
+            return <button key={i} onClick={action.onClick} className={cls} style={style}>{content}</button>;
+          }
+          return <a key={i} href={action.href!} className={cls} style={style}>{content}</a>;
+        })}
       </div>
 
       {/* Delay modal */}
       {modal === "delay" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -1088,34 +993,22 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Date</label>
-                <input type="date" value={delayDate} onChange={e => setDelayDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                  onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"}
-                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                <input type="date" value={delayDate} onChange={e => setDelayDate(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Durée (minutes)</label>
-                <input type="number" min="1" max="480" value={delayMinutes} onChange={e => setDelayMinutes(e.target.value)} placeholder="15"
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                  onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"}
-                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                <input type="number" min="1" max="480" value={delayMinutes} onChange={e => setDelayMinutes(e.target.value)} placeholder="15" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Raison</label>
-                <select value={delayReason} onChange={e => setDelayReason(e.target.value as typeof delayReason)}
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                <select value={delayReason} onChange={e => setDelayReason(e.target.value as typeof delayReason)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                   <option value="transport">Transport</option>
                   <option value="personal">Personnel</option>
                   <option value="health">Santé</option>
                   <option value="other">Autre</option>
                 </select>
               </div>
-              <button onClick={submitDelay} disabled={submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0}
-                className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity"
-                style={{ background: "var(--warning)", color: "#09090B", opacity: (submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0) ? 0.5 : 1 }}>
+              <button onClick={submitDelay} disabled={submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--warning)", color: "#09090B", opacity: (submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0) ? 0.5 : 1 }}>
                 {submitting ? "Envoi…" : "Déclarer le retard"}
               </button>
             </div>
@@ -1125,9 +1018,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
 
       {/* Feedback modal */}
       {modal === "feedback" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -1139,9 +1030,7 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
-                <select value={fbCategory} onChange={e => setFbCategory(e.target.value as FeedbackCategory)}
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                <select value={fbCategory} onChange={e => setFbCategory(e.target.value as FeedbackCategory)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                   <option value="compliment">Compliment</option>
                   <option value="complaint">Réclamation</option>
                   <option value="suggestion">Suggestion</option>
@@ -1150,33 +1039,21 @@ function EmployeeDashboard({ data }: { data: DashboardData }) {
               </div>
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description</label>
-                <textarea value={fbContent} onChange={e => setFbContent(e.target.value)}
-                  placeholder="Décrivez le retour client…" rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                  onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"}
-                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-                  autoFocus />
+                <textarea value={fbContent} onChange={e => setFbContent(e.target.value)} placeholder="Décrivez le retour client…" rows={3} className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} autoFocus />
               </div>
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
-                  Table <span style={{ fontWeight: 400 }}>(optionnel)</span>
-                </label>
-                <input value={fbTable} onChange={e => setFbTable(e.target.value)} placeholder="Ex: 12"
-                  className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                  onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"}
-                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Table <span style={{ fontWeight: 400 }}>(optionnel)</span></label>
+                <input value={fbTable} onChange={e => setFbTable(e.target.value)} placeholder="Ex: 12" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "#8B5CF6"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
-              <button onClick={submitFeedback} disabled={submitting || !fbContent.trim()}
-                className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity"
-                style={{ background: "#8B5CF6", color: "#fff", opacity: (submitting || !fbContent.trim()) ? 0.5 : 1 }}>
+              <button onClick={submitFeedback} disabled={submitting || !fbContent.trim()} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "#8B5CF6", color: "#fff", opacity: (submitting || !fbContent.trim()) ? 0.5 : 1 }}>
                 {submitting ? "Envoi…" : "Enregistrer l'avis"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} />}
     </div>
   );
 }

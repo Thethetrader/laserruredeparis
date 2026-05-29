@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, X, RotateCcw, MoreHorizontal, Trash2 } from "lucide-react";
+import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
@@ -122,6 +122,14 @@ const DEV_FEEDBACKS: FeedbackView[] = [
   },
 ];
 
+type MonthFilter = "week" | "month" | "lastmonth";
+
+const MONTH_LABELS: Record<MonthFilter, string> = {
+  week: "Cette semaine",
+  month: "Ce mois",
+  lastmonth: "Mois dernier",
+};
+
 export default function CustomerFeedbackPage() {
   const supabase = createClient();
   const [devRole] = useDevRole();
@@ -134,15 +142,20 @@ export default function CustomerFeedbackPage() {
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
+  const [showSummary, setShowSummary] = useState(false);
+  const [userRole, setUserRole] = useState<string>("employee");
 
   useEffect(() => {
     if (DEV_MODE) {
-      setFeedbacks(devRole === "employee" ? DEV_FEEDBACKS : DEV_FEEDBACKS);
+      setUserRole(devRole);
+      setFeedbacks(DEV_FEEDBACKS);
       setLoading(false);
       return;
     }
     loadData();
-  }, [devRole]);
+  }, [devRole, monthFilter]);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -155,8 +168,18 @@ export default function CustomerFeedbackPage() {
 
     if (!memberData) { setLoading(false); return; }
     setEstablishmentId(memberData.establishment_id);
+    setUserRole(memberData.role);
 
-    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const now = new Date();
+    let rangeStart: string;
+    if (monthFilter === "week") {
+      rangeStart = new Date(Date.now() - 7 * 86400000).toISOString();
+    } else if (monthFilter === "month") {
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    } else {
+      rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    }
+    const sevenDaysAgo = rangeStart;
     const [feedbackRes, confirmedRes, membersRes] = await Promise.all([
       supabase.from("customer_feedback").select("*")
         .eq("establishment_id", memberData.establishment_id)
@@ -214,11 +237,24 @@ export default function CustomerFeedbackPage() {
     setLoading(false);
   }
 
+  const isManager = userRole === "owner" || userRole === "manager";
+
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
+
+  const markAsRead = (id: string) => {
+    setReadIds(prev => { const next = new Set(prev); next.add(id); return next; });
+  };
+
+  const markAllRead = () => {
+    setReadIds(new Set(feedbacks.map(f => f.id)));
+    showToast("Tous les retours marqués comme lus ✓");
+  };
+
+  const unreadCount = feedbacks.filter(f => !readIds.has(f.id)).length;
 
   const toggleEcho = async (id: string) => {
     const fb = feedbacks.find(f => f.id === id);
@@ -300,11 +336,11 @@ export default function CustomerFeedbackPage() {
     <div className="px-4 py-8 lg:px-8 max-w-4xl">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-5">
         <div>
           <MonoLabel size="xs" className="mb-2 block">Retour client</MonoLabel>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>Ce que les clients ont dit cette semaine.</p>
+          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retour{feedbacks.length !== 1 ? "s" : ""} · {MONTH_LABELS[monthFilter].toLowerCase()}</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
@@ -313,6 +349,85 @@ export default function CustomerFeedbackPage() {
           <Plus size={15} /> Nouveau retour
         </button>
       </div>
+
+      {/* Month filter */}
+      <div className="flex gap-2 mb-5">
+        {(["week", "month", "lastmonth"] as MonthFilter[]).map(f => (
+          <button key={f} onClick={() => setMonthFilter(f)}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+            style={monthFilter === f
+              ? { background: "var(--accent)", color: "#09090B" }
+              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            {MONTH_LABELS[f]}
+          </button>
+        ))}
+      </div>
+
+      {/* Read status + summary (manager only) */}
+      {isManager && feedbacks.length > 0 && (
+        <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+          <button
+            onClick={() => setShowSummary(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3"
+            style={{ background: "var(--background-elev)" }}>
+            <div className="flex items-center gap-2">
+              <BarChart2 size={13} style={{ color: "var(--accent)" }} />
+              <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Récapitulatif</span>
+              {unreadCount > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.12)", color: "var(--danger)" }}>
+                  {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button onClick={e => { e.stopPropagation(); markAllRead(); }}
+                  className="text-[11px] px-2.5 py-1 rounded-md"
+                  style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                  Tout marquer lu
+                </button>
+              )}
+              <ChevronDown size={14} style={{ color: "var(--foreground-dim)", transform: showSummary ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </div>
+          </button>
+          {showSummary && (
+            <div className="p-4" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)" }}>
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr style={{ color: "var(--foreground-dim)" }}>
+                    <th className="text-left font-mono uppercase text-[10px] tracking-widest pb-2">Catégorie</th>
+                    <th className="text-center font-mono uppercase text-[10px] tracking-widest pb-2" style={{ color: "var(--success)" }}>▲ Pos</th>
+                    <th className="text-center font-mono uppercase text-[10px] tracking-widest pb-2" style={{ color: "var(--warning)" }}>▼ Nég</th>
+                    <th className="text-right font-mono uppercase text-[10px] tracking-widest pb-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {["plat", "service", "boisson", "ambiance", "autre"].map(cat => {
+                    const catFbs = feedbacks.filter(f => f.item_cat === cat);
+                    const pos = catFbs.filter(f => f.tonality === "positive").length;
+                    const neg = catFbs.filter(f => f.tonality === "negative").length;
+                    if (catFbs.length === 0) return null;
+                    return (
+                      <tr key={cat} style={{ borderTop: "1px solid var(--border)" }}>
+                        <td className="py-2 font-medium capitalize" style={{ color: "var(--foreground)" }}>{cat}</td>
+                        <td className="py-2 text-center font-mono" style={{ color: pos > 0 ? "var(--success)" : "var(--foreground-dim)" }}>{pos > 0 ? pos : "—"}</td>
+                        <td className="py-2 text-center font-mono" style={{ color: neg > 0 ? "var(--warning)" : "var(--foreground-dim)" }}>{neg > 0 ? neg : "—"}</td>
+                        <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{catFbs.length}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ borderTop: "2px solid var(--border)" }}>
+                    <td className="py-2 font-semibold text-[11px] font-mono uppercase" style={{ color: "var(--foreground-dim)" }}>Total</td>
+                    <td className="py-2 text-center font-mono font-semibold" style={{ color: "var(--success)" }}>{feedbacks.filter(f => f.tonality === "positive").length}</td>
+                    <td className="py-2 text-center font-mono font-semibold" style={{ color: "var(--warning)" }}>{feedbacks.filter(f => f.tonality === "negative").length}</td>
+                    <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{feedbacks.length}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: "none" }}>
@@ -393,8 +508,11 @@ export default function CustomerFeedbackPage() {
         <div className="space-y-3">
           {sorted.map(f => (
             <FeedbackCard key={f.id} feedback={f}
+              isRead={readIds.has(f.id)}
+              isManager={isManager}
               onEcho={() => toggleEcho(f.id)}
-              onDelete={() => setDeleteTarget(f.id)} />
+              onDelete={() => setDeleteTarget(f.id)}
+              onMarkRead={() => markAsRead(f.id)} />
           ))}
         </div>
       )}
@@ -446,10 +564,13 @@ export default function CustomerFeedbackPage() {
 }
 
 /* ─── FEEDBACK CARD ─────────────────────────────────── */
-function FeedbackCard({ feedback: f, onEcho, onDelete }: {
+function FeedbackCard({ feedback: f, isRead, isManager, onEcho, onDelete, onMarkRead }: {
   feedback: FeedbackView;
+  isRead: boolean;
+  isManager: boolean;
   onEcho: () => void;
   onDelete: () => void;
+  onMarkRead: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isHot = f.echo_count >= 3;
@@ -458,9 +579,29 @@ function FeedbackCard({ feedback: f, onEcho, onDelete }: {
     <div className="rounded-xl overflow-hidden"
       style={{
         background: "var(--background-elev)",
-        border: `1px solid ${isHot ? "rgba(6,182,212,0.3)" : "var(--border)"}`,
+        border: `1px solid ${isHot ? "rgba(6,182,212,0.3)" : !isRead ? "rgba(6,182,212,0.15)" : "var(--border)"}`,
         boxShadow: isHot ? "0 0 24px rgba(6,182,212,0.06)" : undefined,
+        opacity: isRead && !isHot ? 0.85 : 1,
       }}>
+
+      {/* Unread indicator */}
+      {!isRead && isManager && (
+        <div className="flex items-center justify-between px-4 pt-2.5 pb-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+            <span className="text-[10px] font-mono" style={{ color: "var(--accent)" }}>Non lu</span>
+          </div>
+          <button onClick={onMarkRead} className="flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--foreground-dim)" }}>
+            <Eye size={10} /> Marquer lu
+          </button>
+        </div>
+      )}
+      {isRead && isManager && (
+        <div className="flex items-center gap-1.5 px-4 pt-2.5">
+          <EyeOff size={10} style={{ color: "var(--foreground-dim)" }} />
+          <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Lu</span>
+        </div>
+      )}
 
       {isHot && (
         <div className="flex items-center gap-1.5 px-4 pt-3">

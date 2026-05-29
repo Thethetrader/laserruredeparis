@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, Search, Copy, Check, Clock } from "lucide-react";
+import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, Search, Copy, Check, Clock, Calendar } from "lucide-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/types/database";
 import { useDevRole } from "@/hooks/useDevRole";
@@ -12,6 +12,13 @@ import { useDevRole } from "@/hooks/useDevRole";
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
+
+type ContractType = "cdi" | "cdd" | "extra" | null;
+
+interface AvailabilitySlot {
+  day: string;
+  period: string;
+}
 
 interface TeamMember {
   id: string;
@@ -24,7 +31,14 @@ interface TeamMember {
   last_name: string | null;
   email: string;
   avatar_url: string | null;
+  phone?: string | null;
+  contract_type?: ContractType;
+  availability?: AvailabilitySlot[];
 }
+
+const DAYS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+const PERIODS_FR = ["Matin", "Après-midi", "Soir"];
+const CONTRACT_LABELS: Record<string, string> = { cdi: "CDI", cdd: "CDD", extra: "Extra" };
 
 interface Kudos {
   id: string;
@@ -49,9 +63,10 @@ const ROLE_STYLE: Record<UserRole, { bg: string; color: string }> = {
 };
 
 const DEV_MEMBERS: TeamMember[] = [
-  { id: "m1", profile_id: DEV_PROFILE_ID, role: "owner", job_title: "Responsable", hired_at: "2022-03-01", is_active: true, first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null },
-  { id: "m2", profile_id: "profile-2", role: "manager", job_title: "Chef de salle", hired_at: "2023-01-15", is_active: true, first_name: "Yasmine", last_name: "Benali", email: "yasmine@restaurant.fr", avatar_url: null },
-  { id: "m3", profile_id: "profile-3", role: "employee", job_title: "Serveur", hired_at: "2024-06-01", is_active: true, first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null },
+  { id: "m1", profile_id: DEV_PROFILE_ID, role: "owner", job_title: "Responsable", hired_at: "2022-03-01", is_active: true, first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, contract_type: "cdi", phone: null, availability: [] },
+  { id: "m2", profile_id: "profile-2", role: "manager", job_title: "Chef de salle", hired_at: "2023-01-15", is_active: true, first_name: "Yasmine", last_name: "Benali", email: "yasmine@restaurant.fr", avatar_url: null, contract_type: "cdi", phone: "06 12 34 56 78", availability: [] },
+  { id: "m3", profile_id: "profile-3", role: "employee", job_title: "Serveur", hired_at: "2024-06-01", is_active: true, first_name: "Rayan", last_name: "Dupont", email: "rayan@restaurant.fr", avatar_url: null, contract_type: "extra", phone: "06 98 76 54 32", availability: [{ day: "Vendredi", period: "Soir" }, { day: "Samedi", period: "Soir" }, { day: "Dimanche", period: "Matin" }, { day: "Dimanche", period: "Après-midi" }] },
+  { id: "m4", profile_id: "profile-4", role: "employee", job_title: "Serveuse", hired_at: "2024-09-01", is_active: true, first_name: "Léa", last_name: "Martin", email: "lea@restaurant.fr", avatar_url: null, contract_type: "cdd", phone: "07 11 22 33 44", availability: [{ day: "Samedi", period: "Matin" }, { day: "Samedi", period: "Après-midi" }, { day: "Dimanche", period: "Matin" }] },
 ];
 
 const DEV_KUDOS: Kudos[] = [
@@ -89,6 +104,15 @@ export default function TeamPage() {
   const [sendingBonus, setSendingBonus] = useState(false);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<"name" | "availability">("name");
+  const [availDay, setAvailDay] = useState("");
+  const [availPeriod, setAvailPeriod] = useState("");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
+  const [inviteContract, setInviteContract] = useState<ContractType>(null);
+  const [inviteAvailDays, setInviteAvailDays] = useState<string[]>([]);
+  const [inviteAvailPeriods, setInviteAvailPeriods] = useState<string[]>([]);
 
   useEffect(() => {
     if (DEV_MODE) { setRole(devRole); setMembers(DEV_MEMBERS); setLoading(false); return; }
@@ -231,9 +255,15 @@ export default function TeamPage() {
   }
 
   const searchLower = search.toLowerCase();
-  const activeMembers = members.filter(m => m.is_active).filter(m =>
-    !search || `${m.first_name ?? ""} ${m.last_name ?? ""}`.toLowerCase().includes(searchLower) || m.email.toLowerCase().includes(searchLower)
-  );
+  const activeMembers = members.filter(m => m.is_active).filter(m => {
+    if (searchMode === "availability" && (availDay || availPeriod)) {
+      const av = m.availability ?? [];
+      if (availDay && availPeriod) return av.some(s => s.day === availDay && s.period === availPeriod);
+      if (availDay) return av.some(s => s.day === availDay);
+      if (availPeriod) return av.some(s => s.period === availPeriod);
+    }
+    return !search || `${m.first_name ?? ""} ${m.last_name ?? ""}`.toLowerCase().includes(searchLower) || m.email.toLowerCase().includes(searchLower);
+  });
   const inactiveMembers = members.filter(m => !m.is_active);
 
   return (
@@ -264,24 +294,49 @@ export default function TeamPage() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--foreground-dim)" }} />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher un membre…"
-          className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl outline-none"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-          onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-          onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-        />
-        {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }}>
-            <X size={13} />
-          </button>
-        )}
+      {/* Search mode toggle */}
+      <div className="flex gap-1.5 mb-3">
+        <button onClick={() => setSearchMode("name")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors" style={{ background: searchMode === "name" ? "rgba(6,182,212,0.12)" : "var(--background-elev)", color: searchMode === "name" ? "var(--accent)" : "var(--foreground-dim)", border: searchMode === "name" ? "1px solid rgba(6,182,212,0.3)" : "1px solid var(--border)" }}>
+          <Search size={11} /> Nom
+        </button>
+        <button onClick={() => setSearchMode("availability")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors" style={{ background: searchMode === "availability" ? "rgba(139,92,246,0.12)" : "var(--background-elev)", color: searchMode === "availability" ? "#8B5CF6" : "var(--foreground-dim)", border: searchMode === "availability" ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
+          <Calendar size={11} /> Disponibilité
+        </button>
       </div>
+
+      {searchMode === "name" ? (
+        <div className="relative mb-6">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--foreground-dim)" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un membre…" className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl outline-none" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+          {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }}><X size={13} /></button>}
+        </div>
+      ) : (
+        <div className="rounded-xl p-4 mb-6" style={{ background: "var(--background-elev)", border: "1px solid rgba(139,92,246,0.25)" }}>
+          <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "#8B5CF6" }}>Rechercher par disponibilité</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Jour</label>
+              <select value={availDay} onChange={e => setAvailDay(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                <option value="">Tous les jours</option>
+                {DAYS_FR.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Période</label>
+              <select value={availPeriod} onChange={e => setAvailPeriod(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                <option value="">Toute la journée</option>
+                {PERIODS_FR.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+          {(availDay || availPeriod) && (
+            <p className="text-[11px] mt-2" style={{ color: "var(--foreground-dim)" }}>
+              {activeMembers.length} membre{activeMembers.length !== 1 ? "s" : ""} disponible{activeMembers.length !== 1 ? "s" : ""}
+              {availDay && ` le ${availDay}`}{availPeriod && ` (${availPeriod})`}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Invite form */}
       {showInviteForm && isManager && (
@@ -312,6 +367,27 @@ export default function TeamPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Nom / Prénom */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Prénom</label>
+                  <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Prénom"
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Nom</label>
+                  <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Nom de famille"
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+              </div>
+
+              {/* Email */}
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
                   Email <span style={{ color: "var(--foreground-dim)", textTransform: "none", letterSpacing: 0 }}>(optionnel)</span>
@@ -322,15 +398,75 @@ export default function TeamPage() {
                   onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
                   onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
+
+              {/* Téléphone */}
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Rôle</label>
-                <select value={inviteRole} onChange={e => setInviteRole(e.target.value as UserRole)}
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  Téléphone <span style={{ color: "var(--foreground-dim)", textTransform: "none", letterSpacing: 0 }}>(optionnel)</span>
+                </label>
+                <input type="tel" value={invitePhone} onChange={e => setInvitePhone(e.target.value)} placeholder="06 XX XX XX XX"
                   className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                  <option value="employee">Employé</option>
-                  {role === "owner" && <option value="manager">Manager</option>}
-                </select>
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                  onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                  onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
+
+              {/* Contrat + Rôle */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Contrat</label>
+                  <select value={inviteContract ?? ""} onChange={e => setInviteContract((e.target.value || null) as ContractType)}
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="">Non précisé</option>
+                    <option value="cdi">CDI</option>
+                    <option value="cdd">CDD</option>
+                    <option value="extra">Extra</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Rôle</label>
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="employee">Employé</option>
+                    {role === "owner" && <option value="manager">Manager</option>}
+                  </select>
+                </div>
+              </div>
+
+              {/* Disponibilités (extras) */}
+              {inviteContract === "extra" && (
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Jours disponibles</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {DAYS_FR.map(d => {
+                      const active = inviteAvailDays.includes(d);
+                      return (
+                        <button key={d} onClick={() => setInviteAvailDays(prev => active ? prev.filter(x => x !== d) : [...prev, d])}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                          style={{ background: active ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
+                          {d.slice(0, 3)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Horaires</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PERIODS_FR.map(p => {
+                      const active = inviteAvailPeriods.includes(p);
+                      return (
+                        <button key={p} onClick={() => setInviteAvailPeriods(prev => active ? prev.filter(x => x !== p) : [...prev, p])}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
+                          style={{ background: active ? "rgba(139,92,246,0.12)" : "var(--background-soft)", color: active ? "#8B5CF6" : "var(--foreground-dim)", border: active ? "1px solid rgba(139,92,246,0.3)" : "1px solid var(--border)" }}>
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <button onClick={sendInvite} disabled={inviting}
                 className="w-full py-2.5 text-sm font-medium rounded-md transition-opacity flex items-center justify-center gap-2"
                 style={{ background: "var(--accent)", color: "#09090B", opacity: inviting ? 0.5 : 1 }}>
@@ -396,14 +532,29 @@ export default function TeamPage() {
                         {ROLE_LABELS[member.role]}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {member.job_title && <span className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>{member.job_title}</span>}
+                      {member.contract_type && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                          style={{
+                            background: member.contract_type === "extra" ? "rgba(139,92,246,0.1)" : "rgba(6,182,212,0.08)",
+                            color: member.contract_type === "extra" ? "#8B5CF6" : "var(--accent)",
+                          }}>
+                          {CONTRACT_LABELS[member.contract_type]}
+                        </span>
+                      )}
                       {positiveCount > 0 && (
                         <button onClick={() => setExpandedKudos(isExpanded ? null : member.profile_id)}
                           className="flex items-center gap-1 text-[11px]"
                           style={{ color: "#F59E0B" }}>
                           <Star size={10} fill="#F59E0B" /> {positiveCount} bravo{positiveCount > 1 ? "s" : ""}
                         </button>
+                      )}
+                      {member.contract_type === "extra" && member.availability && member.availability.length > 0 && (
+                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                          {member.availability.slice(0, 2).map(s => `${s.day.slice(0, 3)} ${s.period.slice(0, 3).toLowerCase()}`).join(" · ")}
+                          {member.availability.length > 2 && " …"}
+                        </span>
                       )}
                     </div>
                   </div>

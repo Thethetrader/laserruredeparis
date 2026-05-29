@@ -6,13 +6,19 @@ import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   Plus, Pencil, ToggleLeft, ToggleRight, AlertTriangle, Camera,
-  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp
+  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp, BookOpen,
 } from "lucide-react";
 import type { TaskCategory, TaskTargetRole, TaskFrequency } from "@/lib/types/database";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
+
+interface Protocol {
+  id: string;
+  title: string;
+  category: string;
+}
 
 interface TaskTemplate {
   id: string;
@@ -26,6 +32,7 @@ interface TaskTemplate {
   is_active: boolean;
   display_order: number;
   assigned_to: string | null;
+  protocol_id: string | null;
 }
 
 interface Member {
@@ -66,16 +73,22 @@ const FREQ_LABEL: Record<TaskFrequency, string> = {
   per_service: "À chaque service",
 };
 
+const DEV_PROTOCOLS: Protocol[] = [
+  { id: "p1", title: "Procédure ouverture caisse", category: "opening" },
+  { id: "p2", title: "Contrôle températures HACCP", category: "hygiene" },
+  { id: "p3", title: "Protocole nettoyage cuisine", category: "hygiene" },
+];
+
 const DEV_TASKS: TaskTemplate[] = [
-  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 1 },
-  { id: "t2", title: "Contrôle température frigos", description: "Vérifier entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 2 },
-  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 3 },
-  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 4 },
-  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 5 },
-  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 6 },
-  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 7 },
-  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 8 },
-  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 9 },
+  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 1, assigned_to: null, protocol_id: "p1" },
+  { id: "t2", title: "Contrôle température frigos", description: "Vérifier entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 2, assigned_to: null, protocol_id: "p2" },
+  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 3, assigned_to: null, protocol_id: null },
+  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 4, assigned_to: null, protocol_id: null },
+  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 5, assigned_to: null, protocol_id: null },
+  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 6, assigned_to: null, protocol_id: null },
+  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 7, assigned_to: null, protocol_id: null },
+  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 8, assigned_to: null, protocol_id: "p3" },
+  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 9, assigned_to: null, protocol_id: null },
 ];
 
 const emptyForm = (): Omit<TaskTemplate, "id" | "display_order" | "is_active"> => ({
@@ -87,6 +100,7 @@ const emptyForm = (): Omit<TaskTemplate, "id" | "display_order" | "is_active"> =
   requires_photo: false,
   is_critical: false,
   assigned_to: null,
+  protocol_id: null,
 });
 
 const DEV_MEMBERS: Member[] = [
@@ -97,6 +111,7 @@ const DEV_MEMBERS: Member[] = [
 
 export default function EstablishmentTasksPage() {
   const [tasks, setTasks] = useState<TaskTemplate[]>([]);
+  const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [form, setForm] = useState(emptyForm());
@@ -107,12 +122,15 @@ export default function EstablishmentTasksPage() {
   const [estId, setEstId] = useState<string>(DEV_ESTABLISHMENT_ID);
   const [ownerId, setOwnerId] = useState<string>(DEV_PROFILE_ID);
   const [members, setMembers] = useState<Member[]>([]);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     if (DEV_MODE) {
       setTasks(DEV_TASKS);
       setMembers(DEV_MEMBERS);
+      setProtocols(DEV_PROTOCOLS);
       setLoading(false);
       return;
     }
@@ -125,9 +143,10 @@ export default function EstablishmentTasksPage() {
     setEstId(member.establishment_id);
     setOwnerId(userId!);
 
-    const [{ data }, { data: memberRows }] = await Promise.all([
+    const [{ data }, { data: memberRows }, { data: protoRows }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).order("display_order"),
       supabase.from("establishment_members").select("profile_id, is_active, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
+      supabase.from("protocols").select("id, title, category").eq("establishment_id", member.establishment_id).order("title"),
     ]);
     setTasks((data ?? []) as TaskTemplate[]);
     setMembers(
@@ -136,6 +155,7 @@ export default function EstablishmentTasksPage() {
         name: [m.profiles?.first_name, m.profiles?.last_name].filter(Boolean).join(" ") || "Membre",
       }))
     );
+    setProtocols((protoRows ?? []) as Protocol[]);
     setLoading(false);
   }, []);
 
@@ -156,6 +176,7 @@ export default function EstablishmentTasksPage() {
       requires_photo: task.requires_photo,
       is_critical: task.is_critical,
       assigned_to: task.assigned_to ?? null,
+      protocol_id: task.protocol_id ?? null,
     });
     setModal({ mode: "edit", task });
   }
@@ -218,6 +239,31 @@ export default function EstablishmentTasksPage() {
     const supabase = createClient();
     await supabase.from("task_templates").delete().eq("id", task.id);
     await load();
+  }
+
+  async function handleDrop(targetId: string, cat: TaskCategory) {
+    if (!dragId || dragId === targetId) return;
+    const catTasks = tasks.filter(t => t.category === cat);
+    const fromIdx = catTasks.findIndex(t => t.id === dragId);
+    const toIdx = catTasks.findIndex(t => t.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const reordered = [...catTasks];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    const updatedTasks = tasks.map(t => {
+      const newIdx = reordered.findIndex(r => r.id === t.id);
+      return newIdx !== -1 ? { ...t, display_order: newIdx } : t;
+    });
+    setTasks(updatedTasks);
+
+    if (!DEV_MODE) {
+      const supabase = createClient();
+      await Promise.all(reordered.map((t, i) =>
+        supabase.from("task_templates").update({ display_order: i }).eq("id", t.id)
+      ));
+    }
   }
 
   const byCategory = (cat: TaskCategory) => tasks.filter(t => t.category === cat);
@@ -285,65 +331,69 @@ export default function EstablishmentTasksPage() {
 
                 {!isCollapsed && (
                   <div className="divide-y" style={{ borderTop: "1px solid var(--border-soft)" }}>
-                    {catTasks.map(task => (
-                      <div
-                        key={task.id}
-                        className="flex items-start gap-3 px-4 py-3 group"
-                        style={{
-                          background: "var(--background)",
-                          opacity: task.is_active ? 1 : 0.5,
-                        }}
-                      >
-                        <GripVertical size={14} className="mt-0.5 flex-shrink-0" style={{ color: "var(--foreground-dim)" }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
-                              {task.title}
-                            </span>
-                            {task.is_critical && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
-                                <AlertTriangle size={9} />HACCP
+                    {catTasks.map(task => {
+                      const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
+                      const isDragOver = dragOverId === task.id && dragId !== task.id;
+                      return (
+                        <div
+                          key={task.id}
+                          className="flex items-start gap-3 px-4 py-3 group transition-all"
+                          draggable
+                          onDragStart={() => setDragId(task.id)}
+                          onDragOver={e => { e.preventDefault(); setDragOverId(task.id); }}
+                          onDrop={e => { e.preventDefault(); handleDrop(task.id, cat); setDragId(null); setDragOverId(null); }}
+                          onDragEnd={() => { setDragId(null); setDragOverId(null); }}
+                          style={{
+                            background: "var(--background)",
+                            opacity: task.is_active ? (dragId === task.id ? 0.4 : 1) : 0.5,
+                            borderTop: isDragOver ? "2px solid var(--accent)" : undefined,
+                          }}
+                        >
+                          <GripVertical size={14} className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing" style={{ color: "var(--foreground-dim)" }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{task.title}</span>
+                              {task.is_critical && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                                  <AlertTriangle size={9} />HACCP
+                                </span>
+                              )}
+                              {task.requires_photo && <Camera size={11} style={{ color: "var(--foreground-dim)" }} />}
+                            </div>
+                            {task.description && (
+                              <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
+                                {ROLE_LABEL[task.target_role]}
                               </span>
-                            )}
-                            {task.requires_photo && (
-                              <Camera size={11} style={{ color: "var(--foreground-dim)" }} />
-                            )}
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
+                                {FREQ_LABEL[task.frequency]}
+                              </span>
+                              {task.assigned_to && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
+                                  → {members.find(m => m.profile_id === task.assigned_to)?.name ?? "Assigné"}
+                                </span>
+                              )}
+                              {linkedProtocol && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                                  <BookOpen size={9} />
+                                  {linkedProtocol.title}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {task.description && (
-                            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
-                              {ROLE_LABEL[task.target_role]}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
-                              {FREQ_LABEL[task.frequency]}
-                            </span>
-                            {task.assigned_to && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
-                                → {members.find(m => m.profile_id === task.assigned_to)?.name ?? "Assigné"}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button onClick={() => openEdit(task)} className="p-1.5 rounded-base transition-colors" style={{ color: "var(--foreground-dim)" }}>
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => toggleActive(task)} className="p-1.5 rounded-base transition-colors" style={{ color: task.is_active ? "var(--accent)" : "var(--foreground-dim)" }}>
+                              {task.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => openEdit(task)}
-                            className="p-1.5 rounded-base transition-colors"
-                            style={{ color: "var(--foreground-dim)" }}
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => toggleActive(task)}
-                            className="p-1.5 rounded-base transition-colors"
-                            style={{ color: task.is_active ? "var(--accent)" : "var(--foreground-dim)" }}
-                          >
-                            {task.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -357,7 +407,7 @@ export default function EstablishmentTasksPage() {
         <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
           <div
             className="w-full max-w-md rounded-2xl p-5 animate-in slide-in-from-bottom-4 duration-200"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
@@ -451,6 +501,30 @@ export default function EstablishmentTasksPage() {
                 {form.assigned_to && (
                   <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>
                     Cette tâche sera réservée à cette personne (prioritaire sur le poste).
+                  </p>
+                )}
+              </div>
+
+              {/* Protocole associé */}
+              <div>
+                <label className="text-[11px] mb-1 flex items-center gap-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  <BookOpen size={11} />
+                  Protocole associé (optionnel)
+                </label>
+                <select
+                  value={form.protocol_id ?? ""}
+                  onChange={e => setForm(f => ({ ...f, protocol_id: e.target.value || null }))}
+                  className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                >
+                  <option value="">Aucun protocole</option>
+                  {protocols.map(p => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+                {form.protocol_id && (
+                  <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>
+                    L'employé pourra consulter ce protocole directement depuis la tâche.
                   </p>
                 )}
               </div>

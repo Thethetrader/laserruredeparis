@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   CheckCircle2, Circle, Camera, AlertTriangle, ChevronDown, ChevronUp,
   RefreshCw, Users, UtensilsCrossed, Wine, Briefcase, Sunrise, Sunset, Zap,
-  X, Plus, Clock, Settings
+  X, Plus, Clock, Settings, BookOpen, ZoomIn, User,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
@@ -16,6 +16,13 @@ import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
+
+interface Protocol {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+}
 
 interface TaskTemplate {
   id: string;
@@ -27,6 +34,7 @@ interface TaskTemplate {
   requires_photo: boolean;
   is_critical: boolean;
   display_order: number;
+  protocol_id: string | null;
 }
 
 interface TaskCompletion {
@@ -48,14 +56,14 @@ interface TaskOneShot {
   target_role: TaskTargetRole;
   due_date: string;
   requires_photo: boolean;
+  is_critical: boolean;
+  assigned_to: string | null;
   is_validated: boolean;
   creator_name?: string;
+  protocol_id: string | null;
 }
 
-interface TaskWithStatus extends TaskTemplate {
-  completion: TaskCompletion | null;
-  isCatchup?: boolean;
-}
+interface Member { profile_id: string; name: string; }
 
 type FilterRole = "all" | TaskTargetRole;
 
@@ -82,16 +90,21 @@ const ROLE_ICON: Record<TaskTargetRole, React.ElementType> = {
   manager: Briefcase,
 };
 
+const DEV_PROTOCOLS: Protocol[] = [
+  { id: "p1", title: "Procédure ouverture caisse", content: "1. Vérifier le fond de caisse (200€)\n2. Compter les billets par coupure\n3. Valider dans le logiciel de caisse", category: "opening" },
+  { id: "p2", title: "Contrôle températures HACCP", content: "Mesurer chaque frigo avec le thermomètre sonde.\n\nFrigo 1 & 2 : 2°C – 4°C\nCongélateur : -18°C max\n\nSi hors norme : alerter le responsable immédiatement.", category: "hygiene" },
+];
+
 const DEV_TEMPLATES: TaskTemplate[] = [
-  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 1 },
-  { id: "t2", title: "Contrôle température frigos", description: "Vérifier que les frigos sont entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 2 },
-  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, display_order: 3 },
-  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, display_order: 4 },
-  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, display_order: 5 },
-  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 6 },
-  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, display_order: 7 },
-  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, display_order: 8 },
-  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, display_order: 9 },
+  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 1, protocol_id: "p1" },
+  { id: "t2", title: "Contrôle température frigos", description: "Vérifier que les frigos sont entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 2, protocol_id: "p2" },
+  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, display_order: 3, protocol_id: null },
+  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, display_order: 4, protocol_id: null },
+  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, display_order: 5, protocol_id: null },
+  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, display_order: 6, protocol_id: null },
+  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, display_order: 7, protocol_id: null },
+  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, display_order: 8, protocol_id: null },
+  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, display_order: 9, protocol_id: null },
 ];
 
 const DEV_COMPLETIONS: TaskCompletion[] = [
@@ -101,7 +114,13 @@ const DEV_COMPLETIONS: TaskCompletion[] = [
 ];
 
 const DEV_ONE_SHOTS: TaskOneShot[] = [
-  { id: "os1", title: "Vérifier livraison vin", description: "Le commercial Durand passe vers 10h", target_role: "manager", due_date: new Date().toISOString().split("T")[0], requires_photo: false, is_validated: false, creator_name: "Yasmine B." },
+  { id: "os1", title: "Vérifier livraison vin", description: "Le commercial Durand passe vers 10h", target_role: "manager", due_date: new Date().toISOString().split("T")[0], requires_photo: false, is_critical: false, assigned_to: null, is_validated: false, creator_name: "Yasmine B.", protocol_id: null },
+];
+
+const DEV_MEMBERS: Member[] = [
+  { profile_id: "profile-2", name: "Yasmine Benali" },
+  { profile_id: "profile-3", name: "Rayan Dupont" },
+  { profile_id: "profile-4", name: "Léa Martin" },
 ];
 
 function relTime(iso: string) {
@@ -123,20 +142,26 @@ export default function TasksManagerPage() {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [completions, setCompletions] = useState<TaskCompletion[]>([]);
   const [oneShots, setOneShots] = useState<TaskOneShot[]>([]);
+  const [protocols, setProtocols] = useState<Protocol[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [filterRole, setFilterRole] = useState<FilterRole>("all");
   const [loading, setLoading] = useState(true);
   const [expandedCategory, setExpandedCategory] = useState<Record<TaskCategory, boolean>>({
-    opening: true,
-    closing: true,
-    continuous: true,
-    custom: true,
+    opening: true, closing: true, continuous: true, custom: true,
   });
   const [validating, setValidating] = useState<string | null>(null);
   const [showOneShotModal, setShowOneShotModal] = useState(false);
   const [newOneShotTitle, setNewOneShotTitle] = useState("");
   const [newOneShotDesc, setNewOneShotDesc] = useState("");
   const [newOneShotRole, setNewOneShotRole] = useState<TaskTargetRole>("all");
+  const [newOneShotAssignedTo, setNewOneShotAssignedTo] = useState("");
+  const [newOneShotRequiresPhoto, setNewOneShotRequiresPhoto] = useState(false);
+  const [newOneShotIsCritical, setNewOneShotIsCritical] = useState(false);
   const [savingOneShot, setSavingOneShot] = useState(false);
+  const [protocolModal, setProtocolModal] = useState<Protocol | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("employee");
+  const [estId, setEstId] = useState(DEV_ESTABLISHMENT_ID);
 
   const today = new Date().toISOString().split("T")[0];
   const currentHour = new Date().getHours();
@@ -144,9 +169,12 @@ export default function TasksManagerPage() {
   const load = useCallback(async () => {
     setLoading(true);
     if (DEV_MODE) {
+      setUserRole(devRole);
       setTemplates(DEV_TEMPLATES);
       setCompletions(DEV_COMPLETIONS);
       setOneShots(DEV_ONE_SHOTS);
+      setProtocols(DEV_PROTOCOLS);
+      setMembers(DEV_MEMBERS);
       setLoading(false);
       return;
     }
@@ -160,12 +188,15 @@ export default function TasksManagerPage() {
       .single();
 
     if (!member) { setLoading(false); return; }
-    const estId = member.establishment_id;
+    setUserRole(member.role);
+    setEstId(member.establishment_id);
 
-    const [{ data: tmpl }, { data: comp }, { data: shots }] = await Promise.all([
-      supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).order("display_order"),
-      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", estId).eq("service_date", today),
-      supabase.from("task_one_shots").select("*, profiles(first_name, last_name)").eq("establishment_id", estId).eq("due_date", today),
+    const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
+      supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
+      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
+      supabase.from("task_one_shots").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
+      supabase.from("protocols").select("id, title, content, category").eq("establishment_id", member.establishment_id),
+      supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
     ]);
 
     setTemplates((tmpl ?? []) as TaskTemplate[]);
@@ -177,10 +208,19 @@ export default function TasksManagerPage() {
       ((shots ?? []) as (TaskOneShot & { profiles: { first_name: string | null; last_name: string | null } | null })[])
         .map(s => ({ ...s, creator_name: s.profiles ? `${s.profiles.first_name ?? ""} ${s.profiles.last_name ?? ""}`.trim() : "—" }))
     );
+    setProtocols((protos ?? []) as Protocol[]);
+    setMembers(
+      ((memberRows ?? []) as Array<{ profile_id: string; profiles: { first_name: string | null; last_name: string | null } | null }>).map(m => ({
+        profile_id: m.profile_id,
+        name: [m.profiles?.first_name, m.profiles?.last_name].filter(Boolean).join(" ") || "Membre",
+      }))
+    );
     setLoading(false);
-  }, [today]);
+  }, [today, devRole]);
 
   useEffect(() => { load(); }, [load]);
+
+  const isManager = userRole === "owner" || userRole === "manager";
 
   async function validateTask(templateId: string, oneShotId?: string) {
     setValidating(templateId || oneShotId || null);
@@ -218,6 +258,15 @@ export default function TasksManagerPage() {
     setValidating(null);
   }
 
+  function resetOneShotForm() {
+    setNewOneShotTitle("");
+    setNewOneShotDesc("");
+    setNewOneShotRole("all");
+    setNewOneShotAssignedTo("");
+    setNewOneShotRequiresPhoto(false);
+    setNewOneShotIsCritical(false);
+  }
+
   async function createOneShot() {
     if (!newOneShotTitle.trim()) return;
     setSavingOneShot(true);
@@ -228,13 +277,15 @@ export default function TasksManagerPage() {
         description: newOneShotDesc || null,
         target_role: newOneShotRole,
         due_date: today,
-        requires_photo: false,
+        requires_photo: newOneShotRequiresPhoto,
+        is_critical: newOneShotIsCritical,
+        assigned_to: newOneShotAssignedTo || null,
         is_validated: false,
         creator_name: "Dev Mode",
+        protocol_id: null,
       }]);
       setShowOneShotModal(false);
-      setNewOneShotTitle("");
-      setNewOneShotDesc("");
+      resetOneShotForm();
       setSavingOneShot(false);
       return;
     }
@@ -250,12 +301,14 @@ export default function TasksManagerPage() {
       title: newOneShotTitle,
       description: newOneShotDesc || null,
       target_role: newOneShotRole,
+      assigned_to: newOneShotAssignedTo || null,
+      requires_photo: newOneShotRequiresPhoto,
+      is_critical: newOneShotIsCritical,
       due_date: today,
     });
     await load();
     setShowOneShotModal(false);
-    setNewOneShotTitle("");
-    setNewOneShotDesc("");
+    resetOneShotForm();
     setSavingOneShot(false);
   }
 
@@ -279,31 +332,30 @@ export default function TasksManagerPage() {
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <MonoLabel size="xs">Tâches du jour</MonoLabel>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/establishment/tasks"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-            style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
-          >
-            <Settings size={12} />
-            Configurer
-          </Link>
-          <button
-            onClick={() => setShowOneShotModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-            style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
-          >
-            <Plus size={12} />
-            Tâche ponctuelle
-          </button>
-        </div>
+        {isManager && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/establishment/tasks"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+              style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
+            >
+              <Settings size={12} />
+              Configurer
+            </Link>
+            <button
+              onClick={() => setShowOneShotModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+              style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
+            >
+              <Plus size={12} />
+              Tâche ponctuelle
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
-      <div
-        className="rounded-xl p-4 mb-5 flex items-center justify-between"
-        style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-      >
+      <div className="rounded-xl p-4 mb-5 flex items-center justify-between" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <div>
           <p className="text-[22px] font-bold" style={{ color: allDone ? "var(--success)" : "var(--foreground)" }}>
             {doneTasks} <span className="text-[14px] font-normal" style={{ color: "var(--foreground-dim)" }}>/ {totalTasks}</span>
@@ -313,22 +365,13 @@ export default function TasksManagerPage() {
         <div className="relative w-12 h-12">
           <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
             <circle cx="18" cy="18" r="15" fill="none" stroke="var(--border)" strokeWidth="3" />
-            <circle
-              cx="18" cy="18" r="15" fill="none"
-              stroke={allDone ? "var(--success)" : "var(--accent)"}
-              strokeWidth="3"
-              strokeDasharray={`${pct * 0.942} 100`}
-              strokeLinecap="round"
-            />
+            <circle cx="18" cy="18" r="15" fill="none" stroke={allDone ? "var(--success)" : "var(--accent)"} strokeWidth="3" strokeDasharray={`${pct * 0.942} 100`} strokeLinecap="round" />
           </svg>
         </div>
       </div>
 
       {allDone && (
-        <div
-          className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300"
-          style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}
-        >
+        <div className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
           <CheckCircle2 size={16} style={{ color: "var(--success)", flexShrink: 0 }} />
           <p className="text-[13px]" style={{ color: "var(--success)" }}>Toutes les tâches du jour sont faites. Bravo l'équipe.</p>
         </div>
@@ -381,16 +424,8 @@ export default function TasksManagerPage() {
                 >
                   <div className="flex items-center gap-2">
                     <CatIcon size={14} style={{ color: "var(--foreground-dim)" }} />
-                    <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
-                      {CATEGORY_LABEL[cat]}
-                    </span>
-                    <span
-                      className="text-[11px] px-1.5 py-0.5 rounded-full"
-                      style={{
-                        background: catDone === tasks.length ? "rgba(16,185,129,0.12)" : "var(--background)",
-                        color: catDone === tasks.length ? "var(--success)" : "var(--foreground-dim)",
-                      }}
-                    >
+                    <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{CATEGORY_LABEL[cat]}</span>
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: catDone === tasks.length ? "rgba(16,185,129,0.12)" : "var(--background)", color: catDone === tasks.length ? "var(--success)" : "var(--foreground-dim)" }}>
                       {catDone}/{tasks.length}
                     </span>
                   </div>
@@ -403,57 +438,63 @@ export default function TasksManagerPage() {
                       const comp = completionMap.get(task.id);
                       const isDone = !!comp;
                       const isValidatingThis = validating === task.id;
+                      const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
 
                       return (
                         <div
                           key={task.id}
                           className="flex items-start gap-3 px-4 py-3 transition-colors"
-                          style={{
-                            background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)",
-                          }}
+                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}
                         >
                           <div className="mt-0.5 flex-shrink-0">
-                            {isDone ? (
-                              <CheckCircle2 size={18} style={{ color: "var(--success)" }} />
-                            ) : (
-                              <Circle size={18} style={{ color: "var(--foreground-dim)" }} />
-                            )}
+                            {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span
-                                className="text-[13px] font-medium"
-                                style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}
-                              >
+                              <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
                                 {task.title}
                               </span>
                               {task.is_critical && (
-                                <span
-                                  className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1"
-                                  style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}
-                                >
-                                  <AlertTriangle size={9} />
-                                  HACCP
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                                  <AlertTriangle size={9} />HACCP
                                 </span>
                               )}
-                              {task.requires_photo && !isDone && (
-                                <Camera size={12} style={{ color: "var(--foreground-dim)" }} />
-                              )}
+                              {task.requires_photo && !isDone && <Camera size={12} style={{ color: "var(--foreground-dim)" }} />}
                             </div>
-                            {task.description && !isDone && (
-                              <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>
+
+                            {isDone && comp ? (
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+                                  {comp.validator_name} · {relTime(comp.validated_at)}
+                                  {comp.is_catchup && " · rattrapage"}
+                                </p>
+                                {comp.photo_url && (
+                                  <button
+                                    onClick={() => setLightboxUrl(comp.photo_url)}
+                                    className="flex-shrink-0 relative rounded-md overflow-hidden transition-opacity hover:opacity-80"
+                                    style={{ width: 32, height: 32 }}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={comp.photo_url} alt="" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.25)" }}>
+                                      <ZoomIn size={11} color="white" />
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <>
+                                {task.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>}
+                                {linkedProtocol && (
+                                  <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-1 text-[11px] font-medium transition-opacity hover:opacity-80" style={{ color: "var(--accent)" }}>
+                                    <BookOpen size={10} />Voir le protocole
+                                  </button>
+                                )}
+                              </>
                             )}
-                            {isDone && comp && (
-                              <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-                                {comp.validator_name} · {relTime(comp.validated_at)}
-                                {comp.is_catchup && " · rattrapage"}
-                              </p>
-                            )}
+
                             <div className="flex items-center gap-1 mt-1">
-                              <span
-                                className="text-[10px] px-1.5 py-0.5 rounded-full"
-                                style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}
-                              >
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
                                 {ROLE_LABEL[task.target_role]}
                               </span>
                             </div>
@@ -463,12 +504,7 @@ export default function TasksManagerPage() {
                               onClick={() => validateTask(task.id)}
                               disabled={isValidatingThis}
                               className="flex-shrink-0 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-                              style={{
-                                background: "rgba(6,182,212,0.1)",
-                                color: "var(--accent)",
-                                border: "1px solid rgba(6,182,212,0.2)",
-                                opacity: isValidatingThis ? 0.5 : 1,
-                              }}
+                              style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}
                             >
                               {isValidatingThis ? <RefreshCw size={12} className="animate-spin" /> : "Valider"}
                             </button>
@@ -493,30 +529,46 @@ export default function TasksManagerPage() {
                 {oneShots.map(shot => {
                   const comp = completionMap.get(shot.id);
                   const isDone = shot.is_validated || !!comp;
+                  const linkedProtocol = shot.protocol_id ? protocols.find(p => p.id === shot.protocol_id) : null;
+                  const assignedMember = shot.assigned_to ? members.find(m => m.profile_id === shot.assigned_to) : null;
 
                   return (
-                    <div
-                      key={shot.id}
-                      className="flex items-start gap-3 px-4 py-3"
-                      style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}
-                    >
+                    <div key={shot.id} className="flex items-start gap-3 px-4 py-3" style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}>
                       <div className="mt-0.5">
-                        {isDone ? (
-                          <CheckCircle2 size={18} style={{ color: "var(--success)" }} />
-                        ) : (
-                          <Circle size={18} style={{ color: "var(--foreground-dim)" }} />
-                        )}
+                        {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
-                          {shot.title}
-                        </p>
-                        {shot.description && (
-                          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{shot.description}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
+                            {shot.title}
+                          </p>
+                          {shot.is_critical && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
+                              <AlertTriangle size={9} />HACCP
+                            </span>
+                          )}
+                          {shot.requires_photo && !isDone && <Camera size={12} style={{ color: "var(--foreground-dim)" }} />}
+                        </div>
+                        {shot.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{shot.description}</p>}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+                            Ajouté par {shot.creator_name}
+                          </p>
+                          {assignedMember ? (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
+                              <User size={9} />→ {assignedMember.name}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
+                              {ROLE_LABEL[shot.target_role]}
+                            </span>
+                          )}
+                        </div>
+                        {!isDone && linkedProtocol && (
+                          <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-0.5 text-[11px] font-medium" style={{ color: "var(--accent)" }}>
+                            <BookOpen size={10} />Voir le protocole
+                          </button>
                         )}
-                        <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-                          Ajouté par {shot.creator_name} · {ROLE_LABEL[shot.target_role]}
-                        </p>
                       </div>
                       {!isDone && (
                         <button
@@ -541,67 +593,114 @@ export default function TasksManagerPage() {
         </div>
       )}
 
-      {/* Modal tâche ponctuelle */}
+      {/* Modal tâche ponctuelle (riche) */}
       {showOneShotModal && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }}>
-          <div
-            className="w-full max-w-md rounded-2xl p-5"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>Tâche ponctuelle</h2>
-              <button onClick={() => setShowOneShotModal(false)} style={{ color: "var(--foreground-dim)" }}>
-                <X size={18} />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }} onClick={e => { if (e.target === e.currentTarget) { setShowOneShotModal(false); resetOneShotForm(); } }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>Tâche ponctuelle</h2>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tâche à faire aujourd'hui uniquement</p>
+              </div>
+              <button onClick={() => { setShowOneShotModal(false); resetOneShotForm(); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Titre */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre *</label>
+                <input type="text" placeholder="Ex: Vérifier livraison vin" value={newOneShotTitle} onChange={e => setNewOneShotTitle(e.target.value)} autoFocus className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
+                <textarea value={newOneShotDesc} onChange={e => setNewOneShotDesc(e.target.value)} placeholder="Détails ou instructions…" rows={2} className="w-full px-3 py-2 rounded-base text-[13px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+              </div>
+
+              {/* Poste cible */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste cible</label>
+                <select value={newOneShotRole} onChange={e => setNewOneShotRole(e.target.value as TaskTargetRole)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                  {(["all", "manager", "salle", "cuisine", "bar"] as TaskTargetRole[]).map(r => (
+                    <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Assigner à une personne */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                  <div className="flex items-center gap-1.5">
+                    <User size={11} />
+                    Assigner à une personne <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
+                  </div>
+                </label>
+                <select value={newOneShotAssignedTo} onChange={e => setNewOneShotAssignedTo(e.target.value)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                  <option value="">Tout le poste sélectionné</option>
+                  {members.map(m => (
+                    <option key={m.profile_id} value={m.profile_id}>{m.name}</option>
+                  ))}
+                </select>
+                {newOneShotAssignedTo && (
+                  <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>
+                    Réservée à cette personne uniquement.
+                  </p>
+                )}
+              </div>
+
+              {/* Options */}
+              <div className="flex flex-col gap-3 pt-1" style={{ borderTop: "1px solid var(--border-soft)" }}>
+                <label className="flex items-center gap-3 cursor-pointer pt-3">
+                  <input type="checkbox" checked={newOneShotRequiresPhoto} onChange={e => setNewOneShotRequiresPhoto(e.target.checked)} className="rounded" style={{ accentColor: "var(--accent)" }} />
+                  <div>
+                    <p className="text-[13px]" style={{ color: "var(--foreground)" }}>Photo obligatoire pour valider</p>
+                    <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>La personne devra prendre une photo</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={newOneShotIsCritical} onChange={e => setNewOneShotIsCritical(e.target.checked)} className="rounded" style={{ accentColor: "#F59E0B" }} />
+                  <div>
+                    <p className="text-[13px]" style={{ color: "var(--foreground)" }}>Tâche critique (hygiène / sécurité)</p>
+                    <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Marquée HACCP dans la liste</p>
+                  </div>
+                </label>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="Titre de la tâche"
-                value={newOneShotTitle}
-                onChange={e => setNewOneShotTitle(e.target.value)}
-                className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-              />
-              <input
-                type="text"
-                placeholder="Description (optionnel)"
-                value={newOneShotDesc}
-                onChange={e => setNewOneShotDesc(e.target.value)}
-                className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-              />
-              <select
-                value={newOneShotRole}
-                onChange={e => setNewOneShotRole(e.target.value as TaskTargetRole)}
-                className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-              >
-                {(["all", "manager", "salle", "cuisine", "bar"] as TaskTargetRole[]).map(r => (
-                  <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setShowOneShotModal(false)}
-                className="flex-1 py-2 rounded-base text-[13px] font-medium"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={createOneShot}
-                disabled={!newOneShotTitle.trim() || savingOneShot}
-                className="flex-1 py-2 rounded-base text-[13px] font-medium"
-                style={{ background: newOneShotTitle.trim() ? "var(--accent)" : "var(--background-elev)", color: newOneShotTitle.trim() ? "#09090B" : "var(--foreground-dim)", opacity: savingOneShot ? 0.7 : 1 }}
-              >
-                {savingOneShot ? "Création…" : "Créer"}
+            <div className="flex gap-2 px-5 pb-5">
+              <button onClick={() => { setShowOneShotModal(false); resetOneShotForm(); }} className="flex-1 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Annuler</button>
+              <button onClick={createOneShot} disabled={!newOneShotTitle.trim() || savingOneShot} className="flex-1 py-2.5 rounded-base text-[13px] font-semibold" style={{ background: newOneShotTitle.trim() ? "var(--accent)" : "var(--background-elev)", color: newOneShotTitle.trim() ? "#09090B" : "var(--foreground-dim)", opacity: savingOneShot ? 0.7 : 1 }}>
+                {savingOneShot ? "Création…" : "Créer la tâche"}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal protocole */}
+      {protocolModal && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={e => { if (e.target === e.currentTarget) setProtocolModal(null); }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
+            <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>{protocolModal.title}</p>
+              </div>
+              <button onClick={() => setProtocolModal(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolModal.content}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox photo */}
+      {lightboxUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.92)" }} onClick={() => setLightboxUrl(null)}>
+          <button className="absolute top-4 right-4" style={{ color: "white" }} onClick={() => setLightboxUrl(null)}><X size={24} /></button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxUrl} alt="" className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>
