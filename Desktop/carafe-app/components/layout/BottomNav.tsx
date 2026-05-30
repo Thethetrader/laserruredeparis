@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, CalendarDays, ClipboardList } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, CalendarDays, ClipboardList, Clock } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -12,7 +12,7 @@ const managerNav = [
   { href: "/tasks",             icon: ClipboardList,   label: "Tâches" },
   { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
-  { href: "/team",              icon: Users,           label: "Équipe" },
+  { href: "/shifts",           icon: Clock,           label: "Shifts" },
 ];
 
 const employeeNav = [
@@ -21,7 +21,7 @@ const employeeNav = [
   { href: "/scoring",           icon: Zap,             label: "Mon Score" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
-  { href: "/challenges",        icon: Trophy,          label: "Défis" },
+  { href: "/shifts",           icon: Clock,           label: "Shifts" },
 ];
 
 export function BottomNav() {
