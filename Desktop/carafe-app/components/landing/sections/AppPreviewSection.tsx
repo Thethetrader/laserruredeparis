@@ -2,7 +2,7 @@
 
 export default function AppPreviewSection() {
   return (
-    <section className="py-16 flex flex-col items-center md:hidden" style={{ background: "var(--background)" }}>
+    <section className="py-12 flex flex-col items-center md:hidden" style={{ background: "var(--background)" }}>
       <p className="font-mono text-[11px] uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>
         L&apos;app
       </p>
