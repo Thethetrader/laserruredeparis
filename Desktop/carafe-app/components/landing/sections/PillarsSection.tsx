@@ -226,7 +226,7 @@ const features = [
   {
     num: "04",
     icon: Euro,
-    name: "Suivi des pourboires",
+    name: "Pourboires",
     desc: "Logguez vos tips après chaque service. Vos meilleurs soirs et votre total mensuel, toujours sous la main.",
     ai: false,
     Preview: TipsPreview,
