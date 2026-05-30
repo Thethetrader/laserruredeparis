@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Waves, BellOff, FileX } from "lucide-react";
 
 const messages = [
   { from: "Karim (Manager)", text: "Rappel procédure nettoyage hottes ! Voir doc Drive V2", time: "22:47", self: false },
@@ -22,23 +21,6 @@ const messages = [
   { from: "Vous", text: "👍", time: "23:01", self: true },
 ];
 
-const problems = [
-  {
-    icon: Waves,
-    title: "Vous postez. Personne ne lit.",
-    desc: "La procédure d'hygiène, la nouvelle carte, le rappel d'ouverture. Envoyés dans le groupe, noyés en dix minutes. L'info critique disparaît avec le reste.",
-  },
-  {
-    icon: BellOff,
-    title: "Les messages à 2h du mat.",
-    desc: "L'équipe coupe les notifications. Les vrais sujets disparaissent avec le reste.",
-  },
-  {
-    icon: FileX,
-    title: "Le service commence dans le négatif.",
-    desc: "Des reproches publics avant même le premier café. L'équipe arrive déjà à bout.",
-  },
-];
 
 function WhatsAppMockup() {
   return (
@@ -114,7 +96,7 @@ export default function ProblemSection() {
             Aujourd&apos;hui dans votre restau.
           </h2>
           <p className="text-base" style={{ color: "var(--foreground-muted)" }}>
-            Reconnaissez-vous ce groupe ?
+            WhatsApp, c&apos;est un flux où tout passe — et où tout se perd.
           </p>
         </motion.div>
 
@@ -143,48 +125,6 @@ export default function ProblemSection() {
           </motion.div>
         </div>
 
-        {/* Problems — zig-zag asymmetric */}
-        <div className="space-y-px" style={{ borderTop: "1px solid var(--border)" }}>
-          {problems.map(({ icon: Icon, title, desc }, i) => (
-            <motion.div
-              key={title}
-              initial={{ opacity: 0, x: i % 2 === 0 ? -16 : 16 }}
-              animate={inView ? { opacity: 1, x: 0 } : {}}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 + i * 0.12 }}
-              className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6 py-7"
-              style={{
-                borderBottom: "1px solid var(--border)",
-                paddingLeft: i === 1 ? "clamp(0px, 4vw, 48px)" : undefined,
-              }}
-            >
-              <div className="flex items-start gap-3.5">
-                <div
-                  className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-                >
-                  <Icon size={13} strokeWidth={1.5} style={{ color: "var(--foreground-dim)" }} />
-                </div>
-                <span className="text-[13px] font-medium leading-tight" style={{ color: "var(--foreground)", paddingTop: 4 }}>
-                  {title}
-                </span>
-              </div>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)", maxWidth: "52ch" }}>
-                {desc}
-              </p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Signature */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={inView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.7, delay: 0.6 }}
-          className="mt-10 text-center font-mono text-[11px]"
-          style={{ color: "var(--foreground-dim)" }}
-        >
-          Il y a un meilleur moyen.
-        </motion.p>
       </div>
     </section>
   );
