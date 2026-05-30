@@ -117,7 +117,7 @@ export default function ProblemSection() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           >
             <p className="text-lg leading-relaxed mb-4" style={{ color: "var(--foreground-muted)" }}>
-              47 membres. Des infos critiques noyées entre les GIFs et les retards de train.
+              Des infos critiques noyées entre les GIFs et les retards de train.
             </p>
             <p className="text-base leading-relaxed" style={{ color: "var(--foreground-dim)" }}>
               C&apos;est pas de la mauvaise volonté. C&apos;est le mauvais outil.
