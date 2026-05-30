@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { BookOpen, Clock, Trophy, MessageSquare, ListChecks, Check, Plus } from "lucide-react";
+import { BookOpen, Clock, Trophy, MessageSquare, ListChecks, Check, Plus, Euro } from "lucide-react";
 
 // ── Previews ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +165,37 @@ function ChallengesPreview() {
   );
 }
 
+function TipsPreview() {
+  const tips = [32, 0, 18, 45, 27, 0, 38, 22, 0, 51, 19, 0, 43, 35, 28];
+  const max = Math.max(...tips);
+  const total = tips.reduce((s, t) => s + t, 0);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end gap-1" style={{ height: 48 }}>
+        {tips.map((t, i) => (
+          <div key={i} className="flex-1 flex items-end">
+            <div
+              className="w-full rounded-sm transition-all"
+              style={{
+                height: t > 0 ? `${Math.max((t / max) * 100, 8)}%` : "4px",
+                background: t > 0 ? (t > 40 ? "var(--accent)" : "rgba(6,182,212,0.4)") : "var(--background-elev)",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>15 jours</span>
+        <span className="text-[9px] font-mono font-semibold" style={{ color: "var(--accent)" }}>Total : {total}€</span>
+      </div>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <Euro size={10} style={{ color: "var(--accent)" }} />
+        <p className="text-[10px] flex-1" style={{ color: "var(--foreground-muted)" }}>Meilleur soir : 51€ — lundi 11</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Feature data ──────────────────────────────────────────────────────────────
 
 const features = [
@@ -194,6 +225,14 @@ const features = [
   },
   {
     num: "04",
+    icon: Euro,
+    name: "Suivi des pourboires",
+    desc: "Logguez vos tips après chaque service. Vos meilleurs soirs et votre total mensuel, toujours sous la main.",
+    ai: false,
+    Preview: TipsPreview,
+  },
+  {
+    num: "05",
     icon: Clock,
     name: "Retards",
     desc: "Un tap. Le manager est notifié en privé. La trace est faite.",
@@ -201,7 +240,7 @@ const features = [
     Preview: LatePreview,
   },
   {
-    num: "05",
+    num: "06",
     icon: Trophy,
     name: "Défis & points",
     desc: "Lance un défi. Le classement motive. Tu n'as plus à pousser.",
@@ -403,3 +442,4 @@ export default function PillarsSection() {
     </section>
   );
 }
+
