@@ -84,7 +84,7 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose }: {
   );
 }
 
-/* ── Tips chart ───────────────────────────────────────────────────────────── */
+/* ── Tips bar chart ───────────────────────────────────────────────────────── */
 function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; month: number }) {
   const days = getDaysInMonth(year, month);
   const tipsMap = new Map(shifts.map(s => [s.shift_date, s.tips]));
@@ -158,15 +158,15 @@ export default function ShiftsPage() {
 
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
-    if (ex) await supabase.from("shifts").update(data).eq("id",ex.id);
-    else await supabase.from("shifts").insert({...data, user_id:userId, establishment_id:estId});
+    if (ex) await supabase.from("shifts").update(data).eq("id", ex.id);
+    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId});
     setSelected(null);
     await load(year, month);
   }
 
   async function handleDelete() {
     const ex = shiftMap.get(selected!);
-    if (ex) await supabase.from("shifts").delete().eq("id",ex.id);
+    if (ex) await supabase.from("shifts").delete().eq("id", ex.id);
     setSelected(null);
     await load(year, month);
   }
@@ -177,155 +177,125 @@ export default function ShiftsPage() {
   const tHours   = calcTotalHours(shifts);
   const tTips    = calcTotalTips(shifts);
   const cHrs     = changePercent(tHours, calcTotalHours(prevShifts));
-  const cTps     = changePercent(tTips,  calcTotalTips(prevShifts));
-  const cSrv     = changePercent(shifts.length, prevShifts.length);
+  const cTps     = changePercent(tTips, calcTotalTips(prevShifts));
   const cntHrs   = profile ? monthlyContractHours(profile.weekly_hours) : 0;
-  const pctW     = cntHrs > 0 ? Math.min(Math.round((tHours/cntHrs)*100),100) : 0;
+  const pctW     = cntHrs > 0 ? Math.min(Math.round((tHours/cntHrs)*100), 100) : 0;
   const firstDay = isoWeekday(days[0]) - 1;
   const cells: (Date|null)[] = [...Array(firstDay).fill(null), ...days];
-  const numRows  = Math.ceil((firstDay + days.length) / 7);
 
   return (
-    /*
-      Mobile  : h = 100dvh - topbar(56px) - bottomnav(60px) = calc(100dvh - 116px)
-      Desktop : h = 100dvh (sidebar is beside, no top/bottom bars)
-    */
-    <div
-      className="flex flex-col px-3 lg:px-8 pt-3 lg:pt-6 pb-2 lg:pb-4"
-      style={{ height: "calc(100dvh - 116px)" }}
-    >
+    <div className="px-4 py-6 pb-32 max-w-2xl lg:max-w-5xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 lg:mb-4 flex-shrink-0">
+      <div className="flex items-center justify-between mb-5">
         <MonoLabel size="xs">Mes Shifts</MonoLabel>
-        <div className="flex items-center gap-3">
-          <a href="/shifts/recap" className="text-[11px] lg:hidden" style={{ color: "var(--accent)" }}>Récap →</a>
-          <a href="/shifts/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages</a>
-        </div>
+        <a href="/shifts/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages</a>
       </div>
 
       {/* Month nav */}
-      <div className="flex items-center justify-between mb-2 lg:mb-4 flex-shrink-0">
+      <div className="flex items-center justify-between mb-4 px-1">
         <button onClick={prevMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronLeft size={18} /></button>
         <span className="text-[14px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{monthLabel(year, month)}</span>
         <button onClick={nextMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronRight size={18} /></button>
       </div>
 
-      {/* Main content — fills remaining height */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 flex-1 min-h-0">
-
-        {/* Calendar */}
-        <div className="flex flex-col min-h-0">
-          <div className="rounded-xl overflow-hidden flex flex-col flex-1 min-h-0" style={{ border: "1px solid var(--border)" }}>
-
-            {/* Compact stats bar — mobile only, inside the calendar */}
-            <div className="grid grid-cols-3 lg:hidden flex-shrink-0" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              {[
-                { label: "Heures", value: formatHours(tHours), accent: false },
-                { label: "Tips", value: formatTips(tTips), accent: true },
-                { label: "Services", value: String(shifts.length), accent: false },
-              ].map((s, i) => (
-                <div key={s.label} className="py-2 text-center" style={{ borderRight: i < 2 ? "1px solid var(--border)" : "none" }}>
-                  <p className="text-[13px] font-bold" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
-                  <p className="text-[9px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Day headers */}
-            <div className="grid grid-cols-7 flex-shrink-0" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              {WEEKDAYS.map(d => <div key={d} className="py-2 text-center text-[10px] lg:text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>)}
-            </div>
-
-            {/* Cells */}
-            {loading ? (
-              <div className="flex-1 flex items-center justify-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
-            ) : (
-              <div className="flex-1 grid grid-cols-7 min-h-0" style={{ gridTemplateRows: `repeat(${numRows}, 1fr)` }}>
-                {cells.map((day, i) => {
-                  if (!day) return <div key={`e-${i}`} style={{ borderRight:"1px solid var(--border)", borderBottom:"1px solid var(--border)" }} />;
-                  const dateStr  = toDateStr(day);
-                  const shift    = shiftMap.get(dateStr);
-                  const isToday  = dateStr === todayStr;
-                  const isFuture = day > today;
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() => !isFuture && setSelected(dateStr)}
-                      className="flex flex-col items-start justify-start p-1.5 lg:p-3 transition-colors hover:bg-white/[0.03]"
-                      style={{ borderRight:"1px solid var(--border)", borderBottom:"1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}
-                    >
-                      <span className="text-[11px] lg:text-[13px] font-medium w-6 h-6 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
-                        style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
-                        {day.getDate()}
-                      </span>
-                      {shift && (
-                        <div>
-                          <p className="text-[9px] lg:text-[11px] font-mono font-medium leading-tight" style={{ color:"var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
-                          {shift.tips > 0 && <p className="text-[9px] lg:text-[10px] font-mono leading-tight" style={{ color:"rgba(6,182,212,0.7)" }}>{formatTips(shift.tips)}</p>}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      {/* Calendar */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="grid grid-cols-7" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          {WEEKDAYS.map(d => <div key={d} className="py-2 text-center text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>)}
         </div>
+        {loading ? (
+          <div className="p-8 text-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
+        ) : (
+          <div className="grid grid-cols-7">
+            {cells.map((day, i) => {
+              if (!day) return <div key={`e-${i}`} style={{ minHeight: 72, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
+              const dateStr  = toDateStr(day);
+              const shift    = shiftMap.get(dateStr);
+              const isToday  = dateStr === todayStr;
+              const isFuture = day > today;
+              return (
+                <button key={dateStr} onClick={() => !isFuture && setSelected(dateStr)}
+                  className="flex flex-col items-start justify-start p-2 transition-colors hover:bg-white/[0.02]"
+                  style={{ minHeight: 72, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
+                  <span className="text-[12px] font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1"
+                    style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
+                    {day.getDate()}
+                  </span>
+                  {shift && (
+                    <div>
+                      <p className="text-[10px] font-mono font-medium leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
+                      {shift.tips > 0 && <p className="text-[10px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.7)" }}>{formatTips(shift.tips)}</p>}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-        {/* Right stats — desktop only */}
-        <div className="hidden lg:flex flex-col gap-3 overflow-y-auto">
-          {[
-            { label:"Heures", value:formatHours(tHours), change:cHrs, accent:false },
-            { label:"Pourboires", value:formatTips(tTips), change:cTps, accent:true },
-            { label:"Services", value:String(shifts.length), change:cSrv, accent:false },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border:`1px solid ${s.accent?"rgba(6,182,212,0.2)":"var(--border)"}` }}>
-              <p className="text-[24px] font-bold leading-tight" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
-              <p className="text-[10px] font-mono uppercase tracking-wider mb-1" style={{ color:"var(--foreground-dim)" }}>{s.label}</p>
-              {!loading && s.change !== null && s.change !== undefined && (
-                <div className="flex items-center gap-1">
-                  {s.change>=0?<TrendingUp size={10} color="#10b981"/>:<TrendingDown size={10} color="#ef4444"/>}
-                  <span className="text-[10px]" style={{ color:s.change>=0?"var(--success)":"var(--danger)" }}>{s.change>=0?"+":""}{s.change}% vs mois préc.</span>
-                </div>
-              )}
-            </div>
-          ))}
-          {profile && cntHrs > 0 && !loading && (
-            <div className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background:"var(--background-elev)", border:"1px solid var(--border)" }}>
+      {/* ── Récap — visible directement sous le calendrier ── */}
+      {!loading && (
+        <div className="space-y-3">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Heures", value: formatHours(tHours), change: cHrs, accent: false },
+              { label: "Pourboires", value: formatTips(tTips), change: cTps, accent: true },
+              { label: "Services", value: String(shifts.length), change: changePercent(shifts.length, prevShifts.length), accent: false },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl px-3 py-3" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+                <p className="text-[18px] font-bold leading-tight" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{s.value}</p>
+                <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
+                {s.change !== null && s.change !== undefined && (
+                  <div className="flex items-center gap-0.5 mt-1">
+                    {s.change >= 0 ? <TrendingUp size={9} color="#10b981" /> : <TrendingDown size={9} color="#ef4444" />}
+                    <span className="text-[9px]" style={{ color: s.change >= 0 ? "var(--success)" : "var(--danger)" }}>{s.change >= 0 ? "+" : ""}{s.change}%</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Contrat */}
+          {profile && cntHrs > 0 && (
+            <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <div className="flex justify-between mb-2">
-                <p className="text-[12px] font-medium" style={{ color:"var(--foreground)" }}>Contrat {profile.contract_type??""}</p>
-                <p className="text-[11px] font-mono" style={{ color:"var(--foreground-dim)" }}>{formatHours(tHours)}/{formatHours(cntHrs)}</p>
+                <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>Contrat {profile.contract_type ?? ""}</p>
+                <p className="text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>{formatHours(tHours)} / {formatHours(cntHrs)}</p>
               </div>
-              <div className="rounded-full overflow-hidden mb-1" style={{ height:5, background:"var(--background-soft)" }}>
-                <div className="h-full rounded-full" style={{ width:`${pctW}%`, background:pctW>=100?"var(--success)":"var(--accent)", transition:"width 0.5s" }} />
+              <div className="rounded-full overflow-hidden mb-1" style={{ height: 5, background: "var(--background-soft)" }}>
+                <div className="h-full rounded-full" style={{ width: `${pctW}%`, background: pctW >= 100 ? "var(--success)" : "var(--accent)", transition: "width 0.5s" }} />
               </div>
-              <p className="text-[10px]" style={{ color:"var(--foreground-dim)" }}>{pctW}% du mensuel légal</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{pctW}% du mensuel légal</p>
             </div>
           )}
-          {shifts.length > 0 && !loading && (
-            <div className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background:"var(--background-elev)", border:"1px solid var(--border)" }}>
+
+          {/* Tips chart */}
+          {shifts.length > 0 && (
+            <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <TipsChart shifts={shifts} year={year} month={month} />
             </div>
           )}
-          {!loading && (
-            <div className="rounded-xl px-4 py-3 flex items-center gap-3 flex-shrink-0" style={{ background:"var(--background-elev)", border:"1px solid var(--border)" }}>
-              <Trophy size={16} style={{ color:"#F59E0B", flexShrink:0 }} />
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color:"var(--foreground-dim)" }}>Total tips {year}</p>
-                <p className="text-[16px] font-bold" style={{ color:"var(--foreground)" }}>{formatTips(ytdTips)}</p>
-              </div>
+
+          {/* YTD */}
+          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <Trophy size={16} style={{ color: "#F59E0B", flexShrink: 0 }} />
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Total tips {year}</p>
+              <p className="text-[16px] font-bold" style={{ color: "var(--foreground)" }}>{formatTips(ytdTips)}</p>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* FAB */}
-      <button onClick={() => setSelected(todayStr)} className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background:"var(--accent)", color:"#09090B" }}>
+      <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "#09090B" }}>
         <Plus size={22} strokeWidth={2.5} />
       </button>
 
       {selected && (
-        <ShiftModal date={selected} shift={shiftMap.get(selected)??null} onSave={handleSave} onDelete={handleDelete} onClose={() => setSelected(null)} />
+        <ShiftModal date={selected} shift={shiftMap.get(selected) ?? null} onSave={handleSave} onDelete={handleDelete} onClose={() => setSelected(null)} />
       )}
     </div>
   );
