@@ -120,15 +120,34 @@ export default function ShiftsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [estId, setEstId]       = useState("");
   const [userId, setUserId]     = useState("");
+  const [estName, setEstName]   = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [greeting, setGreeting] = useState("Bonjour");
   const supabase = createClient();
+
+  useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir");
+  }, []);
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
     setUserId(user.id);
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", user.id).eq("is_active", true).single();
-    if (member) setEstId(member.establishment_id);
+
+    const { data: member } = await supabase
+      .from("establishment_members")
+      .select("establishment_id, establishments(name), profiles(first_name)")
+      .eq("profile_id", user.id).eq("is_active", true).single();
+
+    if (member) {
+      setEstId(member.establishment_id);
+      const est = member.establishments as { name: string } | null;
+      const prof = member.profiles as { first_name: string | null } | null;
+      if (est) setEstName(est.name);
+      if (prof?.first_name) setFirstName(prof.first_name);
+    }
 
     const from = `${y}-${String(m+1).padStart(2,"0")}-01`;
     const last = new Date(y, m+1, 0).getDate();
@@ -138,16 +157,17 @@ export default function ShiftsPage() {
     const pl   = new Date(pd.getFullYear(), pd.getMonth()+1, 0).getDate();
     const pt   = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,"0")}-${pl}`;
 
-    const [cur, prev, ytd, prof] = await Promise.all([
+    const [cur, prev, ytd, prof2] = await Promise.all([
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",from).lte("shift_date",to).order("shift_date"),
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",pf).lte("shift_date",pt),
       supabase.from("shifts").select("tips").eq("user_id",user.id).gte("shift_date",`${y}-01-01`).lte("shift_date",to),
       supabase.from("profiles").select("contract_type,weekly_hours,weekly_rest_days").eq("id",user.id).single(),
     ]);
+
     setShifts((cur.data ?? []) as Shift[]);
     setPrev((prev.data ?? []) as Shift[]);
     setYtd(((ytd.data ?? []) as {tips:number}[]).reduce((s,r) => s+(r.tips??0), 0));
-    if (prof.data) setProfile(prof.data as ShiftProfile);
+    if (prof2.data) setProfile(prof2.data as ShiftProfile);
     setLoading(false);
   }, [supabase]);
 
@@ -184,11 +204,18 @@ export default function ShiftsPage() {
   const cells: (Date|null)[] = [...Array(firstDay).fill(null), ...days];
 
   return (
-    <div className="px-4 py-6 pb-32 max-w-2xl lg:max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <MonoLabel size="xs">Mes Shifts</MonoLabel>
-        <a href="/shifts/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages</a>
+    <div className="px-4 py-8 lg:px-10 pb-32 max-w-2xl lg:max-w-4xl">
+
+      {/* ── Header — identique aux autres sections ── */}
+      <div className="mb-8">
+        <MonoLabel size="xs" className="mb-2 block">Mes Shifts</MonoLabel>
+        <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+          {greeting}{firstName ? `, ${firstName}` : ""} 👋
+        </h1>
+        <p className="text-sm mt-1 capitalize" style={{ color: "var(--foreground-dim)" }}>
+          {estName && <span>{estName} · </span>}
+          {today.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+        </p>
       </div>
 
       {/* Month nav */}
@@ -234,10 +261,9 @@ export default function ShiftsPage() {
         )}
       </div>
 
-      {/* ── Récap — visible directement sous le calendrier ── */}
+      {/* ── Récap sous le calendrier ── */}
       {!loading && (
         <div className="space-y-3">
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Heures", value: formatHours(tHours), change: cHrs, accent: false },
@@ -257,7 +283,6 @@ export default function ShiftsPage() {
             ))}
           </div>
 
-          {/* Contrat */}
           {profile && cntHrs > 0 && (
             <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <div className="flex justify-between mb-2">
@@ -271,20 +296,22 @@ export default function ShiftsPage() {
             </div>
           )}
 
-          {/* Tips chart */}
           {shifts.length > 0 && (
             <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <TipsChart shifts={shifts} year={year} month={month} />
             </div>
           )}
 
-          {/* YTD */}
           <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <Trophy size={16} style={{ color: "#F59E0B", flexShrink: 0 }} />
             <div>
               <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Total tips {year}</p>
               <p className="text-[16px] font-bold" style={{ color: "var(--foreground)" }}>{formatTips(ytdTips)}</p>
             </div>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <a href="/shifts/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages →</a>
           </div>
         </div>
       )}
