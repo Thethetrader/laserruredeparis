@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays, ClipboardList, BarChart2 } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays, ClipboardList, BarChart2, Wallet } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
@@ -15,6 +15,8 @@ const adminNav = [
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
+  { href: "/shifts",              icon: Wallet,           label: "Mes Shifts" },
+  { href: "/shifts/recap",        icon: BarChart2,        label: "Récap Shifts" },
 ];
 
 interface SidebarProps {
