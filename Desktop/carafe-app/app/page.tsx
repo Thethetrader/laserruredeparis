@@ -3,6 +3,7 @@ import Navigation from "@/components/landing/sections/Navigation";
 import HeroSection from "@/components/landing/sections/HeroSection";
 import ProblemSection from "@/components/landing/sections/ProblemSection";
 import PillarsSection from "@/components/landing/sections/PillarsSection";
+import ShiftsPreviewSection from "@/components/landing/sections/ShiftsPreviewSection";
 import AppPreviewSection from "@/components/landing/sections/AppPreviewSection";
 import PricingSection from "@/components/landing/sections/PricingSection";
 import FAQSection from "@/components/landing/sections/FAQSection";
@@ -18,6 +19,7 @@ export default function Home() {
         <HeroSection />
         <ProblemSection />
         <PillarsSection />
+        <ShiftsPreviewSection />
         <AppPreviewSection />
         <PricingSection />
         <FAQSection />
