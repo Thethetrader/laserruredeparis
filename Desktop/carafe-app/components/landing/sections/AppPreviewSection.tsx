@@ -71,7 +71,7 @@ export default function AppPreviewSection() {
           </div>
         </motion.div>
 
-        {/* Preview mobile — frame téléphone avec GIF cropé sur le contenu */}
+        {/* Preview mobile — frame téléphone avec GIF PWA réel */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -94,16 +94,16 @@ export default function AppPreviewSection() {
               className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
               style={{ width: 64, height: 18, background: "var(--background-elev)" }}
             />
-            {/* GIF — on crop la sidebar gauche en décalant */}
+            {/* GIF PWA — cropé sur les 390px de contenu mobile (1451px total) */}
             <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/karaf-app-demo-desktop.gif"
-                alt="Aperçu Karaf"
+                src="/karaf-pwa-mobile.gif"
+                alt="Aperçu Karaf PWA"
                 style={{
                   position: "absolute",
                   top: 0,
-                  left: "-19%",
+                  left: 0,
                   height: "100%",
                   width: "auto",
                   maxWidth: "none",
