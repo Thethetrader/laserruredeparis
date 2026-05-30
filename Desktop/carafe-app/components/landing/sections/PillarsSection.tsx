@@ -31,7 +31,7 @@ function ProtocolsPreview() {
         </div>
       ))}
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
-        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — PDF uploadé → étapes extraites automatiquement</span>
+        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA : PDF uploadé → étapes extraites automatiquement</span>
       </div>
     </div>
   );
@@ -73,7 +73,7 @@ function ClientFeedbackPreview() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
-        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — patterns détectés automatiquement</span>
+        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA : patterns détectés automatiquement</span>
       </div>
       {feedbacks.map(({ dish, comment, count, color }, i) => (
         <motion.div
@@ -190,7 +190,7 @@ function TipsPreview() {
       </div>
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <Euro size={10} style={{ color: "var(--accent)" }} />
-        <p className="text-[10px] flex-1" style={{ color: "var(--foreground-muted)" }}>Meilleur soir : 51€ — lundi 11</p>
+        <p className="text-[10px] flex-1" style={{ color: "var(--foreground-muted)" }}>Meilleur soir : 51€, lundi 11</p>
       </div>
     </div>
   );

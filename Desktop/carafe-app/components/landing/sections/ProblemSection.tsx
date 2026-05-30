@@ -126,7 +126,7 @@ export default function ProblemSection() {
             Aujourd&apos;hui dans votre restau.
           </h2>
           <p className="text-base" style={{ color: "var(--foreground-muted)" }}>
-            WhatsApp, c&apos;est un flux où tout passe — et où tout se perd.
+            WhatsApp, c&apos;est un flux où tout passe et où tout se perd.
           </p>
         </motion.div>
 
