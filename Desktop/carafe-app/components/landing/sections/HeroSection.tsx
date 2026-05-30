@@ -74,9 +74,7 @@ export default function HeroSection() {
           <div>
             <div className="w-10 h-px mb-6" style={{ background: "var(--accent)" }} />
             <p className="text-base md:text-lg leading-relaxed mb-8" style={{ color: "var(--foreground-muted)", maxWidth: "46ch" }}>
-              Karaf remplace votre groupe WhatsApp pro par un vrai outil de management. Vous postez une fois, ça reste vu. Vous voyez{" "}
-              <span style={{ color: "var(--accent)" }}>qui bosse bien</span>,
-              vous le valorisez en un clic. Vos meilleurs restent.
+              Karaf remplace votre groupe WhatsApp par un vrai outil de management.
             </p>
 
             <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
