@@ -321,9 +321,9 @@ export default function PillarsSection() {
                           {f.desc}
                         </p>
 
-                        {/* Progress bar */}
+                        {/* Progress bar — desktop seulement pour éviter layout shift mobile */}
                         {isActive && (
-                          <div className="mt-3.5 h-px overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
+                          <div className="hidden lg:block mt-3.5 h-px overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
                             <motion.div
                               className="h-full rounded-full"
                               style={{ background: "var(--accent)", width: `${progress * 100}%` }}
