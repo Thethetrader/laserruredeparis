@@ -73,24 +73,23 @@ export default function AppPreviewSection() {
           </div>
         </motion.div>
 
-        {/* Mobile preview — iframe PWA scalée */}
+        {/* Mobile preview — GIF cropé sur le contenu (sans la sidebar) */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
           className="flex justify-center md:hidden"
-          style={{ overflow: "hidden" }}
         >
-          {/* Frame téléphone — taille visible après scale */}
+          {/* Frame téléphone */}
           <div
             className="relative rounded-[36px] flex-shrink-0"
             style={{
-              width: 242,
-              height: 440,
+              width: 260,
+              height: 460,
               border: "8px solid var(--background-elev)",
               boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.5)",
               overflow: "hidden",
-              isolation: "isolate",
+              background: "var(--background)",
             }}
           >
             {/* Notch */}
@@ -98,14 +97,19 @@ export default function AppPreviewSection() {
               className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
               style={{ width: 60, height: 16, background: "var(--background-elev)" }}
             />
-            {/* Conteneur scale — clip strict */}
-            <div style={{ width: 390, height: 720, transform: "scale(0.62)", transformOrigin: "top left", overflow: "hidden", pointerEvents: "none" }}>
-              <iframe
-                src="https://karaf.fr/dashboard"
-                title="Aperçu Karaf PWA"
-                scrolling="no"
-                className="block border-0"
-                style={{ width: 390, height: 720, overflow: "hidden" }}
+            {/* GIF cropé — on masque la sidebar gauche (205px) en décalant à gauche */}
+            <div style={{ overflow: "hidden", width: "100%", height: "100%" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/karaf-app-demo-desktop.gif"
+                alt="Aperçu Karaf mobile"
+                style={{
+                  width: "auto",
+                  height: "100%",
+                  marginLeft: "-14%",
+                  display: "block",
+                  flexShrink: 0,
+                }}
               />
             </div>
           </div>
