@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import HeroMockup from "@/components/landing/hero/HeroMockup";
 import { useEffect, useRef } from "react";
 
 function GridBackground() {
@@ -68,50 +67,37 @@ export default function HeroSection() {
           </h1>
         </div>
 
-        {/* Below: asymmetric 2-col */}
-        <div className="grid grid-cols-1 lg:grid-cols-[480px_1fr] gap-16 items-center">
-          {/* Left */}
-          <div>
-            <div className="w-10 h-px mb-6" style={{ background: "var(--accent)" }} />
-            <p className="text-base md:text-lg leading-relaxed mb-8" style={{ color: "var(--foreground-muted)", maxWidth: "46ch" }}>
-              Karaf remplace votre groupe WhatsApp par un vrai outil de management.
-            </p>
+        {/* Below */}
+        <div className="max-w-[480px]">
+          <div className="w-10 h-px mb-6" style={{ background: "var(--accent)" }} />
+          <p className="text-base md:text-lg leading-relaxed mb-8" style={{ color: "var(--foreground-muted)" }}>
+            Karaf remplace votre groupe WhatsApp par un vrai outil de management.
+          </p>
 
-            <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
-              <a
-                href="/login"
-                className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
-                style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
-              >
-                Se connecter
-                <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
-              </a>
-              <a
-                href="#features"
-                className="inline-flex items-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
-                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
-              >
-                Voir comment ça marche
-                <span className="arrow-pulse inline-block">↓</span>
-              </a>
-            </div>
-
-            <p className="font-mono text-xs" style={{ color: "var(--foreground-dim)" }}>
-              14 jours gratuits · Sans CB · 5 min pour démarrer
-            </p>
+          <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
+            <a
+              href="/login"
+              className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
+              style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
+            >
+              Se connecter
+              <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
+            </a>
+            <a
+              href="#features"
+              className="inline-flex items-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
+              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+            >
+              Voir comment ça marche
+              <span className="arrow-pulse inline-block">↓</span>
+            </a>
           </div>
 
-          {/* Right: mockup */}
-          <div className="hidden lg:flex items-center justify-end -mt-8">
-            <HeroMockup />
-          </div>
-        </div>
-
-        {/* Mobile mockup */}
-        <div className="lg:hidden mt-14 flex justify-center">
-          <HeroMockup />
+          <p className="font-mono text-xs" style={{ color: "var(--foreground-dim)" }}>
+            14 jours gratuits · Sans CB · 5 min pour démarrer
+          </p>
         </div>
       </div>
     </section>
