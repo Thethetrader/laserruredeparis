@@ -348,6 +348,25 @@ export default function PillarsSection() {
               );
             })}
             <div style={{ borderTop: "1px solid var(--border)" }} />
+
+            {/* Mobile: container hauteur fixe, toutes les previews empilées — zéro layout shift */}
+            <div className="lg:hidden mt-5 relative" style={{ height: 280 }}>
+              {features.map((f, i) => (
+                <div
+                  key={f.num}
+                  className="absolute inset-0 p-4 rounded-xl overflow-hidden"
+                  style={{
+                    background: "var(--background-soft)",
+                    border: "1px solid var(--border)",
+                    opacity: active === i ? 1 : 0,
+                    transition: "opacity 0.3s ease",
+                    pointerEvents: active === i ? "auto" : "none",
+                  }}
+                >
+                  <f.Preview />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Right: sticky mockup panel (desktop only) */}
