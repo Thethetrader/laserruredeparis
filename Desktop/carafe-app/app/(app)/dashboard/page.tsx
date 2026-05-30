@@ -8,8 +8,9 @@ import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
   Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
   Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
-  BarChart2,
+  BarChart2, Euro,
 } from "lucide-react";
+import { formatHours, formatTips } from "@/lib/shifts";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -1186,6 +1187,24 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
+  const [monthHours, setMonthHours] = useState<number | null>(null);
+  const [monthTips, setMonthTips] = useState<number | null>(null);
+  useEffect(() => {
+    const sup = createClient();
+    sup.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const now = new Date();
+      const from = now.toISOString().slice(0, 7) + "-01";
+      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const to = now.toISOString().slice(0, 7) + "-" + String(last).padStart(2, "0");
+      sup.from("shifts").select("hours_worked,tips").eq("user_id", user.id).gte("shift_date", from).lte("shift_date", to)
+        .then(({ data }) => {
+          if (!data) return;
+          setMonthHours((data as {hours_worked:number}[]).reduce((s,r) => s + (r.hours_worked ?? 0), 0));
+          setMonthTips((data as {tips:number}[]).reduce((s,r) => s + (r.tips ?? 0), 0));
+        });
+    });
+  }, []);
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
@@ -1298,6 +1317,29 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
           </div>
         </button>
       </div>
+
+      {(monthHours !== null || monthTips !== null) && (
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <a href="/shifts" className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)" }}>
+              <Clock size={15} style={{ color: "var(--accent)" }} />
+            </div>
+            <div>
+              <p className="text-[16px] font-bold" style={{ color: "var(--foreground)" }}>{monthHours !== null ? formatHours(monthHours) : "—"}</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Heures ce mois</p>
+            </div>
+          </a>
+          <a href="/shifts/recap" className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 active:scale-[0.97]" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.15)" }}>
+              <Euro size={15} style={{ color: "var(--accent)" }} />
+            </div>
+            <div>
+              <p className="text-[16px] font-bold" style={{ color: "var(--accent)" }}>{monthTips !== null ? formatTips(monthTips) : "—"}</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Tips ce mois</p>
+            </div>
+          </a>
+        </div>
+      )}
 
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
@@ -1758,3 +1800,4 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     </div>
   );
 }
+
