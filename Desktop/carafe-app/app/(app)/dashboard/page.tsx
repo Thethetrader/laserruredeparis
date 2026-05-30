@@ -229,11 +229,11 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
       total: 5,
       period: "today",
       tasks: [
-        { title: "Briefing équipe", done: true, category: "Ouverture" },
-        { title: "Mise en place salle", done: true, category: "Ouverture" },
-        { title: "Mise en place cuisine", done: true, category: "Ouverture" },
-        { title: "Nettoyage salle", done: false, category: "Fermeture" },
-        { title: "Plonge terminée", done: false, category: "Fermeture" },
+        { id: "e1", title: "Briefing équipe", done: true, category: "Ouverture", requires_photo: false },
+        { id: "e2", title: "Mise en place salle", done: true, category: "Ouverture", requires_photo: false },
+        { id: "e3", title: "Mise en place cuisine", done: true, category: "Ouverture", requires_photo: false },
+        { id: "e4", title: "Nettoyage salle", done: false, category: "Fermeture", requires_photo: false },
+        { id: "e5", title: "Plonge terminée", done: false, category: "Fermeture", requires_photo: false },
       ],
     },
     { label: "Cette semaine", done: 18, total: 35, period: "week", tasks: [
@@ -1800,4 +1800,5 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     </div>
   );
 }
+
 
