@@ -39,7 +39,7 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose }: {
       <div className="w-full max-w-md rounded-2xl p-5 animate-in slide-in-from-bottom-4 duration-200" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>{shift ? "Modifier le shift" : "Ajouter un shift"}</h2>
+            <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>{shift ? "Modifier" : "Ajouter un shift"}</h2>
             <p className="text-[12px] mt-0.5 capitalize" style={{ color: "var(--foreground-dim)" }}>{displayDate}</p>
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
@@ -94,10 +94,9 @@ function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; mon
       <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Tips par jour</p>
       <div className="flex items-end gap-0.5" style={{ height: 52 }}>
         {days.map(d => {
-          const str = toDateStr(d);
-          const t = tipsMap.get(str) ?? 0;
+          const t = tipsMap.get(toDateStr(d)) ?? 0;
           return (
-            <div key={str} className="flex-1 relative group" style={{ height: "100%" }}>
+            <div key={toDateStr(d)} className="flex-1 relative group" style={{ height: "100%" }}>
               <div className="absolute bottom-0 left-0 right-0 rounded-sm" style={{ height: t > 0 ? `${Math.max((t / maxTips) * 100, 8)}%` : "3px", background: t > 0 ? (t / maxTips > 0.7 ? "var(--accent)" : "rgba(6,182,212,0.4)") : "var(--background-soft)" }} />
               {t > 0 && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
@@ -112,22 +111,22 @@ function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; mon
   );
 }
 
-/* ── Main page ────────────────────────────────────────────────────────────── */
+/* ── Main ─────────────────────────────────────────────────────────────────── */
 export default function ShiftsPage() {
   const today = new Date();
-  const [year, setYear]           = useState(today.getFullYear());
-  const [month, setMonth]         = useState(today.getMonth());
-  const [shifts, setShifts]       = useState<Shift[]>([]);
-  const [prevShifts, setPrev]     = useState<Shift[]>([]);
-  const [ytdTips, setYtd]         = useState(0);
-  const [profile, setProfile]     = useState<ShiftProfile | null>(null);
-  const [loading, setLoading]     = useState(true);
-  const [selected, setSelected]   = useState<string | null>(null);
-  const [estId, setEstId]         = useState<string>("");
-  const [userId, setUserId]       = useState<string>("");
+  const [year, setYear]         = useState(today.getFullYear());
+  const [month, setMonth]       = useState(today.getMonth());
+  const [shifts, setShifts]     = useState<Shift[]>([]);
+  const [prevShifts, setPrev]   = useState<Shift[]>([]);
+  const [ytdTips, setYtd]       = useState(0);
+  const [profile, setProfile]   = useState<ShiftProfile | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [estId, setEstId]       = useState("");
+  const [userId, setUserId]     = useState("");
   const supabase = createClient();
 
-  const loadShifts = useCallback(async (y: number, m: number) => {
+  const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
@@ -136,68 +135,73 @@ export default function ShiftsPage() {
     const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", user.id).eq("is_active", true).single();
     if (member) setEstId(member.establishment_id);
 
-    const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(y, m + 1, 0).getDate();
-    const to = `${y}-${String(m + 1).padStart(2, "0")}-${lastDay}`;
-
-    const prevDate = new Date(y, m - 1, 1);
-    const pFrom = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-01`;
-    const pLastDay = new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 0).getDate();
-    const pTo = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-${pLastDay}`;
+    const from = `${y}-${String(m+1).padStart(2,"0")}-01`;
+    const last = new Date(y, m+1, 0).getDate();
+    const to   = `${y}-${String(m+1).padStart(2,"0")}-${last}`;
+    const pd   = new Date(y, m-1, 1);
+    const pf   = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,"0")}-01`;
+    const pl   = new Date(pd.getFullYear(), pd.getMonth()+1, 0).getDate();
+    const pt   = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,"0")}-${pl}`;
 
     const [cur, prev, ytd, prof] = await Promise.all([
       supabase.from("shifts").select("*").eq("user_id", user.id).gte("shift_date", from).lte("shift_date", to).order("shift_date"),
-      supabase.from("shifts").select("*").eq("user_id", user.id).gte("shift_date", pFrom).lte("shift_date", pTo),
+      supabase.from("shifts").select("*").eq("user_id", user.id).gte("shift_date", pf).lte("shift_date", pt),
       supabase.from("shifts").select("tips").eq("user_id", user.id).gte("shift_date", `${y}-01-01`).lte("shift_date", to),
       supabase.from("profiles").select("contract_type, weekly_hours, weekly_rest_days").eq("id", user.id).single(),
     ]);
 
     setShifts((cur.data ?? []) as Shift[]);
     setPrev((prev.data ?? []) as Shift[]);
-    setYtd(((ytd.data ?? []) as { tips: number }[]).reduce((s, r) => s + (r.tips ?? 0), 0));
+    setYtd(((ytd.data ?? []) as {tips:number}[]).reduce((s,r) => s + (r.tips ?? 0), 0));
     if (prof.data) setProfile(prof.data as ShiftProfile);
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { loadShifts(year, month); }, [year, month, loadShifts]);
+  useEffect(() => { load(year, month); }, [year, month, load]);
 
-  function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); }
-  function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); }
+  function prevMonth() { if (month === 0) { setYear(y => y-1); setMonth(11); } else setMonth(m => m-1); }
+  function nextMonth() { if (month === 11) { setYear(y => y+1); setMonth(0); } else setMonth(m => m+1); }
 
   async function handleSave(data: Partial<Shift>) {
-    const existing = shiftMap.get(data.shift_date!);
-    if (existing) await supabase.from("shifts").update(data).eq("id", existing.id);
+    const ex = shiftMap.get(data.shift_date!);
+    if (ex) await supabase.from("shifts").update(data).eq("id", ex.id);
     else await supabase.from("shifts").insert({ ...data, user_id: userId, establishment_id: estId });
     setSelected(null);
-    await loadShifts(year, month);
+    await load(year, month);
   }
 
   async function handleDelete() {
-    const existing = shiftMap.get(selected!);
-    if (existing) await supabase.from("shifts").delete().eq("id", existing.id);
+    const ex = shiftMap.get(selected!);
+    if (ex) await supabase.from("shifts").delete().eq("id", ex.id);
     setSelected(null);
-    await loadShifts(year, month);
+    await load(year, month);
   }
 
-  const days        = getDaysInMonth(year, month);
-  const shiftMap    = shiftsToMap(shifts);
-  const todayStr    = toDateStr(today);
-  const totalHours  = calcTotalHours(shifts);
-  const totalTips   = calcTotalTips(shifts);
-  const prevHours   = calcTotalHours(prevShifts);
-  const prevTips    = calcTotalTips(prevShifts);
-  const contractHrs = profile ? monthlyContractHours(profile.weekly_hours) : 0;
-  const pctWorked   = contractHrs > 0 ? Math.min(Math.round((totalHours / contractHrs) * 100), 100) : 0;
-  const firstDay    = isoWeekday(days[0]) - 1;
+  const days       = getDaysInMonth(year, month);
+  const shiftMap   = shiftsToMap(shifts);
+  const todayStr   = toDateStr(today);
+  const totalHours = calcTotalHours(shifts);
+  const totalTips  = calcTotalTips(shifts);
+  const prevHours  = calcTotalHours(prevShifts);
+  const prevTips   = calcTotalTips(prevShifts);
+  const cHrs       = changePercent(totalHours, prevHours);
+  const cTps       = changePercent(totalTips, prevTips);
+  const cSrv       = changePercent(shifts.length, prevShifts.length);
+  const cntHrs     = profile ? monthlyContractHours(profile.weekly_hours) : 0;
+  const pctW       = cntHrs > 0 ? Math.min(Math.round((totalHours / cntHrs) * 100), 100) : 0;
+  const firstDay   = isoWeekday(days[0]) - 1;
   const cells: (Date | null)[] = [...Array(firstDay).fill(null), ...days];
 
-  const chHours = changePercent(totalHours, prevHours);
-  const chTips  = changePercent(totalTips, prevTips);
+  // Number of calendar rows
+  const totalCells = firstDay + days.length;
+  const numRows = Math.ceil(totalCells / 7);
 
   return (
-    <div className="px-4 lg:px-8 py-6 pb-32 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    /* Full-height container — fills the content area next to sidebar */
+    <div className="flex flex-col h-[calc(100dvh-0px)] lg:h-[calc(100dvh-0px)] px-5 lg:px-8 pt-6 pb-4">
+
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <MonoLabel size="xs">Mes Shifts</MonoLabel>
         <div className="flex items-center gap-3">
           <a href="/shifts/recap" className="text-[11px] lg:hidden" style={{ color: "var(--accent)" }}>Récap →</a>
@@ -206,58 +210,76 @@ export default function ShiftsPage() {
       </div>
 
       {/* Month nav */}
-      <div className="flex items-center justify-between mb-5 px-1">
-        <button onClick={prevMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronLeft size={18} /></button>
-        <span className="text-[14px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{monthLabel(year, month)}</span>
-        <button onClick={nextMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronRight size={18} /></button>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <button onClick={prevMonth} className="p-1.5 rounded-base hover:opacity-70" style={{ color: "var(--foreground-dim)" }}><ChevronLeft size={20} /></button>
+        <span className="text-[15px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{monthLabel(year, month)}</span>
+        <button onClick={nextMonth} className="p-1.5 rounded-base hover:opacity-70" style={{ color: "var(--foreground-dim)" }}><ChevronRight size={20} /></button>
       </div>
 
-      {/* 2-col on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
-
-        {/* Left: Calendar */}
-        <div>
-          {/* Mobile stats */}
-          <div className="grid grid-cols-3 gap-2 mb-4 lg:hidden">
-            {[
-              { label: "Heures", value: formatHours(totalHours) },
-              { label: "Tips", value: formatTips(totalTips), accent: true },
-              { label: "Services", value: String(shifts.length) },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl px-3 py-2.5 text-center" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
-                <p className="text-[15px] font-bold" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
-                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
-              </div>
-            ))}
+      {/* Mobile stats */}
+      <div className="grid grid-cols-3 gap-2 mb-4 flex-shrink-0 lg:hidden">
+        {[
+          { label: "Heures", value: formatHours(totalHours) },
+          { label: "Tips", value: formatTips(totalTips), accent: true },
+          { label: "Services", value: String(shifts.length) },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl px-3 py-2.5 text-center" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+            <p className="text-[15px] font-bold" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
+            <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
           </div>
+        ))}
+      </div>
 
-          {/* Calendar grid */}
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            <div className="grid grid-cols-7" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              {WEEKDAYS.map(d => <div key={d} className="py-2 text-center text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>)}
+      {/* Main grid — fills remaining height */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-5 flex-1 min-h-0">
+
+        {/* Calendar — fills full height */}
+        <div className="flex flex-col min-h-0">
+          <div className="rounded-xl overflow-hidden flex flex-col flex-1 min-h-0" style={{ border: "1px solid var(--border)" }}>
+            {/* Day headers */}
+            <div className="grid grid-cols-7 flex-shrink-0" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              {WEEKDAYS.map(d => <div key={d} className="py-2.5 text-center text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>)}
             </div>
+
+            {/* Cells — flex-1 so they fill remaining space */}
             {loading ? (
-              <div className="p-8 text-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
+              <div className="flex-1 flex items-center justify-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
             ) : (
-              <div className="grid grid-cols-7">
+              <div className="flex-1 grid grid-cols-7 min-h-0" style={{ gridTemplateRows: `repeat(${numRows}, 1fr)` }}>
                 {cells.map((day, i) => {
-                  if (!day) return <div key={`e-${i}`} style={{ minHeight: 64, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
-                  const dateStr = toDateStr(day);
-                  const shift = shiftMap.get(dateStr);
-                  const isToday = dateStr === todayStr;
+                  if (!day) return <div key={`e-${i}`} style={{ borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
+                  const dateStr  = toDateStr(day);
+                  const shift    = shiftMap.get(dateStr);
+                  const isToday  = dateStr === todayStr;
                   const isFuture = day > today;
                   return (
-                    <button key={dateStr} onClick={() => !isFuture && setSelected(dateStr)}
-                      className="flex flex-col items-center justify-start pt-2 pb-1 px-1 transition-colors"
-                      style={{ minHeight: 64, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.35 : 1 }}>
-                      <span className="text-[12px] font-medium w-6 h-6 flex items-center justify-center rounded-full mb-0.5"
-                        style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
+                    <button
+                      key={dateStr}
+                      onClick={() => !isFuture && setSelected(dateStr)}
+                      className="flex flex-col items-start justify-start p-2 lg:p-3 transition-colors hover:bg-white/[0.03]"
+                      style={{
+                        borderRight: "1px solid var(--border)",
+                        borderBottom: "1px solid var(--border)",
+                        background: shift ? "rgba(6,182,212,0.04)" : "transparent",
+                        cursor: isFuture ? "default" : "pointer",
+                        opacity: isFuture ? 0.3 : 1,
+                      }}
+                    >
+                      <span
+                        className="text-[13px] font-medium w-7 h-7 flex items-center justify-center rounded-full mb-1 flex-shrink-0"
+                        style={{
+                          background: isToday ? "var(--accent)" : "transparent",
+                          color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)",
+                        }}
+                      >
                         {day.getDate()}
                       </span>
                       {shift && (
-                        <span className="text-[9px] font-mono leading-tight text-center w-full px-0.5" style={{ color: "var(--accent)" }}>
-                          {formatHours(shift.hours_worked)}{shift.tips > 0 && <><br />{formatTips(shift.tips)}</>}
-                        </span>
+                        <div className="text-left">
+                          <p className="text-[11px] font-mono font-medium leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
+                          {shift.tips > 0 && <p className="text-[10px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.7)" }}>{formatTips(shift.tips)}</p>}
+                          {shift.start_time && <p className="text-[10px] leading-tight mt-0.5" style={{ color: "var(--foreground-dim)" }}>{shift.start_time.slice(0,5)}</p>}
+                        </div>
                       )}
                     </button>
                   );
@@ -267,18 +289,17 @@ export default function ShiftsPage() {
           </div>
         </div>
 
-        {/* Right: Stats panel — desktop only */}
-        <div className="hidden lg:flex flex-col gap-4">
-          {/* Stat cards */}
+        {/* Right stats panel — desktop */}
+        <div className="hidden lg:flex flex-col gap-3 overflow-y-auto">
           {[
-            { label: "Heures", value: formatHours(totalHours), change: chHours, accent: false },
-            { label: "Pourboires", value: formatTips(totalTips), change: chTips, accent: true },
-            { label: "Services", value: String(shifts.length), change: changePercent(shifts.length, prevShifts.length), accent: false },
+            { label: "Heures", value: formatHours(totalHours), change: cHrs, accent: false },
+            { label: "Pourboires", value: formatTips(totalTips), change: cTps, accent: true },
+            { label: "Services", value: String(shifts.length), change: cSrv, accent: false },
           ].map(s => (
-            <div key={s.label} className="rounded-xl px-4 py-3.5" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
-              <p className="text-[22px] font-bold" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
+            <div key={s.label} className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+              <p className="text-[24px] font-bold leading-tight" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{loading ? "—" : s.value}</p>
               <p className="text-[10px] font-mono uppercase tracking-wider mb-1" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
-              {s.change !== null && s.change !== undefined && !loading && (
+              {!loading && s.change !== null && s.change !== undefined && (
                 <div className="flex items-center gap-1">
                   {s.change >= 0 ? <TrendingUp size={10} color="#10b981" /> : <TrendingDown size={10} color="#ef4444" />}
                   <span className="text-[10px]" style={{ color: s.change >= 0 ? "var(--success)" : "var(--danger)" }}>{s.change >= 0 ? "+" : ""}{s.change}% vs mois préc.</span>
@@ -287,30 +308,27 @@ export default function ShiftsPage() {
             </div>
           ))}
 
-          {/* Contrat progress */}
-          {profile && contractHrs > 0 && !loading && (
-            <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          {profile && cntHrs > 0 && !loading && (
+            <div className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <div className="flex justify-between mb-2">
                 <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>Contrat {profile.contract_type ?? ""}</p>
-                <p className="text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>{formatHours(totalHours)}/{formatHours(contractHrs)}</p>
+                <p className="text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>{formatHours(totalHours)}/{formatHours(cntHrs)}</p>
               </div>
               <div className="rounded-full overflow-hidden mb-1" style={{ height: 5, background: "var(--background-soft)" }}>
-                <div className="h-full rounded-full" style={{ width: `${pctWorked}%`, background: pctWorked >= 100 ? "var(--success)" : "var(--accent)", transition: "width 0.5s" }} />
+                <div className="h-full rounded-full" style={{ width: `${pctW}%`, background: pctW >= 100 ? "var(--success)" : "var(--accent)", transition: "width 0.5s" }} />
               </div>
-              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{pctWorked}% du mensuel légal</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{pctW}% du mensuel légal</p>
             </div>
           )}
 
-          {/* Tips chart */}
           {shifts.length > 0 && !loading && (
-            <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="rounded-xl px-4 py-3.5 flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <TipsChart shifts={shifts} year={year} month={month} />
             </div>
           )}
 
-          {/* YTD */}
           {!loading && (
-            <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="rounded-xl px-4 py-3 flex items-center gap-3 flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <Trophy size={16} style={{ color: "#F59E0B", flexShrink: 0 }} />
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Total tips {year}</p>
@@ -322,11 +340,10 @@ export default function ShiftsPage() {
       </div>
 
       {/* FAB */}
-      <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-5 w-12 h-12 rounded-full flex items-center justify-center shadow-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
+      <button onClick={() => setSelected(todayStr)} className="fixed bottom-6 right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "#09090B" }}>
         <Plus size={22} strokeWidth={2.5} />
       </button>
 
-      {/* Modal */}
       {selected && (
         <ShiftModal date={selected} shift={shiftMap.get(selected) ?? null} onSave={handleSave} onDelete={handleDelete} onClose={() => setSelected(null)} />
       )}
