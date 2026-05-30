@@ -50,7 +50,7 @@ function WhatsAppPhone() {
             <img src="/ma.png" alt="Ma!" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.style.background = "#128C7E"; (e.target as HTMLImageElement).parentElement!.innerHTML = '<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:9px;font-weight:700;color:#fff">M!</span>'; }} />
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#E9EDEF" }}>Ma!</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#E9EDEF" }}>elchaman</p>
             <p style={{ margin: 0, fontSize: 8, color: "#8696A0" }}>12 membres</p>
           </div>
         </div>
