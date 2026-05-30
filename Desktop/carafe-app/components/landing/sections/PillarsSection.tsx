@@ -219,7 +219,7 @@ const features = [
     num: "03",
     icon: MessageSquare,
     name: "Avis clients",
-    desc: "L'IA regroupe ce qui revient. Tu agis sur les vrais problèmes.",
+    desc: "Chacun note ce qu'il entend. L'IA regroupe et alerte le responsable.",
     ai: true,
     Preview: ClientFeedbackPreview,
   },
