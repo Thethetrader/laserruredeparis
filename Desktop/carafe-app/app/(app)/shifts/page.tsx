@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, TrendingUp, TrendingDown, Sunrise, Sunset } from "lucide-react";
 import {
   Shift, ShiftProfile, toDateStr, getDaysInMonth, isoWeekday, monthLabel,
   calcTotalHours, calcTotalTips, formatHours, formatTips, shiftsToMap, calcNetHours,
@@ -19,16 +19,31 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose }: {
   onDelete: () => Promise<void>;
   onClose: () => void;
 }) {
-  const [startTime, setStartTime] = useState(shift?.start_time ?? "09:00");
-  const [endTime, setEndTime]     = useState(shift?.end_time   ?? "17:00");
-  const [tips, setTips]           = useState(String(shift?.tips ?? ""));
-  const [note, setNote]           = useState(shift?.note ?? "");
-  const [saving, setSaving]       = useState(false);
-  const netHours = startTime && endTime ? calcNetHours(startTime, endTime) : 0;
+  const [startTime, setStartTime]   = useState(shift?.start_time ?? "09:00");
+  const [endTime, setEndTime]       = useState(shift?.end_time   ?? "14:00");
+  const [tips, setTips]             = useState(String(shift?.tips ?? ""));
+  const [hasCoupure, setHasCoupure] = useState(!!(shift?.start_time_2));
+  const [startTime2, setStartTime2] = useState(shift?.start_time_2 ?? "18:00");
+  const [endTime2, setEndTime2]     = useState(shift?.end_time_2   ?? "23:00");
+  const [tips2, setTips2]           = useState(String(shift?.tips_2 ?? ""));
+  const [note, setNote]             = useState(shift?.note ?? "");
+  const [saving, setSaving]         = useState(false);
+
+  const net1 = startTime && endTime ? calcNetHours(startTime, endTime) : 0;
+  const net2 = hasCoupure && startTime2 && endTime2 ? calcNetHours(startTime2, endTime2) : 0;
 
   async function handleSave() {
     setSaving(true);
-    await onSave({ shift_date: date, start_time: startTime, end_time: endTime, hours_worked: netHours, tips: parseFloat(tips) || 0, note: note || null });
+    await onSave({
+      shift_date: date,
+      start_time: startTime, end_time: endTime,
+      hours_worked: net1, tips: parseFloat(tips) || 0,
+      start_time_2: hasCoupure ? startTime2 : null,
+      end_time_2: hasCoupure ? endTime2 : null,
+      hours_worked_2: hasCoupure ? net2 : 0,
+      tips_2: hasCoupure ? (parseFloat(tips2) || 0) : 0,
+      note: note || null,
+    });
     setSaving(false);
   }
 
@@ -37,43 +52,91 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md rounded-2xl p-5 animate-in slide-in-from-bottom-4 duration-200" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>{shift ? "Modifier" : "Ajouter un shift"}</h2>
             <p className="text-[12px] mt-0.5 capitalize" style={{ color: "var(--foreground-dim)" }}>{displayDate}</p>
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
         </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Début</label>
-            <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+
+        {/* Service midi */}
+        <div className="rounded-xl p-3 mb-3" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Sunrise size={13} style={{ color: "#F59E0B" }} />
+            <span className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>Service midi</span>
+            {net1 > 0 && <span className="text-[10px] ml-auto font-mono" style={{ color: "var(--accent)" }}>{formatHours(net1)}</span>}
           </div>
-          <div>
-            <label className="text-[11px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Fin</label>
-            <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Début</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Fin</label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            </div>
+          </div>
+          <div className="relative">
+            <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
+            <input type="number" min="0" step="0.5" value={tips} onChange={e => setTips(e.target.value)} placeholder="Tips midi (€)" className="w-full pl-7 pr-3 py-1.5 rounded-base text-[12px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
           </div>
         </div>
-        {netHours > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-base mb-3" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.15)" }}>
-            <Clock size={12} style={{ color: "var(--accent)" }} />
-            <span className="text-[12px]" style={{ color: "var(--accent)" }}>{formatHours(netHours)} net</span>
+
+        {/* Coupure toggle */}
+        {!hasCoupure ? (
+          <button onClick={() => setHasCoupure(true)} className="w-full py-2 rounded-xl text-[12px] font-medium mb-3 flex items-center justify-center gap-2" style={{ background: "transparent", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
+            <Plus size={13} />
+            Ajouter service du soir (coupure)
+          </button>
+        ) : (
+          <div className="rounded-xl p-3 mb-3" style={{ background: "var(--background)", border: "1px solid rgba(6,182,212,0.2)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Sunset size={13} style={{ color: "var(--accent)" }} />
+              <span className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>Service soir</span>
+              {net2 > 0 && <span className="text-[10px] ml-auto font-mono" style={{ color: "var(--accent)" }}>{formatHours(net2)}</span>}
+              <button onClick={() => setHasCoupure(false)} className="ml-1" style={{ color: "var(--foreground-dim)" }}><X size={12} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Début</label>
+                <input type="time" value={startTime2} onChange={e => setStartTime2(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Fin</label>
+                <input type="time" value={endTime2} onChange={e => setEndTime2(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
+              </div>
+            </div>
+            <div className="relative">
+              <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
+              <input type="number" min="0" step="0.5" value={tips2} onChange={e => setTips2(e.target.value)} placeholder="Tips soir (€)" className="w-full pl-7 pr-3 py-1.5 rounded-base text-[12px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
+            </div>
           </div>
         )}
-        <div className="mb-3">
-          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Pourboires (€)</label>
+
+        {/* Total */}
+        {(net1 > 0 || net2 > 0) && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-base mb-3" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.15)" }}>
+            <div className="flex items-center gap-2">
+              <Clock size={12} style={{ color: "var(--accent)" }} />
+              <span className="text-[12px]" style={{ color: "var(--accent)" }}>Total {formatHours(net1 + net2)}</span>
+            </div>
+            {(parseFloat(tips)||0) + (parseFloat(tips2)||0) > 0 && (
+              <span className="text-[12px] font-mono font-semibold" style={{ color: "var(--accent)" }}>
+                {formatTips((parseFloat(tips)||0) + (parseFloat(tips2)||0))} tips
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Note */}
+        <div className="mb-4">
           <div className="relative">
-            <Euro size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
-            <input type="number" min="0" step="0.5" value={tips} onChange={e => setTips(e.target.value)} placeholder="0" className="w-full pl-8 pr-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            <FileText size={12} className="absolute left-3 top-2.5" style={{ color: "var(--foreground-dim)" }} />
+            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Note…" rows={1} className="w-full pl-8 pr-3 py-2 rounded-base text-[12px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
           </div>
         </div>
-        <div className="mb-5">
-          <label className="text-[11px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Note</label>
-          <div className="relative">
-            <FileText size={13} className="absolute left-3 top-3" style={{ color: "var(--foreground-dim)" }} />
-            <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Remarque…" rows={2} className="w-full pl-8 pr-3 py-2 rounded-base text-[13px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          </div>
-        </div>
+
         <div className="flex gap-2">
           {shift && <button onClick={onDelete} className="px-4 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Supprimer</button>}
           <button onClick={onClose} className="flex-1 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Annuler</button>
@@ -87,8 +150,8 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose }: {
 /* ── Tips bar chart ───────────────────────────────────────────────────────── */
 function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; month: number }) {
   const days = getDaysInMonth(year, month);
-  const tipsMap = new Map(shifts.map(s => [s.shift_date, s.tips]));
-  const maxTips = Math.max(...shifts.map(s => s.tips), 1);
+  const tipsMap = new Map(shifts.map(s => [s.shift_date, (s.tips ?? 0) + (s.tips_2 ?? 0)]));
+  const maxTips = Math.max(...Array.from(tipsMap.values()), 1);
   return (
     <div>
       <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Tips par jour</p>
@@ -110,19 +173,19 @@ function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; mon
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 export default function ShiftsPage() {
   const today = new Date();
-  const [year, setYear]         = useState(today.getFullYear());
-  const [month, setMonth]       = useState(today.getMonth());
-  const [shifts, setShifts]     = useState<Shift[]>([]);
-  const [prevShifts, setPrev]   = useState<Shift[]>([]);
-  const [ytdTips, setYtd]       = useState(0);
-  const [profile, setProfile]   = useState<ShiftProfile | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [estId, setEstId]       = useState("");
-  const [userId, setUserId]     = useState("");
-  const [estName, setEstName]   = useState("");
+  const [year, setYear]           = useState(today.getFullYear());
+  const [month, setMonth]         = useState(today.getMonth());
+  const [shifts, setShifts]       = useState<Shift[]>([]);
+  const [prevShifts, setPrev]     = useState<Shift[]>([]);
+  const [ytdTips, setYtd]         = useState(0);
+  const [profile, setProfile]     = useState<ShiftProfile | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [selected, setSelected]   = useState<string | null>(null);
+  const [estId, setEstId]         = useState("");
+  const [userId, setUserId]       = useState("");
+  const [estName, setEstName]     = useState("");
   const [firstName, setFirstName] = useState("");
-  const [greeting, setGreeting] = useState("Bonjour");
+  const [greeting, setGreeting]   = useState("Bonjour");
   const supabase = createClient();
 
   useEffect(() => {
@@ -160,13 +223,13 @@ export default function ShiftsPage() {
     const [cur, prev, ytd, prof2] = await Promise.all([
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",from).lte("shift_date",to).order("shift_date"),
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",pf).lte("shift_date",pt),
-      supabase.from("shifts").select("tips").eq("user_id",user.id).gte("shift_date",`${y}-01-01`).lte("shift_date",to),
-      supabase.from("profiles").select("contract_type,weekly_hours,weekly_rest_days").eq("id",user.id).single(),
+      supabase.from("shifts").select("tips,tips_2").eq("user_id",user.id).gte("shift_date",`${y}-01-01`).lte("shift_date",to),
+      supabase.from("profiles").select("contract_type,weekly_hours,weekly_rest_days,schedule_template").eq("id",user.id).single(),
     ]);
 
     setShifts((cur.data ?? []) as Shift[]);
     setPrev((prev.data ?? []) as Shift[]);
-    setYtd(((ytd.data ?? []) as {tips:number}[]).reduce((s,r) => s+(r.tips??0), 0));
+    setYtd(((ytd.data ?? []) as {tips:number;tips_2:number}[]).reduce((s,r) => s+(r.tips??0)+(r.tips_2??0), 0));
     if (prof2.data) setProfile(prof2.data as ShiftProfile);
     setLoading(false);
   }, [supabase]);
@@ -206,7 +269,7 @@ export default function ShiftsPage() {
   return (
     <div className="px-4 py-8 lg:px-10 pb-32 max-w-2xl lg:max-w-4xl">
 
-      {/* ── Header — identique aux autres sections ── */}
+      {/* Header */}
       <div className="mb-8">
         <MonoLabel size="xs" className="mb-2 block">Mes Shifts</MonoLabel>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
@@ -235,23 +298,39 @@ export default function ShiftsPage() {
         ) : (
           <div className="grid grid-cols-7">
             {cells.map((day, i) => {
-              if (!day) return <div key={`e-${i}`} style={{ minHeight: 72, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
+              if (!day) return <div key={`e-${i}`} style={{ minHeight: 80, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
               const dateStr  = toDateStr(day);
               const shift    = shiftMap.get(dateStr);
               const isToday  = dateStr === todayStr;
               const isFuture = day > today;
+              const totalTips = shift ? (shift.tips ?? 0) + (shift.tips_2 ?? 0) : 0;
+              const hasCoupure = shift && shift.start_time_2;
               return (
                 <button key={dateStr} onClick={() => !isFuture && setSelected(dateStr)}
-                  className="flex flex-col items-start justify-start p-2 transition-colors hover:bg-white/[0.02]"
-                  style={{ minHeight: 72, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
+                  className="flex flex-col items-start justify-start p-1.5 transition-colors hover:bg-white/[0.02]"
+                  style={{ minHeight: 80, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
                   <span className="text-[12px] font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
                   {shift && (
-                    <div>
-                      <p className="text-[10px] font-mono font-medium leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
-                      {shift.tips > 0 && <p className="text-[10px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.7)" }}>{formatTips(shift.tips)}</p>}
+                    <div className="w-full space-y-0.5">
+                      {/* Service 1 */}
+                      <div className="flex items-center gap-0.5">
+                        <Sunrise size={8} style={{ color: "#F59E0B", flexShrink: 0 }} />
+                        <p className="text-[9px] font-mono leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}{shift.tips > 0 ? ` · ${formatTips(shift.tips)}` : ""}</p>
+                      </div>
+                      {/* Service 2 */}
+                      {hasCoupure && (
+                        <div className="flex items-center gap-0.5">
+                          <Sunset size={8} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                          <p className="text-[9px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.8)" }}>{formatHours(shift.hours_worked_2)}{shift.tips_2 > 0 ? ` · ${formatTips(shift.tips_2)}` : ""}</p>
+                        </div>
+                      )}
+                      {/* Total tips si coupure */}
+                      {hasCoupure && totalTips > 0 && (
+                        <p className="text-[9px] font-mono font-semibold leading-tight" style={{ color: "var(--accent)" }}>= {formatTips(totalTips)}</p>
+                      )}
                     </div>
                   )}
                 </button>
@@ -261,7 +340,7 @@ export default function ShiftsPage() {
         )}
       </div>
 
-      {/* ── Récap sous le calendrier ── */}
+      {/* Récap */}
       {!loading && (
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-3">
@@ -316,7 +395,6 @@ export default function ShiftsPage() {
         </div>
       )}
 
-      {/* FAB */}
       <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "#09090B" }}>
         <Plus size={22} strokeWidth={2.5} />
       </button>
@@ -327,4 +405,3 @@ export default function ShiftsPage() {
     </div>
   );
 }
-

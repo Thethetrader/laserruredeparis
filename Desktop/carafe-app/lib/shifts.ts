@@ -4,11 +4,15 @@ export interface Shift {
   id: string;
   user_id: string;
   establishment_id: string;
-  shift_date: string; // "yyyy-MM-dd"
+  shift_date: string;
   start_time: string | null;
   end_time: string | null;
   hours_worked: number;
   tips: number;
+  start_time_2: string | null;
+  end_time_2: string | null;
+  hours_worked_2: number;
+  tips_2: number;
   note: string | null;
   created_at: string;
 }
@@ -35,7 +39,6 @@ export function getDaysInMonth(year: number, month: number): Date[] {
   return days;
 }
 
-/** ISO weekday: 1=Mon … 7=Sun */
 export function isoWeekday(d: Date): number {
   return d.getDay() === 0 ? 7 : d.getDay();
 }
@@ -47,11 +50,11 @@ export function monthLabel(year: number, month: number): string {
 // ── Calculations ─────────────────────────────────────────────────────────────
 
 export function calcTotalHours(shifts: Shift[]): number {
-  return shifts.reduce((s, sh) => s + (sh.hours_worked ?? 0), 0);
+  return shifts.reduce((s, sh) => s + (sh.hours_worked ?? 0) + (sh.hours_worked_2 ?? 0), 0);
 }
 
 export function calcTotalTips(shifts: Shift[]): number {
-  return shifts.reduce((s, sh) => s + (sh.tips ?? 0), 0);
+  return shifts.reduce((s, sh) => s + (sh.tips ?? 0) + (sh.tips_2 ?? 0), 0);
 }
 
 export function formatHours(h: number): string {
@@ -69,12 +72,10 @@ export function changePercent(curr: number, prev: number): number | null {
   return Math.round(((curr - prev) / prev) * 100);
 }
 
-/** French legal mensualisation: weeklyHours × 52/12 */
 export function monthlyContractHours(weeklyHours: number): number {
   return weeklyHours * 52 / 12;
 }
 
-/** 30 min pause auto for shifts > 6h */
 export function calcNetHours(startTime: string, endTime: string): number {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
