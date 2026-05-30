@@ -331,21 +331,6 @@ export default function PillarsSection() {
                           </div>
                         )}
 
-                        {/* Mobile: preview inline sous l'item actif */}
-                        <div
-                          className="lg:hidden overflow-hidden"
-                          style={{
-                            maxHeight: isActive ? 320 : 0,
-                            opacity: isActive ? 1 : 0,
-                            transition: "max-height 0.4s ease, opacity 0.3s ease",
-                            marginTop: isActive ? 16 : 0,
-                          }}
-                        >
-                          <div className="p-4 rounded-xl" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                            <f.Preview />
-                          </div>
-                        </div>
-
                       </div>
 
                       {/* Arrow */}
@@ -363,6 +348,28 @@ export default function PillarsSection() {
               );
             })}
             <div style={{ borderTop: "1px solid var(--border)" }} />
+
+            {/* Mobile: container fixe, crossfade seul → zéro layout shift */}
+            <div className="lg:hidden mt-4 relative rounded-xl overflow-hidden" style={{ height: 280, background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+              {/* Eyebrow indiquant quel item est actif */}
+              <div className="absolute top-0 left-0 right-0 px-4 py-2 flex items-center gap-2 z-10" style={{ borderBottom: "1px solid var(--border)", background: "var(--background-soft)" }}>
+                {(() => { const Icon = features[active].icon; return <Icon size={11} strokeWidth={1.5} style={{ color: "var(--accent)", flexShrink: 0 }} />; })()}
+                <span className="text-[11px] font-medium" style={{ color: "var(--accent)" }}>{features[active].name}</span>
+              </div>
+              {features.map((f, i) => (
+                <div
+                  key={f.num}
+                  className="absolute inset-0 p-4 pt-10 overflow-hidden"
+                  style={{
+                    opacity: active === i ? 1 : 0,
+                    transition: "opacity 0.3s ease",
+                    pointerEvents: active === i ? "auto" : "none",
+                  }}
+                >
+                  <f.Preview />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Right: sticky mockup panel (desktop only) */}
