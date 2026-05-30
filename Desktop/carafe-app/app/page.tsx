@@ -3,8 +3,6 @@ import Navigation from "@/components/landing/sections/Navigation";
 import HeroSection from "@/components/landing/sections/HeroSection";
 import ProblemSection from "@/components/landing/sections/ProblemSection";
 import PillarsSection from "@/components/landing/sections/PillarsSection";
-import ShowcaseSection from "@/components/landing/sections/ShowcaseSection";
-import EmployeeSection from "@/components/landing/sections/EmployeeSection";
 import PricingSection from "@/components/landing/sections/PricingSection";
 import FAQSection from "@/components/landing/sections/FAQSection";
 import CTASection from "@/components/landing/sections/CTASection";
@@ -19,8 +17,6 @@ export default function Home() {
         <HeroSection />
         <ProblemSection />
         <PillarsSection />
-        <ShowcaseSection />
-        <EmployeeSection />
         <PricingSection />
         <FAQSection />
         <CTASection />
