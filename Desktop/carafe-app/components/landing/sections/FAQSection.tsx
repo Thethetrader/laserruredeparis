@@ -29,8 +29,12 @@ const faqs = [
     a: "14 jours d'essai gratuit, sans carte bancaire. Si vous ne renouvelez pas, votre compte s'arrête, point.",
   },
   {
-    q: "Karaf fonctionne pour plusieurs établissements ?",
-    a: "Oui. Si vous gérez plusieurs restaurants, vous pouvez centraliser plusieurs équipes dans un même compte, avec des protocoles partagés ou spécifiques à chaque lieu.",
+    q: "Comment ça marche si j'ai plusieurs restaurants ?",
+    a: "Vous payez 39€/mois pour votre premier établissement. À partir du 2e, chaque restaurant supplémentaire est à 29€/mois jusqu'au 5e. Au-delà, on définit un tarif réseau personnalisé selon votre structure. Tous les établissements sont gérés depuis un seul compte, avec des protocoles et des équipes propres à chacun.",
+  },
+  {
+    q: "Le tarif dépend du nombre d'employés ?",
+    a: "Non. Vous payez par établissement, pas par utilisateur. Que vous ayez 5 ou 30 personnes dans votre équipe, le prix reste le même. Vous embauchez sans vous soucier du coût de l'app.",
   },
   {
     q: "Et si j'ai déjà un planning Combo / Skello ?",

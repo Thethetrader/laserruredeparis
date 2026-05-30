@@ -2,46 +2,24 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Check } from "lucide-react";
 
-const features = [
-  "Protocoles centralisés",
-  "Confirmation de lecture",
-  "Gestion des retards",
-  "Challenges & trophées",
-  "Fiches employés",
-  "Avis Google nominatifs",
-  "Passations de service",
-  "Dashboard patron",
+const FEATURES = [
+  "Tous les piliers de Carafe inclus",
+  "Utilisateurs illimités",
+  "Récap hebdomadaire automatique",
+  "Système de Bravos et fiche pro transférable",
+  "Retours client en temps réel",
+  "Tâches récurrentes et passations",
+  "Support par email et chat",
 ];
 
-const plans = [
-  {
-    name: "Starter",
-    tagline: "Pour les petites équipes",
-    price: "29",
-    limit: "Jusqu'à 15 utilisateurs",
-    cta: "Commencer",
-    primary: false,
-  },
-  {
-    name: "Standard",
-    tagline: "Pour les équipes établies",
-    price: "59",
-    limit: "Jusqu'à 35 utilisateurs",
-    cta: "Commencer",
-    primary: true,
-    badge: "Le plus choisi",
-  },
-  {
-    name: "Pro",
-    tagline: "Pour les grandes équipes",
-    price: "99",
-    limit: "35+ utilisateurs (illimité)",
-    cta: "Nous contacter",
-    primary: false,
-    extra: "+ Support prioritaire",
-  },
+const TABLE_ROWS = [
+  { label: "1 établissement", total: "39€", devis: false },
+  { label: "2 établissements", total: "68€", devis: false },
+  { label: "3 établissements", total: "97€", devis: false },
+  { label: "4 établissements", total: "126€", devis: false },
+  { label: "5 établissements", total: "155€", devis: false },
+  { label: "6 établissements et plus", total: "Sur devis", devis: true },
 ];
 
 export default function PricingSection() {
@@ -51,6 +29,8 @@ export default function PricingSection() {
   return (
     <section id="pricing" className="py-32" style={{ background: "var(--background-soft)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
+
+        {/* Header */}
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 18 }}
@@ -59,91 +39,165 @@ export default function PricingSection() {
           className="mb-14 text-center"
         >
           <p className="font-mono text-[11px] uppercase tracking-widest mb-4" style={{ color: "var(--foreground-dim)" }}>
-            Tarifs
+            [ TARIFS ]
           </p>
           <h2
             className="font-semibold tracking-tight leading-tight mb-3"
             style={{ fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.04em", color: "var(--foreground)" }}
           >
-            Un prix juste. Sans surprise.
+            Un prix par établissement. Sans surprise.
           </h2>
-          <p className="text-base" style={{ color: "var(--foreground-muted)" }}>
-            Choisissez selon la taille de votre équipe. Changez quand vous voulez.
+          <p className="text-base max-w-[52ch] mx-auto" style={{ color: "var(--foreground-muted)" }}>
+            Tout inclus, quelle que soit la taille de votre équipe. Plus vous avez d&apos;établissements, plus le prix baisse.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 + i * 0.1 }}
-              className={`relative p-8 rounded-xl flex flex-col transition-transform duration-200 hover:-translate-y-1${plan.primary ? " breathe-glow" : ""}`}
-              style={{
-                background: "var(--background)",
-                border: plan.primary ? "1px solid rgba(6,182,212,0.4)" : "1px solid var(--border)",
-              }}
+        {/* Carte principale */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 20 }}
+          animate={inView ? { opacity: 1, scale: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          className="mx-auto mb-6 rounded-2xl pricing-glow"
+          style={{
+            maxWidth: 580,
+            background: "var(--background)",
+            border: "1px solid rgba(6,182,212,0.3)",
+            padding: "48px",
+          }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest mb-6" style={{ color: "var(--accent)" }}>
+            [ TARIF DE BASE ]
+          </p>
+
+          <div className="mb-2">
+            <span
+              className="font-semibold leading-none"
+              style={{ fontSize: 72, color: "var(--accent)", letterSpacing: "-0.04em" }}
             >
-              {plan.badge && (
-                <div
-                  className="absolute -top-3 left-6 font-mono text-[9px] uppercase tracking-wider px-3 py-1 rounded-full"
-                  style={{ background: "var(--accent)", color: "#09090B" }}
+              39€
+            </span>
+          </div>
+          <p className="text-base mb-8" style={{ color: "var(--foreground-muted)" }}>
+            /mois HT par établissement
+          </p>
+
+          <div className="mb-8" style={{ height: 1, background: "var(--border)" }} />
+
+          <ul className="space-y-3 mb-8">
+            {FEATURES.map(f => (
+              <li key={f} className="flex items-center gap-3">
+                <span
+                  className="flex-shrink-0 font-mono text-[12px] leading-none"
+                  style={{ color: "var(--accent)" }}
                 >
-                  {plan.badge}
-                </div>
-              )}
+                  ✓
+                </span>
+                <span className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>{f}</span>
+              </li>
+            ))}
+          </ul>
 
-              <div className="mb-6">
-                <p className="text-[15px] font-semibold mb-1" style={{ color: "var(--foreground)" }}>{plan.name}</p>
-                <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{plan.tagline}</p>
-              </div>
+          <div className="mb-8" style={{ height: 1, background: "var(--border)" }} />
 
-              <div className="flex items-end gap-1 mb-2">
-                <span className="text-[40px] font-semibold leading-none" style={{ color: "var(--foreground)" }}>{plan.price}€</span>
-                <span className="text-[12px] mb-1.5" style={{ color: "var(--foreground-dim)" }}>/mois HT</span>
-              </div>
-              <p className="font-mono text-[10px] mb-6" style={{ color: "var(--foreground-dim)" }}>{plan.limit}</p>
+          <p className="font-mono text-[13px] mb-8" style={{ color: "var(--foreground-muted)" }}>
+            Vous avez plusieurs établissements ? Le 2e à 5e passe à 29€/mois chacun.
+          </p>
 
-              <ul className="space-y-2.5 mb-6 flex-1">
-                {features.map(f => (
-                  <li key={f} className="flex items-center gap-2">
-                    <Check size={11} strokeWidth={2.5} style={{ color: plan.primary ? "var(--accent)" : "var(--success)" }} />
-                    <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{f}</span>
-                  </li>
-                ))}
-                {plan.extra && (
-                  <li className="flex items-center gap-2">
-                    <Check size={11} strokeWidth={2.5} style={{ color: "var(--accent)" }} />
-                    <span className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>{plan.extra}</span>
-                  </li>
-                )}
-              </ul>
+          <a
+            href="#cta"
+            className="block w-full text-center py-3.5 rounded-xl text-[14px] font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "var(--accent)", color: "#09090B" }}
+          >
+            Essayer 14 jours · Sans CB
+          </a>
+        </motion.div>
 
-              <a
-                href="#cta"
-                className="w-full text-center py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-                style={plan.primary
-                  ? { background: "var(--accent)", color: "#09090B" }
-                  : { color: "var(--foreground-muted)", border: "1px solid var(--border)" }
-                }
-                onMouseEnter={e => {
-                  if (!plan.primary) { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }
+        {/* Tableau dégressivité */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+          className="mx-auto mb-10"
+          style={{ maxWidth: 580 }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest mb-3 text-center" style={{ color: "var(--foreground-dim)" }}>
+            [ EXEMPLES ]
+          </p>
+          <h3
+            className="font-semibold text-center mb-5 tracking-tight"
+            style={{ fontSize: "clamp(16px, 2vw, 20px)", letterSpacing: "-0.03em", color: "var(--foreground)" }}
+          >
+            Selon le nombre de vos établissements.
+          </h3>
+
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div
+              className="grid grid-cols-2 px-4 py-2.5"
+              style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}
+            >
+              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
+                Nombre d&apos;établissements
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-right" style={{ color: "var(--foreground-dim)" }}>
+                Total mensuel
+              </span>
+            </div>
+
+            {TABLE_ROWS.map((row, i) => (
+              <motion.div
+                key={row.label}
+                initial={{ opacity: 0, x: -8 }}
+                animate={inView ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.35 + i * 0.08 }}
+                className="grid grid-cols-2 px-4 py-3 transition-colors duration-100 cursor-default"
+                style={{
+                  borderBottom: i < TABLE_ROWS.length - 1 ? "1px solid var(--border)" : "none",
+                  background: "var(--background)",
                 }}
-                onMouseLeave={e => {
-                  if (!plan.primary) { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }
-                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--background-elev)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--background)"; }}
               >
-                {plan.cta}
-              </a>
-            </motion.div>
-          ))}
-        </div>
+                <span className="text-[13px]" style={{ color: "var(--foreground)" }}>{row.label}</span>
+                {row.devis ? (
+                  <a
+                    href="mailto:contact@karaf.fr"
+                    className="font-mono text-[13px] text-right transition-all duration-150"
+                    style={{ color: "var(--accent)" }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#22d3ee"; e.currentTarget.style.textDecoration = "underline"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.textDecoration = "none"; }}
+                  >
+                    {row.total}
+                  </a>
+                ) : (
+                  <span className="font-mono text-[13px] text-right" style={{ color: "var(--accent)" }}>{row.total}</span>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
-        <p className="text-center font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-          14 jours d&apos;essai gratuit · Sans carte bancaire · Sans engagement
-        </p>
+        {/* Mention légale */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={inView ? { opacity: 1 } : {}}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="text-center font-mono text-[11px]"
+          style={{ color: "var(--foreground-dim)" }}
+        >
+          14 jours d&apos;essai gratuit · Sans carte bancaire · Sans engagement · Annulation en un clic
+        </motion.p>
       </div>
+
+      <style>{`
+        .pricing-glow {
+          box-shadow: 0 0 40px rgba(6,182,212,0.08);
+          animation: pricing-pulse 4s ease-in-out infinite;
+        }
+        @keyframes pricing-pulse {
+          0%, 100% { box-shadow: 0 0 40px rgba(6,182,212,0.08); }
+          50%       { box-shadow: 0 0 60px rgba(6,182,212,0.16); }
+        }
+      `}</style>
     </section>
   );
 }
