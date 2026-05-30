@@ -46,7 +46,7 @@ export function BottomNav() {
           <Link
             key={href}
             href={href}
-            className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            onClick={() => { try { navigator?.vibrate?.(8); } catch(_) {} }} className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
             style={{ height: 60, color: active ? "var(--accent)" : "var(--foreground-dim)" }}
           >
             <Icon size={18} strokeWidth={active ? 2 : 1.5} />
@@ -59,3 +59,4 @@ export function BottomNav() {
     </nav>
   );
 }
+
