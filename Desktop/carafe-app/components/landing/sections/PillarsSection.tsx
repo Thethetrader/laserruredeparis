@@ -331,6 +331,21 @@ export default function PillarsSection() {
                           </div>
                         )}
 
+                        {/* Mobile: preview inline sous l'item actif */}
+                        <div
+                          className="lg:hidden overflow-hidden"
+                          style={{
+                            maxHeight: isActive ? 320 : 0,
+                            opacity: isActive ? 1 : 0,
+                            transition: "max-height 0.4s ease, opacity 0.3s ease",
+                            marginTop: isActive ? 16 : 0,
+                          }}
+                        >
+                          <div className="p-4 rounded-xl" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                            <f.Preview />
+                          </div>
+                        </div>
+
                       </div>
 
                       {/* Arrow */}
@@ -348,25 +363,6 @@ export default function PillarsSection() {
               );
             })}
             <div style={{ borderTop: "1px solid var(--border)" }} />
-
-            {/* Mobile: container hauteur fixe, toutes les previews empilées — zéro layout shift */}
-            <div className="lg:hidden mt-5 relative" style={{ height: 280 }}>
-              {features.map((f, i) => (
-                <div
-                  key={f.num}
-                  className="absolute inset-0 p-4 rounded-xl overflow-hidden"
-                  style={{
-                    background: "var(--background-soft)",
-                    border: "1px solid var(--border)",
-                    opacity: active === i ? 1 : 0,
-                    transition: "opacity 0.3s ease",
-                    pointerEvents: active === i ? "auto" : "none",
-                  }}
-                >
-                  <f.Preview />
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Right: sticky mockup panel (desktop only) */}
