@@ -331,14 +331,20 @@ export default function PillarsSection() {
                           </div>
                         )}
 
-                        {/* Mobile: preview sous l'item actif */}
-                        {isActive && (
-                          <div className="lg:hidden mt-4">
-                            <div className="p-4 rounded-xl" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                        {/* Mobile: height animée synchronisée — ouverture et fermeture au même rythme = hauteur totale constante */}
+                        <div
+                          className="lg:hidden overflow-hidden"
+                          style={{
+                            height: isActive ? 272 : 0,
+                            transition: "height 0.38s cubic-bezier(0.16,1,0.3,1)",
+                          }}
+                        >
+                          <div className="pt-3">
+                            <div className="p-4 rounded-xl" style={{ height: 252, background: "var(--background-soft)", border: "1px solid var(--border)", overflow: "hidden" }}>
                               <f.Preview />
                             </div>
                           </div>
-                        )}
+                        </div>
 
                       </div>
 
