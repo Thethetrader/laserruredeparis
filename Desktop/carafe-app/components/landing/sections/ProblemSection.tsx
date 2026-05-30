@@ -76,7 +76,7 @@ export default function ProblemSection() {
   const inView = useInView(titleRef, { once: true, margin: "-80px" });
 
   return (
-    <section className="py-20" style={{ background: "var(--background)" }}>
+    <section className="py-20 overflow-hidden" style={{ background: "var(--background)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         {/* Title */}
         <motion.div

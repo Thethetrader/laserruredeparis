@@ -30,7 +30,7 @@ export default function AppPreviewSection() {
           </h2>
         </motion.div>
 
-        {/* Desktop preview — GIF dans un frame navigateur */}
+        {/* Preview desktop — frame navigateur */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -45,7 +45,6 @@ export default function AppPreviewSection() {
               boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
             }}
           >
-            {/* Barre navigateur */}
             <div
               className="flex items-center gap-2 px-4 py-3"
               style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}
@@ -62,7 +61,6 @@ export default function AppPreviewSection() {
                 app.karaf.fr
               </div>
             </div>
-            {/* GIF */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/karaf-app-demo-desktop.gif"
@@ -73,19 +71,18 @@ export default function AppPreviewSection() {
           </div>
         </motion.div>
 
-        {/* Mobile preview — GIF cropé sur le contenu (sans la sidebar) */}
+        {/* Preview mobile — frame téléphone avec GIF cropé sur le contenu */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           className="flex justify-center md:hidden"
         >
-          {/* Frame téléphone */}
           <div
-            className="relative rounded-[36px] flex-shrink-0"
+            className="relative rounded-[36px]"
             style={{
               width: 260,
-              height: 460,
+              height: 480,
               border: "8px solid var(--background-elev)",
               boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.5)",
               overflow: "hidden",
@@ -95,20 +92,21 @@ export default function AppPreviewSection() {
             {/* Notch */}
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
-              style={{ width: 60, height: 16, background: "var(--background-elev)" }}
+              style={{ width: 64, height: 18, background: "var(--background-elev)" }}
             />
-            {/* GIF cropé — on masque la sidebar gauche (205px) en décalant à gauche */}
-            <div style={{ overflow: "hidden", width: "100%", height: "100%" }}>
+            {/* GIF — on crop la sidebar gauche en décalant */}
+            <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/karaf-app-demo-desktop.gif"
-                alt="Aperçu Karaf mobile"
+                alt="Aperçu Karaf"
                 style={{
-                  width: "auto",
+                  position: "absolute",
+                  top: 0,
+                  left: "-19%",
                   height: "100%",
-                  marginLeft: "-14%",
-                  display: "block",
-                  flexShrink: 0,
+                  width: "auto",
+                  maxWidth: "none",
                 }}
               />
             </div>

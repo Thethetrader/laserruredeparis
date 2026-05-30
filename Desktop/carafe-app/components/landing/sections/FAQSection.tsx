@@ -99,7 +99,7 @@ export default function FAQSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="faq" className="py-20" style={{ background: "var(--background)" }}>
+    <section id="faq" className="py-20 overflow-hidden" style={{ background: "var(--background)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-16">
           <motion.div

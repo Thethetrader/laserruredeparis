@@ -32,7 +32,7 @@ function GridBackground() {
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden">
+    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
       <GridBackground />
 
       <div className="relative z-10 w-full mx-auto px-6 md:px-12 lg:px-20 pt-24 pb-20" style={{ maxWidth: 1240 }}>

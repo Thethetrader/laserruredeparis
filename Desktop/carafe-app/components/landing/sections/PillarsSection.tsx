@@ -251,7 +251,7 @@ export default function PillarsSection() {
   }, [inView, active]);
 
   return (
-    <section id="features" style={{ background: "var(--background)" }} className="py-12 md:py-20">
+    <section id="features" style={{ background: "var(--background)" }} className="py-12 md:py-20 overflow-hidden">
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
 
         {/* Header */}
