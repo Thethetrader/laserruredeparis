@@ -331,23 +331,6 @@ export default function PillarsSection() {
                           </div>
                         )}
 
-                        {/* Mobile: inline preview */}
-                        <AnimatePresence>
-                          {isActive && (
-                            <motion.div
-                              key="mobile-preview"
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
-                              className="lg:hidden mt-4 overflow-hidden"
-                            >
-                              <div className="p-4 rounded-xl" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                                <f.Preview />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
                       </div>
 
                       {/* Arrow */}
