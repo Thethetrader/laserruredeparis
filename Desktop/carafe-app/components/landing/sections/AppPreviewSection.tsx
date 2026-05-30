@@ -73,33 +73,41 @@ export default function AppPreviewSection() {
           </div>
         </motion.div>
 
-        {/* Mobile preview — iframe PWA */}
+        {/* Mobile preview — iframe PWA scalée */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
           className="flex justify-center md:hidden"
+          style={{ overflow: "hidden" }}
         >
-          {/* Frame téléphone */}
+          {/* Frame téléphone — taille visible après scale */}
           <div
-            className="relative rounded-[36px] overflow-hidden"
+            className="relative rounded-[36px] flex-shrink-0"
             style={{
-              width: 320,
+              width: 242,
+              height: 440,
               border: "8px solid var(--background-elev)",
               boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.5)",
+              overflow: "hidden",
+              isolation: "isolate",
             }}
           >
             {/* Notch */}
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
-              style={{ width: 80, height: 20, background: "var(--background-elev)" }}
+              style={{ width: 60, height: 16, background: "var(--background-elev)" }}
             />
-            <iframe
-              src="https://karaf.fr/dashboard"
-              title="Aperçu Karaf PWA"
-              className="block w-full border-0"
-              style={{ height: 580, pointerEvents: "none" }}
-            />
+            {/* Conteneur scale — clip strict */}
+            <div style={{ width: 390, height: 720, transform: "scale(0.62)", transformOrigin: "top left", overflow: "hidden", pointerEvents: "none" }}>
+              <iframe
+                src="https://karaf.fr/dashboard"
+                title="Aperçu Karaf PWA"
+                scrolling="no"
+                className="block border-0"
+                style={{ width: 390, height: 720, overflow: "hidden" }}
+              />
+            </div>
           </div>
         </motion.div>
 
