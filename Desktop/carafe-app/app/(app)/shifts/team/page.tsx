@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp, BarChart2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp, BarChart2, Plus } from "lucide-react";
 import {
   getDaysInMonth, isoWeekday, monthLabel, toDateStr,
-  formatHours, formatTips, formatCA, parseTipSettings, calcTipDistribution,
+  formatHours, formatTips, formatCA, parseTipSettings, calcTipDistribution, calcNetHours,
   parseCASettings, DEFAULT_CA_SETTINGS,
   STAFF_STATUSES, DEFAULT_TIP_SETTINGS,
   type TeamShift, type StaffStatus, type TipSettings, type CASettings,
@@ -334,6 +334,47 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   const [caSaving, setCASaving] = useState(false);
   const [caSaved, setCASaved] = useState(false);
 
+  // Add shift
+  const [showAddShift, setShowAddShift] = useState(false);
+  const [members, setMembers] = useState<{ profile_id: string; first_name: string | null }[]>([]);
+  const [addUserId, setAddUserId] = useState("");
+  const [addStart, setAddStart] = useState("11:30");
+  const [addEnd, setAddEnd] = useState("15:00");
+  const [addCoupure, setAddCoupure] = useState(false);
+  const [addStart2, setAddStart2] = useState("19:00");
+  const [addEnd2, setAddEnd2] = useState("23:00");
+  const [addSaving, setAddSaving] = useState(false);
+
+  useEffect(() => {
+    if (!showAddShift || members.length > 0 || DEV_MODE) return;
+    supabase.from("establishment_members")
+      .select("profile_id, profiles(first_name)")
+      .eq("establishment_id", estId).eq("is_active", true)
+      .then(({ data }) => {
+        setMembers((data ?? []).map((m: Record<string, unknown>) => ({
+          profile_id: m.profile_id as string,
+          first_name: (m.profiles as { first_name: string | null } | null)?.first_name ?? null,
+        })));
+      });
+  }, [showAddShift, members.length, estId, supabase]);
+
+  async function handleAddShift() {
+    if (!addUserId) return;
+    setAddSaving(true);
+    const h1 = calcNetHours(addStart, addEnd);
+    const h2 = addCoupure ? calcNetHours(addStart2, addEnd2) : 0;
+    if (!DEV_MODE) {
+      const existing = shifts.find(s => s.user_id === addUserId);
+      if (existing) {
+        await supabase.from("shifts").update({ start_time: addStart, end_time: addEnd, hours_worked: h1, start_time_2: addCoupure ? addStart2 : null, end_time_2: addCoupure ? addEnd2 : null, hours_worked_2: h2 }).eq("id", existing.id);
+      } else {
+        await supabase.from("shifts").insert({ user_id: addUserId, establishment_id: estId, shift_date: date, start_time: addStart, end_time: addEnd, hours_worked: h1, tips: 0, start_time_2: addCoupure ? addStart2 : null, end_time_2: addCoupure ? addEnd2 : null, hours_worked_2: h2, tips_2: 0 });
+      }
+    }
+    setAddSaving(false); setShowAddShift(false);
+    onSaved();
+  }
+
   const isDispatch = tipSettings.mode === "dispatch";
   const totalTipsNum = parseFloat(totalTips) || 0;
   const eligibleStaff = shifts.filter(s => s.tips_enabled).map(s => ({ userId: s.user_id, hours: (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0), status: s.staff_status })).filter(s => s.hours > 0);
@@ -433,6 +474,63 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
           </button>
         ) : (
           <button onClick={onClose} className="w-full py-3 rounded-xl text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Fermer</button>
+        )}
+
+        {/* Add shift */}
+        {!showAddShift ? (
+          <button onClick={() => setShowAddShift(true)}
+            className="w-full mt-3 py-2.5 rounded-xl text-[12px] font-medium flex items-center justify-center gap-2"
+            style={{ background: "transparent", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
+            <Plus size={13} />Ajouter un shift
+          </button>
+        ) : (
+          <div className="mt-3 rounded-xl p-3 space-y-3" style={{ background: "var(--background)", border: "1px solid rgba(6,182,212,0.25)" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold" style={{ color: "var(--accent)" }}>Ajouter un shift</p>
+              <button onClick={() => setShowAddShift(false)} style={{ color: "var(--foreground-dim)" }}><X size={14} /></button>
+            </div>
+            {/* Employee selector */}
+            <select value={addUserId} onChange={e => setAddUserId(e.target.value)}
+              className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+              <option value="">— Choisir un employé —</option>
+              {(DEV_MODE
+                ? [{ profile_id: "u1", first_name: "Yasmine" }, { profile_id: "u2", first_name: "Rayan" }, { profile_id: "u3", first_name: "Marco" }, { profile_id: "u4", first_name: "Léa" }]
+                : members
+              ).map(m => <option key={m.profile_id} value={m.profile_id}>{m.first_name ?? m.profile_id}</option>)}
+            </select>
+            {/* Times */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Début</label>
+                <input type="time" value={addStart} onChange={e => setAddStart(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Fin</label>
+                <input type="time" value={addEnd} onChange={e => setAddEnd(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              </div>
+            </div>
+            {/* Coupure toggle */}
+            {!addCoupure ? (
+              <button onClick={() => setAddCoupure(true)} className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>+ Ajouter service du soir (coupure)</button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Début soir</label>
+                  <input type="time" value={addStart2} onChange={e => setAddStart2(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Fin soir</label>
+                  <input type="time" value={addEnd2} onChange={e => setAddEnd2(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
+                </div>
+              </div>
+            )}
+            <button onClick={handleAddShift} disabled={addSaving || !addUserId}
+              className="w-full py-2.5 rounded-xl text-[13px] font-semibold"
+              style={{ background: "var(--success)", color: "#09090B", opacity: (addSaving || !addUserId) ? 0.5 : 1 }}>
+              {addSaving ? "Enregistrement…" : "Enregistrer le shift"}
+            </button>
+          </div>
         )}
 
         {/* CA entry */}
