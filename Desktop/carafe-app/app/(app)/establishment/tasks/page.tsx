@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   Plus, Pencil, ToggleLeft, ToggleRight, AlertTriangle, Camera,
-  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp, BookOpen,
+  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp, BookOpen, ChevronLeft,
 } from "lucide-react";
 import type { TaskCategory, TaskTargetRole, TaskFrequency } from "@/lib/types/database";
 
@@ -272,6 +273,7 @@ export default function EstablishmentTasksPage() {
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <div>
+          <Link href="/tasks" className="flex items-center gap-1 text-[11px] mb-2" style={{ color: "var(--foreground-dim)" }}><ChevronLeft size={12} />Retour aux tâches</Link>
           <MonoLabel size="xs" className="mb-1 block">Paramètres</MonoLabel>
           <h1 className="text-[18px] font-semibold" style={{ color: "var(--foreground)" }}>Tâches récurrentes</h1>
           <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
