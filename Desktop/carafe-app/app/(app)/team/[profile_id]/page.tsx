@@ -31,6 +31,7 @@ interface MemberProfile {
   availability?: AvailabilitySlot[];
   staff_status?: string | null;
   tips_enabled?: boolean;
+  hourly_rate?: number | null;
 }
 
 interface Kudos {
@@ -55,7 +56,7 @@ const CONTRACT_LABELS: Record<string, string> = { cdi: "CDI", cdd: "CDD", extra:
 
 const DEV_DATA: Record<string, { member: MemberProfile; kudos: Kudos[]; stats: Stats }> = {
   "dev-user": {
-    member: { profile_id: "dev-user", first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, job_title: "Responsable", hired_at: "2022-03-01", establishment_name: "Le Comptoir Dev", phone: null, contract_type: "cdi", availability: [] },
+    member: { profile_id: "dev-user", first_name: "Dev", last_name: "Mode", email: "dev@carafe.app", avatar_url: null, job_title: "Responsable", hired_at: "2022-03-01", establishment_name: "Le Comptoir Dev", phone: null, contract_type: "cdi", hourly_rate: 13.50, availability: [] },
     kudos: [],
     stats: { score: 45, rank: 2, total_members: 3, delays_this_month: 1, protocols_read: 3, protocols_total: 3 },
   },
@@ -102,6 +103,7 @@ export default function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [myProfileId, setMyProfileId] = useState<string>("");
   const [editingStatus, setEditingStatus] = useState(false);
+  const [hourlyRateInput, setHourlyRateInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -116,6 +118,15 @@ export default function MemberProfilePage() {
   }, [profileId, devRole]);
 
   const isManager = DEV_MODE ? devRole !== "employee" : true;
+
+  async function saveHourlyRate(rate: number) {
+    setSaving(true);
+    if (!DEV_MODE) {
+      await supabase.from("profiles").update({ hourly_rate: rate }).eq("id", profileId);
+    }
+    setMember(prev => prev ? { ...prev, hourly_rate: rate } : prev);
+    setSaving(false);
+  }
 
   async function saveStatus(status: StaffStatus) {
     setSaving(true);
@@ -342,6 +353,25 @@ export default function MemberProfilePage() {
                 <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>Depuis {hiredDate}</span>
               )}
             </div>
+            {/* Hourly rate */}
+            {isManager && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Taux horaire brut :</span>
+                <input
+                  type="number" min="0" step="0.01"
+                  placeholder={member.hourly_rate ? String(member.hourly_rate) : "€/h"}
+                  value={hourlyRateInput}
+                  onChange={e => setHourlyRateInput(e.target.value)}
+                  onBlur={() => { const n = parseFloat(hourlyRateInput); if (!isNaN(n) && n > 0) saveHourlyRate(n); }}
+                  className="w-20 px-2 py-0.5 rounded-base text-[12px] font-mono outline-none text-center"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+                <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>€/h</span>
+                {member.hourly_rate && !hourlyRateInput && (
+                  <span className="text-[10px] font-mono font-semibold" style={{ color: "var(--accent)" }}>{member.hourly_rate.toFixed(2)}€/h</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
