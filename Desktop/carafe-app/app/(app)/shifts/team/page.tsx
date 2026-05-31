@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp, BarChart2 } from "lucide-react";
 import {
@@ -488,10 +489,12 @@ export default function ShiftsTeamPage() {
   const [estName, setEstName] = useState("");
   const supabase = createClient();
   const router = useRouter();
+  const [devRole] = useDevRole();
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
     if (DEV_MODE) {
+      if (devRole === "employee") { router.replace("/shifts"); return; }
       setEstId("dev-establishment-2"); setEstName("La Brasserie Test");
       setTipSettings({ mode: "dispatch", coefficients: { chef_de_rang: 1.2, serveur: 1.0, cuisinier: 0.8, commis: 0.5, barman: 0.9, plongeur: 0.4, responsable: 1.5, autre: 0.7 }, colors: { chef_de_rang: "#06B6D4", serveur: "#10B981", cuisinier: "#F59E0B", commis: "#F97316", barman: "#8B5CF6", plongeur: "#6B7280", responsable: "#EF4444", autre: "#A1A1AA" } });
       setCASettings({ mode: "per_month", staff_can_enter: false });
@@ -525,7 +528,7 @@ export default function ShiftsTeamPage() {
     if (caEntry) { setMonthlyCA((caEntry as { amount: number }).amount); setMonthlyCaInput(String((caEntry as { amount: number }).amount)); }
     else { setMonthlyCA(null); setMonthlyCaInput(""); }
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, devRole, router]);
 
   useEffect(() => { load(year, month); }, [year, month, load]);
 
