@@ -476,6 +476,10 @@ export default function ShiftsTeamPage() {
   const [shifts, setShifts] = useState<TeamShift[]>([]);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [caSettings, setCASettings] = useState<CASettings>(DEFAULT_CA_SETTINGS);
+  const [monthlyCA, setMonthlyCA] = useState<number | null>(null);
+  const [monthlyCaInput, setMonthlyCaInput] = useState("");
+  const [monthlyCaSaving, setMonthlyCaSaving] = useState(false);
+  const [monthlyCaSaved, setMonthlyCaSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [showPayroll, setShowPayroll] = useState(false);
@@ -488,7 +492,8 @@ export default function ShiftsTeamPage() {
     if (DEV_MODE) {
       setEstId("dev-establishment-2"); setEstName("La Brasserie Test");
       setTipSettings({ mode: "dispatch", coefficients: { chef_de_rang: 1.2, serveur: 1.0, cuisinier: 0.8, commis: 0.5, barman: 0.9, plongeur: 0.4, responsable: 1.5, autre: 0.7 }, colors: { chef_de_rang: "#06B6D4", serveur: "#10B981", cuisinier: "#F59E0B", commis: "#F97316", barman: "#8B5CF6", plongeur: "#6B7280", responsable: "#EF4444", autre: "#A1A1AA" } });
-      setCASettings({ mode: "per_day", staff_can_enter: false });
+      setCASettings({ mode: "per_month", staff_can_enter: false });
+      setMonthlyCA(null); setMonthlyCaInput("");
       setShifts(buildDevShifts(y, m)); setLoading(false); return;
     }
     const { data: { user } } = await supabase.auth.getUser();
@@ -511,10 +516,29 @@ export default function ShiftsTeamPage() {
       const em = s.establishment_members as Array<{ staff_status: string | null; tips_enabled: boolean }> | null;
       return { ...(s as unknown as TeamShift), first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null, staff_status: (em?.[0]?.staff_status ?? null) as StaffStatus | null, tips_enabled: em?.[0]?.tips_enabled ?? true };
     });
-    setShifts(mapped); setLoading(false);
+    setShifts(mapped);
+    // Load monthly CA if mode is per_month
+    const firstOfMonth = `${y}-${String(m + 1).padStart(2, "0")}-01`;
+    const { data: caEntry } = await supabase.from("ca_entries").select("amount").eq("establishment_id", eid).eq("entry_date", firstOfMonth).eq("service", "month").maybeSingle();
+    if (caEntry) { setMonthlyCA((caEntry as { amount: number }).amount); setMonthlyCaInput(String((caEntry as { amount: number }).amount)); }
+    else { setMonthlyCA(null); setMonthlyCaInput(""); }
+    setLoading(false);
   }, [supabase]);
 
   useEffect(() => { load(year, month); }, [year, month, load]);
+
+  async function saveMonthlyCa() {
+    const amount = parseFloat(monthlyCaInput) || 0;
+    if (!estId || amount <= 0) return;
+    setMonthlyCaSaving(true);
+    const firstOfMonth = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    if (!DEV_MODE) {
+      await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: firstOfMonth, service: "month", amount }, { onConflict: "establishment_id,entry_date,service" });
+    }
+    setMonthlyCA(amount);
+    setMonthlyCaSaving(false); setMonthlyCaSaved(true);
+    setTimeout(() => setMonthlyCaSaved(false), 2000);
+  }
 
   function prevMonth() { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); }
   function nextMonth() { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); }
@@ -645,6 +669,35 @@ export default function ShiftsTeamPage() {
           </div>
         </div>
       )}
+      {/* Monthly CA card */}
+      {!loading && caSettings.mode === "per_month" && (
+        <div className="mt-3 rounded-xl p-4" style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-[12px] font-semibold" style={{ color: "var(--success)" }}>CA {monthLabel(year, month)}</p>
+              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Total caisse TTC</p>
+            </div>
+            {monthlyCA !== null && monthlyCA > 0 && (
+              <p className="text-[18px] font-bold font-mono" style={{ color: "var(--success)" }}>{formatCA(monthlyCA)}</p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
+              <input type="number" min="0" step="1" value={monthlyCaInput} onChange={e => setMonthlyCaInput(e.target.value)}
+                placeholder={monthlyCA ? String(monthlyCA) : "Ex: 28 400"}
+                className="w-full pl-7 pr-3 py-2 rounded-base text-[13px] outline-none"
+                style={{ background: "var(--background)", border: "1px solid rgba(16,185,129,0.3)", color: "var(--foreground)" }} />
+            </div>
+            <button onClick={saveMonthlyCa} disabled={monthlyCaSaving || !monthlyCaInput}
+              className="px-4 py-2 rounded-base text-[12px] font-semibold flex items-center gap-1.5 flex-shrink-0"
+              style={{ background: monthlyCaSaved ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.3)", opacity: !monthlyCaInput ? 0.5 : 1 }}>
+              {monthlyCaSaved ? <><Check size={12} />OK</> : monthlyCaSaving ? "…" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {!loading && (
         <button onClick={() => setShowPayroll(true)}
           className="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold"
