@@ -4,6 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarDays, ClipboardList, Wallet, CalendarRange } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
+import { useDevRole } from "@/hooks/useDevRole";
+
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
 const employeeNav = [
@@ -29,7 +32,9 @@ interface SidebarProps {
 
 export function Sidebar({ establishment, establishments }: SidebarProps) {
   const pathname = usePathname();
-  const isManager = establishment.role === "owner" || establishment.role === "manager";
+  const [devRole] = useDevRole();
+  const effectiveRole = DEV_MODE ? devRole : establishment.role;
+  const isManager = effectiveRole === "owner" || effectiveRole === "manager";
 
   return (
     <aside
