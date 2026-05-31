@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, CalendarDays, ClipboardList, Clock } from "lucide-react";
+import { LayoutDashboard, BookOpen, MessageSquare, ClipboardList, Clock, CalendarRange } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
@@ -10,18 +10,17 @@ const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const managerNav = [
   { href: "/dashboard",         icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tasks",             icon: ClipboardList,   label: "Tâches" },
+  { href: "/shifts/team",       icon: CalendarRange,   label: "Planning" },
   { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
-  { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
-  { href: "/shifts",           icon: Clock,           label: "Shifts" },
+  { href: "/shifts",            icon: Clock,           label: "Mes Shifts" },
 ];
 
 const employeeNav = [
   { href: "/dashboard",         icon: LayoutDashboard, label: "Accueil" },
   { href: "/me/tasks",          icon: ClipboardList,   label: "Tâches" },
-  { href: "/scoring",           icon: Zap,             label: "Mon Score" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
-  { href: "/shifts",           icon: Clock,           label: "Shifts" },
+  { href: "/shifts",            icon: Clock,           label: "Shifts" },
 ];
 
 export function BottomNav() {
@@ -41,12 +40,13 @@ export function BottomNav() {
       }}
     >
       {nav.map(({ href, icon: Icon, label }) => {
-        const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+        const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href) && !(href === "/shifts" && pathname.startsWith("/shifts/team")));
         return (
           <Link
             key={href}
             href={href}
-            onClick={() => { try { navigator?.vibrate?.(8); } catch(_) {} }} className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            onClick={() => { try { navigator?.vibrate?.(8); } catch(_) {} }}
+            className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
             style={{ height: 60, color: active ? "var(--accent)" : "var(--foreground-dim)" }}
           >
             <Icon size={18} strokeWidth={active ? 2 : 1.5} />
@@ -59,4 +59,3 @@ export function BottomNav() {
     </nav>
   );
 }
-

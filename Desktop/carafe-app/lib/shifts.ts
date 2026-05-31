@@ -1,5 +1,73 @@
 export type ContractType = "CDI" | "CDD" | "Extra" | "Apprenti";
 
+// ── Staff statuses ────────────────────────────────────────────────────────────
+
+export type StaffStatus =
+  | "chef_de_rang" | "serveur" | "cuisinier" | "commis"
+  | "barman" | "plongeur" | "responsable" | "autre";
+
+export const STAFF_STATUSES: Record<StaffStatus, { label: string; color: string; defaultCoef: number }> = {
+  chef_de_rang: { label: "Chef de rang", color: "#06B6D4", defaultCoef: 1.0 },
+  serveur:      { label: "Serveur",       color: "#10B981", defaultCoef: 1.0 },
+  cuisinier:    { label: "Cuisinier",     color: "#F59E0B", defaultCoef: 0.8 },
+  commis:       { label: "Commis",        color: "#F97316", defaultCoef: 0.5 },
+  barman:       { label: "Barman",        color: "#8B5CF6", defaultCoef: 0.9 },
+  plongeur:     { label: "Plongeur",      color: "#6B7280", defaultCoef: 0.4 },
+  responsable:  { label: "Responsable",   color: "#EF4444", defaultCoef: 1.2 },
+  autre:        { label: "Autre",         color: "#A1A1AA", defaultCoef: 0.7 },
+};
+
+export type TipMode = "self" | "dispatch";
+
+export interface TipSettings {
+  mode: TipMode;
+  coefficients: Record<StaffStatus, number>;
+  colors: Record<StaffStatus, string>;
+}
+
+export const DEFAULT_TIP_SETTINGS: TipSettings = {
+  mode: "self",
+  coefficients: Object.fromEntries(
+    (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].defaultCoef])
+  ) as Record<StaffStatus, number>,
+  colors: Object.fromEntries(
+    (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].color])
+  ) as Record<StaffStatus, string>,
+};
+
+export function parseTipSettings(raw: unknown): TipSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_TIP_SETTINGS;
+  const r = raw as Partial<TipSettings>;
+  return {
+    mode: r.mode === "dispatch" ? "dispatch" : "self",
+    coefficients: { ...DEFAULT_TIP_SETTINGS.coefficients, ...(r.coefficients ?? {}) },
+    colors: { ...DEFAULT_TIP_SETTINGS.colors, ...(r.colors ?? {}) },
+  };
+}
+
+export function calcTipDistribution(
+  staff: Array<{ userId: string; hours: number; status: StaffStatus | null }>,
+  totalTips: number,
+  coefficients: Record<StaffStatus, number>
+): Record<string, number> {
+  const weighted = staff.map(s => ({
+    userId: s.userId,
+    w: s.hours * (s.status ? (coefficients[s.status] ?? 1.0) : 1.0),
+  }));
+  const totalW = weighted.reduce((sum, x) => sum + x.w, 0);
+  if (totalW === 0) return {};
+  const result: Record<string, number> = {};
+  for (const { userId, w } of weighted) {
+    result[userId] = Math.round((w / totalW) * totalTips * 100) / 100;
+  }
+  return result;
+}
+
+export interface TeamShift extends Shift {
+  first_name: string | null;
+  staff_status: StaffStatus | null;
+}
+
 export interface Shift {
   id: string;
   user_id: string;

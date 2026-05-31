@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, BookOpen, Award, Phone, Mail, Calendar, Briefcase } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
+import { STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
@@ -28,6 +29,7 @@ interface MemberProfile {
   phone?: string | null;
   contract_type?: string | null;
   availability?: AvailabilitySlot[];
+  staff_status?: string | null;
 }
 
 interface Kudos {
@@ -98,6 +100,8 @@ export default function MemberProfilePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [myProfileId, setMyProfileId] = useState<string>("");
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -110,6 +114,22 @@ export default function MemberProfilePage() {
     loadData();
   }, [profileId, devRole]);
 
+  const isManager = DEV_MODE ? devRole !== "employee" : true;
+
+  async function saveStatus(status: StaffStatus) {
+    setSaving(true);
+    if (!DEV_MODE) {
+      await supabase.from("establishment_members")
+        .update({ staff_status: status })
+        .eq("profile_id", profileId)
+        .eq("is_active", true);
+    }
+    setMember(prev => prev ? { ...prev, staff_status: status } : prev);
+    setSaving(false);
+    setEditingStatus(false);
+  }
+
+
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -120,13 +140,14 @@ export default function MemberProfilePage() {
       job_title: string | null;
       hired_at: string | null;
       establishment_id: string;
+      staff_status: string | null;
       profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null } | null;
       establishments: { name: string } | null;
     };
 
     const { data: memberDataRaw } = await supabase
       .from("establishment_members")
-      .select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
+      .select("role, job_title, hired_at, establishment_id, staff_status, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
       .eq("profile_id", profileId)
       .eq("is_active", true)
       .single();
@@ -146,6 +167,7 @@ export default function MemberProfilePage() {
       hired_at: memberData.hired_at,
       establishment_name: est?.name ?? "",
       phone: p?.phone ?? null,
+      staff_status: memberData.staff_status ?? null,
     });
 
     const estId = memberData.establishment_id;
@@ -253,6 +275,32 @@ export default function MemberProfilePage() {
               {badgeConfig && <span className="text-xl">{badgeConfig.emoji}</span>}
             </div>
             {member.job_title && <p className="text-sm mt-0.5" style={{ color: "var(--accent)" }}>{member.job_title}</p>}
+            {/* Staff status badge */}
+            {!editingStatus && member.staff_status && STAFF_STATUSES[member.staff_status as StaffStatus] && (
+              <button onClick={() => isManager && setEditingStatus(true)} className="flex items-center gap-1.5 mt-1.5">
+                <div className="w-2 h-2 rounded-full" style={{ background: STAFF_STATUSES[member.staff_status as StaffStatus].color }} />
+                <span className="text-[11px]" style={{ color: STAFF_STATUSES[member.staff_status as StaffStatus].color }}>
+                  {STAFF_STATUSES[member.staff_status as StaffStatus].label}
+                </span>
+              </button>
+            )}
+            {!editingStatus && !member.staff_status && isManager && (
+              <button onClick={() => setEditingStatus(true)} className="text-[11px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
+                + Définir le statut
+              </button>
+            )}
+            {editingStatus && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(s => (
+                  <button key={s} onClick={() => saveStatus(s)} disabled={saving}
+                    className="px-2 py-1 rounded-full text-[10px] font-medium transition-all"
+                    style={{ background: member.staff_status === s ? STAFF_STATUSES[s].color : "var(--background-elev)", color: member.staff_status === s ? "#09090B" : STAFF_STATUSES[s].color, border: \`1px solid \${STAFF_STATUSES[s].color}40\` }}>
+                    {STAFF_STATUSES[s].label}
+                  </button>
+                ))}
+                <button onClick={() => setEditingStatus(false)} className="px-2 py-1 rounded-full text-[10px]" style={{ color: "var(--foreground-dim)" }}>Annuler</button>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 mt-1.5">
               {member.contract_type && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"

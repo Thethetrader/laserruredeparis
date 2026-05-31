@@ -4,84 +4,150 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
+import { Check } from "lucide-react";
+import { STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings, type StaffStatus, type TipMode } from "@/lib/shifts";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
-interface EstablishmentInfo {
-  name: string;
-  city: string | null;
-}
+interface EstablishmentInfo { id: string; name: string; city: string | null; }
 
 export default function EstablishmentSettingsPage() {
   const supabase = createClient();
   const router = useRouter();
   const [establishment, setEstablishment] = useState<EstablishmentInfo | null>(null);
+  const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (DEV_MODE) {
-      setEstablishment({ name: "Le Comptoir Dev", city: "Paris" });
+      setEstablishment({ id: "dev-establishment-2", name: "La Brasserie Test", city: "Lyon" });
       setLoading(false);
       return;
     }
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
-
-    const { data } = await supabase
-      .from("establishment_members")
-      .select("role, establishments(name, city)")
-      .eq("profile_id", user.id)
-      .in("role", ["owner", "manager"])
-      .limit(1)
-      .maybeSingle();
-
+    const { data } = await supabase.from("establishment_members")
+      .select("establishment_id, role, establishments(id, name, city, tip_settings)")
+      .eq("profile_id", user.id).in("role", ["owner", "manager"]).limit(1).maybeSingle();
     if (!data) { router.push("/dashboard"); return; }
-
-    const est = data.establishments as unknown as EstablishmentInfo | null;
+    const est = data.establishments as unknown as { id: string; name: string; city: string | null; tip_settings: unknown } | null;
     if (!est) { router.push("/dashboard"); return; }
-
-    setEstablishment(est);
+    setEstablishment({ id: est.id, name: est.name, city: est.city });
+    setTipSettings(parseTipSettings(est.tip_settings));
     setLoading(false);
+  }
+
+  function setMode(mode: TipMode) { setTipSettings(prev => ({ ...prev, mode })); }
+
+  function setCoef(status: StaffStatus, val: string) {
+    const num = parseFloat(val);
+    if (isNaN(num) || num < 0) return;
+    setTipSettings(prev => ({ ...prev, coefficients: { ...prev.coefficients, [status]: num } }));
+  }
+
+  async function handleSave() {
+    if (!establishment) return;
+    setSaving(true);
+    if (DEV_MODE) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+    await supabase.from("establishments")
+      .update({ tip_settings: tipSettings as unknown as Record<string, unknown> })
+      .eq("id", establishment.id);
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
   }
 
   if (loading) {
     return (
-      <div className="px-4 py-8 lg:px-8 max-w-4xl">
+      <div className="px-4 py-8 lg:px-8 max-w-2xl">
         <div className="rounded-xl h-20 animate-pulse" style={{ background: "var(--background-elev)" }} />
       </div>
     );
   }
-
   if (!establishment) return null;
 
   return (
-    <div className="px-4 py-8 lg:px-8 max-w-4xl">
+    <div className="px-4 py-8 lg:px-8 pb-32 max-w-2xl">
       <MonoLabel size="xs" className="mb-6 block">Paramètres</MonoLabel>
 
-      <div
-        className="rounded-xl p-5"
-        style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-      >
-        <p className="text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
-          {establishment.name}
-        </p>
-        <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
-          {establishment.city ?? ""}
-        </p>
+      {/* Establishment info */}
+      <div className="rounded-xl p-5 mb-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <p className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>{establishment.name}</p>
+        <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{establishment.city ?? ""}</p>
       </div>
 
-      <div
-        className="mt-4 rounded-xl p-4"
-        style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-      >
-        <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
-          Paramètres complets disponibles prochainement.
-        </p>
+      {/* Tips mode */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode des pourboires</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez qui saisit les pourboires</p>
+        </div>
+        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
+          {([
+            { value: "self" as TipMode, label: "Autonome", desc: "Chaque employé saisit ses propres tips" },
+            { value: "dispatch" as TipMode, label: "Dispatch", desc: "Le manager distribue les tips au prorata" },
+          ]).map(opt => (
+            <button key={opt.value} onClick={() => setMode(opt.value)}
+              className="p-3 rounded-xl text-left transition-all"
+              style={{
+                background: tipSettings.mode === opt.value ? "rgba(6,182,212,0.08)" : "var(--background)",
+                border: `1px solid ${tipSettings.mode === opt.value ? "rgba(6,182,212,0.3)" : "var(--border)"}`,
+              }}>
+              <p className="text-[13px] font-semibold" style={{ color: tipSettings.mode === opt.value ? "var(--accent)" : "var(--foreground)" }}>{opt.label}</p>
+              <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--foreground-dim)" }}>{opt.desc}</p>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Coefficients (dispatch mode only) */}
+      {tipSettings.mode === "dispatch" && (
+        <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+          <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Coefficients par statut</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips = heures × coefficient. Plus le coef est élevé, plus la part est grande.</p>
+          </div>
+          <div style={{ background: "var(--background-elev)" }}>
+            {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map((status, i, arr) => {
+              const cfg = STAFF_STATUSES[status];
+              return (
+                <div key={status} className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? cfg.color }} />
+                  <span className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                  <div className="flex items-center gap-2">
+                    <input type="number" min="0" max="5" step="0.1"
+                      value={tipSettings.coefficients[status]}
+                      onChange={e => setCoef(status, e.target.value)}
+                      className="w-16 px-2 py-1 rounded-base text-center text-[13px] outline-none"
+                      style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                    <span className="text-[11px] w-10 text-right font-mono" style={{ color: "var(--foreground-dim)" }}>
+                      ×{tipSettings.coefficients[status].toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Save */}
+      <button onClick={handleSave} disabled={saving}
+        className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all"
+        style={{
+          background: saved ? "rgba(16,185,129,0.12)" : "var(--success)",
+          color: saved ? "var(--success)" : "#09090B",
+          border: saved ? "1px solid rgba(16,185,129,0.3)" : "none",
+          opacity: saving ? 0.7 : 1,
+        }}>
+        {saved ? <><Check size={14} />Enregistré</> : saving ? "Enregistrement…" : "Enregistrer"}
+      </button>
     </div>
   );
 }
