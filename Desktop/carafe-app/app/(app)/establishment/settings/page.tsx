@@ -54,6 +54,10 @@ export default function EstablishmentSettingsPage() {
   function setMode(mode: TipMode) { setTipSettings(prev => ({ ...prev, mode })); }
   function setCAMode(mode: CAMode) { setCASettings(prev => ({ ...prev, mode })); }
 
+  function setColor(status: StaffStatus, color: string) {
+    setTipSettings(prev => ({ ...prev, colors: { ...prev.colors, [status]: color } }));
+  }
+
   function setCoef(status: StaffStatus, val: string) {
     const num = parseFloat(val);
     if (isNaN(num) || num < 0) return;
@@ -123,6 +127,30 @@ export default function EstablishmentSettingsPage() {
         </div>
       </div>
 
+      {/* Couleurs par poste */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Codes couleur par poste</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Couleurs affichées dans le calendrier équipe</p>
+        </div>
+        <div style={{ background: "var(--background-elev)" }}>
+          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map((status, i, arr) => {
+            const cfg = STAFF_STATUSES[status];
+            const color = tipSettings.colors[status] ?? cfg.color;
+            return (
+              <div key={status} className="flex items-center gap-3 px-4 py-3"
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <input type="color" value={color} onChange={e => setColor(status, e.target.value)}
+                  className="w-7 h-7 rounded-full cursor-pointer flex-shrink-0"
+                  style={{ border: "none", padding: 0, background: "none" }} />
+                <span className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>{color}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Coefficients (dispatch mode only) */}
       {tipSettings.mode === "dispatch" && (
         <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
@@ -145,7 +173,7 @@ export default function EstablishmentSettingsPage() {
                       className="w-16 px-2 py-1 rounded-base text-center text-[13px] outline-none"
                       style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
                     <span className="text-[11px] w-10 text-right font-mono" style={{ color: "var(--foreground-dim)" }}>
-                      ×{tipSettings.coefficients[status].toFixed(1)}
+                      x{tipSettings.coefficients[status].toFixed(1)}
                     </span>
                   </div>
                 </div>
