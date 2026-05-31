@@ -306,6 +306,22 @@ export default function TasksManagerPage() {
       is_critical: newOneShotIsCritical,
       due_date: today,
     });
+
+    // Push notification to assigned person
+    if (newOneShotAssignedTo) {
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          establishmentId: member.establishment_id,
+          userId: newOneShotAssignedTo,
+          title: newOneShotIsCritical ? "🚨 Tâche urgente" : "📋 Nouvelle tâche",
+          body: newOneShotTitle,
+          url: "/tasks",
+        }),
+      });
+    }
+
     await load();
     setShowOneShotModal(false);
     resetOneShotForm();
