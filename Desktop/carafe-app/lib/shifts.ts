@@ -23,6 +23,8 @@ export interface TipSettings {
   mode: TipMode;
   coefficients: Record<StaffStatus, number>;
   colors: Record<StaffStatus, string>;
+  labels: Record<StaffStatus, string>;
+  hidden: StaffStatus[];
 }
 
 export const DEFAULT_TIP_SETTINGS: TipSettings = {
@@ -33,6 +35,10 @@ export const DEFAULT_TIP_SETTINGS: TipSettings = {
   colors: Object.fromEntries(
     (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].color])
   ) as Record<StaffStatus, string>,
+  labels: Object.fromEntries(
+    (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].label])
+  ) as Record<StaffStatus, string>,
+  hidden: [],
 };
 
 export function parseTipSettings(raw: unknown): TipSettings {
@@ -42,7 +48,17 @@ export function parseTipSettings(raw: unknown): TipSettings {
     mode: r.mode === "dispatch" ? "dispatch" : "self",
     coefficients: { ...DEFAULT_TIP_SETTINGS.coefficients, ...(r.coefficients ?? {}) },
     colors: { ...DEFAULT_TIP_SETTINGS.colors, ...(r.colors ?? {}) },
+    labels: { ...DEFAULT_TIP_SETTINGS.labels, ...(r.labels ?? {}) },
+    hidden: Array.isArray(r.hidden) ? r.hidden as StaffStatus[] : [],
   };
+}
+
+export function getPostLabel(status: StaffStatus, tipSettings: TipSettings): string {
+  return tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
+}
+
+export function isPostHidden(status: StaffStatus, tipSettings: TipSettings): boolean {
+  return tipSettings.hidden.includes(status);
 }
 
 export function calcTipDistribution(
