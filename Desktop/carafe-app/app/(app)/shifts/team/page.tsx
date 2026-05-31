@@ -672,8 +672,6 @@ export default function ShiftsTeamPage() {
                 style={{ background: tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.1)", color: tipSettings.mode === "dispatch" ? "#F59E0B" : "var(--accent)", border: `1px solid ${tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.3)" : "rgba(6,182,212,0.2)"}` }}>
                 {tipSettings.mode === "dispatch" ? "⚡ Mode dispatch" : "👤 Mode autonome"}
               </span>
-              <a href="/shifts" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Mon planning →</a>
-              <a href="/establishment/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages →</a>
             </div>
           </div>
           {/* Récap paie button — desktop only */}
