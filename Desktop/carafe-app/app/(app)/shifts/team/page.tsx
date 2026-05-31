@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Euro, X, Check, Ban } from "lucide-react";
+import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp } from "lucide-react";
 import {
   getDaysInMonth, isoWeekday, monthLabel, toDateStr,
   formatHours, formatTips, parseTipSettings, calcTipDistribution,
@@ -14,36 +14,313 @@ import {
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
+/* ── French overtime law ─────────────────────────────────────────────────── */
+// Loi française : heures sup +25% pour les 8 premières (36e-43e), +50% au-delà
+function calcPayroll(totalHours: number, weeklyHoursContract: number, periodDays: number) {
+  const periodWeeks = periodDays / 7;
+  const contractHours = weeklyHoursContract * periodWeeks;
+  const normalHours = Math.min(totalHours, contractHours);
+  const overtime = Math.max(0, totalHours - contractHours);
+  // 8h sup maxi par semaine à 25%, le reste à 50%
+  const max25PerWeek = 8 * periodWeeks;
+  const overtime25 = Math.min(overtime, max25PerWeek);
+  const overtime50 = Math.max(0, overtime - max25PerWeek);
+  return { contractHours, normalHours, overtime25, overtime50 };
+}
+
+interface EmployeePayroll {
+  userId: string;
+  firstName: string;
+  staffStatus: StaffStatus | null;
+  tipsEnabled: boolean;
+  weeklyHours: number;
+  contractType: string | null;
+  services: number;
+  totalHours: number;
+  totalTips: number;
+  contractHours: number;
+  normalHours: number;
+  overtime25: number;
+  overtime50: number;
+}
+
+/* ── Payroll recap modal ──────────────────────────────────────────────────── */
+function PayrollModal({ estId, supabase, onClose }: {
+  estId: string;
+  supabase: ReturnType<typeof createClient>;
+  onClose: () => void;
+}) {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+  const [from, setFrom] = useState(firstOfMonth);
+  const [to, setTo] = useState(toDateStr(today));
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<EmployeePayroll[] | null>(null);
+
+  const periodDays = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1);
+
+  async function generate() {
+    setLoading(true);
+
+    if (DEV_MODE) {
+      // Demo payroll data
+      const demo: EmployeePayroll[] = [
+        {
+          userId: "u1", firstName: "Yasmine", staffStatus: "chef_de_rang", tipsEnabled: true,
+          weeklyHours: 35, contractType: "CDI", services: Math.round(periodDays * 0.9),
+          totalHours: periodDays * 0.9 * 3.5,
+          totalTips: periodDays * 0.9 * 12,
+          ...calcPayroll(periodDays * 0.9 * 3.5, 35, periodDays),
+        },
+        {
+          userId: "u2", firstName: "Rayan", staffStatus: "serveur", tipsEnabled: true,
+          weeklyHours: 35, contractType: "Extra", services: Math.round(periodDays * 0.7),
+          totalHours: periodDays * 0.7 * 5.5,
+          totalTips: periodDays * 0.7 * 8,
+          ...calcPayroll(periodDays * 0.7 * 5.5, 35, periodDays),
+        },
+        {
+          userId: "u3", firstName: "Marco", staffStatus: "cuisinier", tipsEnabled: false,
+          weeklyHours: 39, contractType: "CDI", services: Math.round(periodDays * 0.95),
+          totalHours: periodDays * 0.95 * 8,
+          totalTips: 0,
+          ...calcPayroll(periodDays * 0.95 * 8, 39, periodDays),
+        },
+        {
+          userId: "u4", firstName: "Léa", staffStatus: "commis", tipsEnabled: false,
+          weeklyHours: 20, contractType: "CDD", services: Math.round(periodDays * 0.3),
+          totalHours: periodDays * 0.3 * 5,
+          totalTips: 0,
+          ...calcPayroll(periodDays * 0.3 * 5, 20, periodDays),
+        },
+      ];
+      setData(demo);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch members with contract info
+    const { data: members } = await supabase
+      .from("establishment_members")
+      .select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type)")
+      .eq("establishment_id", estId)
+      .eq("is_active", true);
+
+    // Fetch shifts in period
+    const { data: shifts } = await supabase
+      .from("shifts")
+      .select("user_id, hours_worked, hours_worked_2, tips, tips_2")
+      .eq("establishment_id", estId)
+      .gte("shift_date", from)
+      .lte("shift_date", to);
+
+    if (!members) { setLoading(false); return; }
+
+    // Aggregate per employee
+    const agg: Record<string, { hours: number; tips: number; services: number }> = {};
+    for (const s of (shifts ?? [])) {
+      if (!agg[s.user_id]) agg[s.user_id] = { hours: 0, tips: 0, services: 0 };
+      agg[s.user_id].hours += (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0);
+      agg[s.user_id].tips += (s.tips ?? 0) + (s.tips_2 ?? 0);
+      agg[s.user_id].services += 1;
+    }
+
+    const result: EmployeePayroll[] = members.map(m => {
+      const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null } | null;
+      const weekly = prof?.weekly_hours ?? 35;
+      const emp = agg[m.profile_id] ?? { hours: 0, tips: 0, services: 0 };
+      const payroll = calcPayroll(emp.hours, weekly, periodDays);
+      return {
+        userId: m.profile_id,
+        firstName: prof?.first_name ?? "—",
+        staffStatus: (m.staff_status ?? null) as StaffStatus | null,
+        tipsEnabled: m.tips_enabled ?? true,
+        weeklyHours: weekly,
+        contractType: prof?.contract_type ?? null,
+        services: emp.services,
+        totalHours: emp.hours,
+        totalTips: emp.tips,
+        ...payroll,
+      };
+    }).filter(e => e.services > 0);
+
+    setData(result);
+    setLoading(false);
+  }
+
+  const fromFr = from ? new Date(from + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
+  const toFr = to ? new Date(to + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: "var(--background)" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--background-elev)" }}>
+        <div>
+          <h2 className="text-[16px] font-semibold" style={{ color: "var(--foreground)" }}>Récap paie</h2>
+          {data && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{fromFr} → {toFr} · {periodDays}j</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          {data && (
+            <button onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+              <Printer size={13} />Imprimer
+            </button>
+          )}
+          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={20} /></button>
+        </div>
+      </div>
+
+      {/* Date picker + generate */}
+      {!data && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <FileText size={40} className="mb-4" style={{ color: "var(--foreground-dim)" }} />
+          <h3 className="text-[15px] font-medium mb-1" style={{ color: "var(--foreground)" }}>Choisir la période</h3>
+          <p className="text-[12px] mb-6 text-center" style={{ color: "var(--foreground-dim)" }}>
+            Heures normales, supplémentaires (+25% / +50%)<br />et pourboires par employé
+          </p>
+          <div className="w-full max-w-sm space-y-3">
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Du</label>
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider block mb-1" style={{ color: "var(--foreground-dim)" }}>Au</label>
+              <input type="date" value={to} onChange={e => setTo(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-[13px] outline-none"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <button onClick={generate} disabled={loading || !from || !to}
+              className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
+              style={{ background: "var(--accent)", color: "#09090B", opacity: loading ? 0.7 : 1 }}>
+              {loading ? "Calcul en cours…" : `Générer le récap (${periodDays}j)`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {data && (
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 print:space-y-4">
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 mb-4 text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+            <span>Contrat sur <strong>{periodDays}j</strong> ({(periodDays / 7).toFixed(1)} sem)</span>
+            <span>· Sup +25% : h36–h43/sem</span>
+            <span>· Sup +50% : h44+/sem</span>
+          </div>
+
+          {data.map(emp => {
+            const statusCfg = emp.staffStatus ? STAFF_STATUSES[emp.staffStatus] : null;
+            const hasOvertime = emp.overtime25 > 0 || emp.overtime50 > 0;
+            return (
+              <div key={emp.userId} className="rounded-2xl overflow-hidden print:break-inside-avoid"
+                style={{ border: "1px solid var(--border)", background: "var(--background-elev)" }}>
+                {/* Employee header */}
+                <div className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
+                  <div className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: statusCfg?.color ?? "var(--border-strong)" }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{emp.firstName}</p>
+                    <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                      {statusCfg?.label ?? "Statut non défini"} · {emp.contractType ?? "—"} {emp.weeklyHours}h/sem
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[13px] font-mono font-bold" style={{ color: "var(--foreground)" }}>{formatHours(emp.totalHours)}</p>
+                    <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{emp.services} service{emp.services > 1 ? "s" : ""}</p>
+                  </div>
+                </div>
+
+                {/* Hours breakdown */}
+                <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
+                  <Row label="Heures contractuelles" value={formatHours(emp.contractHours)} dim />
+                  <Row label="Heures travaillées" value={formatHours(emp.totalHours)} bold />
+                  <Row label="Heures normales" value={formatHours(emp.normalHours)} color="var(--success)" />
+                  <Row label="Sup +25%"
+                    value={emp.overtime25 > 0 ? formatHours(emp.overtime25) : "—"}
+                    color={emp.overtime25 > 0 ? "#F59E0B" : undefined} />
+                  <Row label="Sup +50%"
+                    value={emp.overtime50 > 0 ? formatHours(emp.overtime50) : "—"}
+                    color={emp.overtime50 > 0 ? "#EF4444" : undefined} />
+                  {emp.tipsEnabled && (
+                    <Row label="Pourboires" value={formatTips(emp.totalTips)} color="#F59E0B" bold />
+                  )}
+                  {!emp.tipsEnabled && (
+                    <div className="flex items-center gap-1 col-span-2">
+                      <Ban size={10} style={{ color: "var(--foreground-dim)" }} />
+                      <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Sans pourboires</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Overtime alert */}
+                {hasOvertime && (
+                  <div className="mx-4 mb-3 px-3 py-2 rounded-lg flex items-center gap-2"
+                    style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                    <TrendingUp size={12} style={{ color: "#F59E0B" }} />
+                    <p className="text-[10px]" style={{ color: "#F59E0B" }}>
+                      {formatHours(emp.overtime25 + emp.overtime50)} heures supplémentaires sur la période
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Totals */}
+          <div className="rounded-2xl px-4 py-4 mt-2"
+            style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
+            <p className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--accent)" }}>Totaux équipe</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              <Row label="Total heures" value={formatHours(data.reduce((s, e) => s + e.totalHours, 0))} bold />
+              <Row label="Total heures sup" value={formatHours(data.reduce((s, e) => s + e.overtime25 + e.overtime50, 0))} color="#F59E0B" />
+              <Row label="Total pourboires" value={formatTips(data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0))} color="#F59E0B" bold />
+              <Row label="Total services" value={String(data.reduce((s, e) => s + e.services, 0))} dim />
+            </div>
+          </div>
+
+          <button onClick={() => setData(null)} className="w-full py-2.5 rounded-xl text-[12px] font-medium"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+            ← Modifier la période
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value, dim, bold, color }: { label: string; value: string; dim?: boolean; bold?: boolean; color?: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{label}</span>
+      <span className="text-[12px] font-mono" style={{ color: color ?? (dim ? "var(--foreground-dim)" : "var(--foreground)"), fontWeight: bold ? 700 : 400 }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 /* ── Demo data for DEV_MODE ───────────────────────────────────────────────── */
 function buildDevShifts(year: number, month: number): TeamShift[] {
-  const staff = [
-    { id: "u1", name: "Yasmine", status: "chef_de_rang" as StaffStatus, tips_enabled: true },
-    { id: "u2", name: "Rayan",   status: "serveur"      as StaffStatus, tips_enabled: true },
-    { id: "u3", name: "Marco",   status: "cuisinier"    as StaffStatus, tips_enabled: false },
-    { id: "u4", name: "Léa",     status: "commis"       as StaffStatus, tips_enabled: false },
-  ];
-  // Working pattern: Yasmine + Marco every day, Rayan 4 days/week, Léa weekends
-  const shifts: TeamShift[] = [];
   const days = getDaysInMonth(year, month);
+  const shifts: TeamShift[] = [];
   let idx = 0;
   for (const day of days) {
-    const dow = day.getDay(); // 0=Sun, 6=Sat
+    const dow = day.getDay();
     const dateStr = toDateStr(day);
     const isWeekend = dow === 0 || dow === 6;
-    const isRayanDay = idx % 7 < 5; // 5 days on, 2 off
+    const isRayanDay = idx % 7 < 5;
 
-    // Yasmine: every day, double service on weekends
     shifts.push({ id: `y-${dateStr}`, user_id: "u1", establishment_id: "dev-establishment-2", shift_date: dateStr, start_time: "11:30", end_time: "15:00", hours_worked: 3.5, tips: isWeekend ? 35 : 0, start_time_2: isWeekend ? "19:00" : null, end_time_2: isWeekend ? "23:00" : null, hours_worked_2: isWeekend ? 4 : 0, tips_2: 0, note: null, created_at: "", first_name: "Yasmine", staff_status: "chef_de_rang", tips_enabled: true });
-
-    // Marco (cuisinier, no tips): every day, double on weekends
     shifts.push({ id: `m-${dateStr}`, user_id: "u3", establishment_id: "dev-establishment-2", shift_date: dateStr, start_time: "10:30", end_time: "15:30", hours_worked: 5, tips: 0, start_time_2: isWeekend ? "18:30" : null, end_time_2: isWeekend ? "23:30" : null, hours_worked_2: isWeekend ? 5 : 0, tips_2: 0, note: null, created_at: "", first_name: "Marco", staff_status: "cuisinier", tips_enabled: false });
-
-    // Rayan: 5 days/week
     if (isRayanDay) {
       shifts.push({ id: `r-${dateStr}`, user_id: "u2", establishment_id: "dev-establishment-2", shift_date: dateStr, start_time: "18:00", end_time: "23:30", hours_worked: 5.5, tips: 0, start_time_2: null, end_time_2: null, hours_worked_2: 0, tips_2: 0, note: null, created_at: "", first_name: "Rayan", staff_status: "serveur", tips_enabled: true });
     }
-
-    // Léa (commis, no tips): weekends only
     if (isWeekend) {
       shifts.push({ id: `l-${dateStr}`, user_id: "u4", establishment_id: "dev-establishment-2", shift_date: dateStr, start_time: "11:00", end_time: "16:00", hours_worked: 5, tips: 0, start_time_2: null, end_time_2: null, hours_worked_2: 0, tips_2: 0, note: null, created_at: "", first_name: "Léa", staff_status: "commis", tips_enabled: false });
     }
@@ -54,12 +331,8 @@ function buildDevShifts(year: number, month: number): TeamShift[] {
 
 /* ── Day detail modal ─────────────────────────────────────────────────────── */
 function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
-  date: string;
-  shifts: TeamShift[];
-  tipSettings: TipSettings;
-  supabase: ReturnType<typeof createClient>;
-  onClose: () => void;
-  onSaved: () => void;
+  date: string; shifts: TeamShift[]; tipSettings: TipSettings;
+  supabase: ReturnType<typeof createClient>; onClose: () => void; onSaved: () => void;
 }) {
   const [totalTips, setTotalTips] = useState("");
   const [saving, setSaving] = useState(false);
@@ -67,17 +340,8 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
 
   const isDispatch = tipSettings.mode === "dispatch";
   const totalTipsNum = parseFloat(totalTips) || 0;
-
-  // Only staff with tips_enabled count for distribution
-  const eligibleStaff = shifts
-    .filter(s => s.tips_enabled)
-    .map(s => ({ userId: s.user_id, hours: (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0), status: s.staff_status }))
-    .filter(s => s.hours > 0);
-
-  const distribution = totalTipsNum > 0
-    ? calcTipDistribution(eligibleStaff, totalTipsNum, tipSettings.coefficients)
-    : {};
-
+  const eligibleStaff = shifts.filter(s => s.tips_enabled).map(s => ({ userId: s.user_id, hours: (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0), status: s.staff_status })).filter(s => s.hours > 0);
+  const distribution = totalTipsNum > 0 ? calcTipDistribution(eligibleStaff, totalTipsNum, tipSettings.coefficients) : {};
   const displayDate = new Date(date + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
   const totalHoursEligible = eligibleStaff.reduce((s, x) => s + x.hours, 0);
 
@@ -89,12 +353,10 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
         if (!shift.tips_enabled) continue;
         const hours = (shift.hours_worked ?? 0) + (shift.hours_worked_2 ?? 0);
         if (hours <= 0) continue;
-        const tipAmt = distribution[shift.user_id] ?? 0;
-        await supabase.from("shifts").update({ tips: tipAmt, tips_2: 0 }).eq("id", shift.id);
+        await supabase.from("shifts").update({ tips: distribution[shift.user_id] ?? 0, tips_2: 0 }).eq("id", shift.id);
       }
     }
-    setSaving(false);
-    setSaved(true);
+    setSaving(false); setSaved(true);
     setTimeout(() => { setSaved(false); onSaved(); onClose(); }, 1200);
   }
 
@@ -104,60 +366,35 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md rounded-2xl p-5 animate-in slide-in-from-bottom-4 duration-200"
         style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-[15px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{displayDate}</h2>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-              {shifts.length} employé{shifts.length > 1 ? "s" : ""} · {eligibleStaff.length} éligible{eligibleStaff.length > 1 ? "s" : ""} aux tips
-            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{shifts.length} présent{shifts.length > 1 ? "s" : ""} · {eligibleStaff.length} éligible{eligibleStaff.length > 1 ? "s" : ""} aux tips</p>
           </div>
           <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
         </div>
-
-        {/* Staff list */}
         <div className="space-y-2 mb-4">
           {shifts.map(s => {
             const hours = (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0);
             const statusCfg = s.staff_status ? STAFF_STATUSES[s.staff_status] : null;
             const myTip = distribution[s.user_id];
-            const hasCoupure = !!(s.start_time_2);
             return (
               <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                style={{ background: "var(--background)", border: `1px solid ${s.tips_enabled ? "var(--border)" : "var(--border-soft)"}`, opacity: s.tips_enabled ? 1 : 0.65 }}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: statusCfg?.color ?? "var(--border-strong)" }} />
+                style={{ background: "var(--background)", border: `1px solid ${s.tips_enabled ? "var(--border)" : "var(--border-soft)"}`, opacity: s.tips_enabled ? 1 : 0.6 }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusCfg?.color ?? "var(--border-strong)" }} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{s.first_name ?? "—"}</p>
-                    {!s.tips_enabled && (
-                      <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
-                        <Ban size={8} />no tips
-                      </span>
-                    )}
+                    {!s.tips_enabled && <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}><Ban size={8} />no tips</span>}
                   </div>
-                  <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                    {statusCfg?.label ?? "—"} · {formatHours(hours)}{hasCoupure ? " (double)" : ""}
-                  </p>
+                  <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{statusCfg?.label ?? "—"} · {formatHours(hours)}{s.start_time_2 ? " (double)" : ""}</p>
                 </div>
-                {/* Tip amount */}
-                {s.tips_enabled && myTip != null && myTip > 0 && (
-                  <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>
-                    {formatTips(myTip)}
-                  </span>
-                )}
-                {s.tips_enabled && !isDispatch && (s.tips > 0 || s.tips_2 > 0) && (
-                  <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>
-                    {formatTips((s.tips ?? 0) + (s.tips_2 ?? 0))}
-                  </span>
-                )}
+                {s.tips_enabled && myTip != null && myTip > 0 && <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>{formatTips(myTip)}</span>}
+                {s.tips_enabled && !isDispatch && (s.tips > 0 || s.tips_2 > 0) && <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>{formatTips((s.tips ?? 0) + (s.tips_2 ?? 0))}</span>}
               </div>
             );
           })}
         </div>
-
-        {/* Dispatch input */}
         {isDispatch && (
           <div className="rounded-xl p-3 mb-4" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
             <div className="flex items-center justify-between mb-2">
@@ -166,31 +403,18 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
             </div>
             <div className="relative">
               <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
-              <input type="number" min="0" step="1" value={totalTips}
-                onChange={e => setTotalTips(e.target.value)}
-                placeholder="Ex: 180"
-                className="w-full pl-7 pr-3 py-2 rounded-base text-[13px] outline-none"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              <input type="number" min="0" step="1" value={totalTips} onChange={e => setTotalTips(e.target.value)} placeholder="Ex: 180" className="w-full pl-7 pr-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
             </div>
-            {totalTipsNum > 0 && eligibleStaff.length > 0 && (
-              <p className="text-[10px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
-                Répartis au prorata heures × coeff. statut — cuisiniers exclus
-              </p>
-            )}
           </div>
         )}
-
         {isDispatch ? (
-          <button onClick={handleDispatch} disabled={saving || totalTipsNum <= 0 || eligibleStaff.length === 0}
+          <button onClick={handleDispatch} disabled={saving || totalTipsNum <= 0}
             className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
             style={{ background: saved ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.15)", color: saved ? "var(--success)" : "#F59E0B", border: `1px solid ${saved ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`, opacity: (saving || totalTipsNum <= 0) ? 0.5 : 1 }}>
             {saved ? <><Check size={14} />Distribué !</> : saving ? "Distribution…" : `Dispatcher aux ${eligibleStaff.length} éligibles`}
           </button>
         ) : (
-          <button onClick={onClose} className="w-full py-3 rounded-xl text-[13px] font-medium"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-            Fermer
-          </button>
+          <button onClick={onClose} className="w-full py-3 rounded-xl text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Fermer</button>
         )}
       </div>
     </div>
@@ -206,72 +430,39 @@ export default function ShiftsTeamPage() {
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showPayroll, setShowPayroll] = useState(false);
   const [estId, setEstId] = useState("");
   const [estName, setEstName] = useState("");
   const supabase = createClient();
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
-
     if (DEV_MODE) {
-      setEstId("dev-establishment-2");
-      setEstName("La Brasserie Test");
-      // Demo tip settings: dispatch mode with realistic coefficients
-      setTipSettings({
-        mode: "dispatch",
-        coefficients: { chef_de_rang: 1.2, serveur: 1.0, cuisinier: 0.8, commis: 0.5, barman: 0.9, plongeur: 0.4, responsable: 1.5, autre: 0.7 },
-        colors: { chef_de_rang: "#06B6D4", serveur: "#10B981", cuisinier: "#F59E0B", commis: "#F97316", barman: "#8B5CF6", plongeur: "#6B7280", responsable: "#EF4444", autre: "#A1A1AA" },
-      });
-      setShifts(buildDevShifts(y, m));
-      setLoading(false);
-      return;
+      setEstId("dev-establishment-2"); setEstName("La Brasserie Test");
+      setTipSettings({ mode: "dispatch", coefficients: { chef_de_rang: 1.2, serveur: 1.0, cuisinier: 0.8, commis: 0.5, barman: 0.9, plongeur: 0.4, responsable: 1.5, autre: 0.7 }, colors: { chef_de_rang: "#06B6D4", serveur: "#10B981", cuisinier: "#F59E0B", commis: "#F97316", barman: "#8B5CF6", plongeur: "#6B7280", responsable: "#EF4444", autre: "#A1A1AA" } });
+      setShifts(buildDevShifts(y, m)); setLoading(false); return;
     }
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
-
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
-
-    let memberQ = supabase
-      .from("establishment_members")
-      .select("establishment_id, role, establishments(name, tip_settings)")
-      .eq("profile_id", user.id).eq("is_active", true)
-      .in("role", ["owner", "manager"]);
+    let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     const { data: member } = await memberQ.limit(1).maybeSingle();
     if (!member) { setLoading(false); return; }
-
-    const eid = member.establishment_id;
-    setEstId(eid);
+    const eid = member.establishment_id; setEstId(eid);
     const est = member.establishments as { name: string; tip_settings: unknown } | null;
     if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); }
-
     const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
     const last = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${String(m + 1).padStart(2, "0")}-${last}`;
-
-    const { data: rawShifts } = await supabase
-      .from("shifts")
-      .select("*, profiles(first_name), establishment_members!inner(staff_status, tips_enabled)")
-      .eq("establishment_id", eid)
-      .gte("shift_date", from)
-      .lte("shift_date", to)
-      .order("shift_date");
-
+    const { data: rawShifts } = await supabase.from("shifts").select("*, profiles(first_name), establishment_members!inner(staff_status, tips_enabled)").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date");
     const mapped: TeamShift[] = (rawShifts ?? []).map((s: Record<string, unknown>) => {
       const em = s.establishment_members as Array<{ staff_status: string | null; tips_enabled: boolean }> | null;
-      return {
-        ...(s as unknown as TeamShift),
-        first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null,
-        staff_status: (em?.[0]?.staff_status ?? null) as StaffStatus | null,
-        tips_enabled: em?.[0]?.tips_enabled ?? true,
-      };
+      return { ...(s as unknown as TeamShift), first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null, staff_status: (em?.[0]?.staff_status ?? null) as StaffStatus | null, tips_enabled: em?.[0]?.tips_enabled ?? true };
     });
-
-    setShifts(mapped);
-    setLoading(false);
+    setShifts(mapped); setLoading(false);
   }, [supabase]);
 
   useEffect(() => { load(year, month); }, [year, month, load]);
@@ -282,15 +473,13 @@ export default function ShiftsTeamPage() {
   const days = getDaysInMonth(year, month);
   const firstDay = isoWeekday(days[0]) - 1;
   const cells: (Date | null)[] = [...Array(firstDay).fill(null), ...days];
-
   const shiftsByDate = new Map<string, TeamShift[]>();
   for (const s of shifts) {
     if (!shiftsByDate.has(s.shift_date)) shiftsByDate.set(s.shift_date, []);
     shiftsByDate.get(s.shift_date)!.push(s);
   }
-
   const selectedShifts = selected ? (shiftsByDate.get(selected) ?? []) : [];
-  const totalDispatchedThisMonth = shifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
+  const totalDispatched = shifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
   const uniqueStaff = new Set(shifts.map(s => s.user_id)).size;
   const tipsEnabledCount = new Set(shifts.filter(s => s.tips_enabled).map(s => s.user_id)).size;
 
@@ -299,16 +488,25 @@ export default function ShiftsTeamPage() {
       {/* Header */}
       <div className="mb-6">
         <MonoLabel size="xs" className="mb-2 block">Planning Équipe</MonoLabel>
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
-          {estName || "Mon établissement"}
-        </h1>
-        <div className="flex items-center gap-3 mt-2">
-          <span className="text-[12px] px-2.5 py-1 rounded-full font-medium"
-            style={{ background: tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.1)", color: tipSettings.mode === "dispatch" ? "#F59E0B" : "var(--accent)", border: `1px solid ${tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.3)" : "rgba(6,182,212,0.2)"}` }}>
-            {tipSettings.mode === "dispatch" ? "⚡ Mode dispatch" : "👤 Mode autonome"}
-          </span>
-          <a href="/shifts" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Mon planning →</a>
-          <a href="/establishment/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages →</a>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>{estName || "Mon établissement"}</h1>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <span className="text-[12px] px-2.5 py-1 rounded-full font-medium"
+                style={{ background: tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.1)", color: tipSettings.mode === "dispatch" ? "#F59E0B" : "var(--accent)", border: `1px solid ${tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.3)" : "rgba(6,182,212,0.2)"}` }}>
+                {tipSettings.mode === "dispatch" ? "⚡ Mode dispatch" : "👤 Mode autonome"}
+              </span>
+              <a href="/shifts" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Mon planning →</a>
+              <a href="/establishment/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages →</a>
+            </div>
+          </div>
+          {/* Récap paie button — desktop only */}
+          <button onClick={() => setShowPayroll(true)}
+            className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-semibold flex-shrink-0"
+            style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
+            <FileText size={14} />
+            Récap paie
+          </button>
         </div>
       </div>
 
@@ -336,11 +534,8 @@ export default function ShiftsTeamPage() {
       {/* Calendar */}
       <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
         <div className="grid grid-cols-7" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          {WEEKDAYS.map(d => (
-            <div key={d} className="py-2 text-center text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>
-          ))}
+          {WEEKDAYS.map(d => <div key={d} className="py-2 text-center text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>{d}</div>)}
         </div>
-
         {loading ? (
           <div className="p-8 text-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
         ) : (
@@ -350,12 +545,9 @@ export default function ShiftsTeamPage() {
               const dateStr = toDateStr(day);
               const dayShifts = shiftsByDate.get(dateStr) ?? [];
               const isToday = dateStr === toDateStr(today);
-              const tipsEligible = dayShifts.filter(s => s.tips_enabled);
-              const dayTips = tipsEligible.reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
-
+              const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
               return (
-                <button key={dateStr}
-                  onClick={() => dayShifts.length > 0 && setSelected(dateStr)}
+                <button key={dateStr} onClick={() => dayShifts.length > 0 && setSelected(dateStr)}
                   className="flex flex-col items-start p-1 transition-colors text-left"
                   style={{ minHeight: 88, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: dayShifts.length > 0 ? "pointer" : "default" }}>
                   <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
@@ -367,21 +559,14 @@ export default function ShiftsTeamPage() {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
                       return (
                         <div key={s.id} className="flex items-center gap-0.5 w-full overflow-hidden">
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.tips_enabled ? color : "var(--foreground-dim)", opacity: s.tips_enabled ? 1 : 0.5 }} />
-                          <span className="text-[8px] truncate leading-tight" style={{ color: s.tips_enabled ? color : "var(--foreground-dim)" }}>
-                            {s.first_name ?? "?"}
-                          </span>
+                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.tips_enabled ? color : "var(--foreground-dim)", opacity: s.tips_enabled ? 1 : 0.4 }} />
+                          <span className="text-[8px] truncate leading-tight" style={{ color: s.tips_enabled ? color : "var(--foreground-dim)" }}>{s.first_name ?? "?"}</span>
                           {!s.tips_enabled && <Ban size={6} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />}
                         </div>
                       );
                     })}
-                    {dayShifts.length > 3 && (
-                      <p className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>
-                    )}
-                    {/* Tips dispatched indicator */}
-                    {dayTips > 0 && (
-                      <p className="text-[8px] font-mono font-bold mt-0.5 leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>
-                    )}
+                    {dayShifts.length > 3 && <p className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
+                    {dayTips > 0 && <p className="text-[8px] font-mono font-bold mt-0.5 leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
                   </div>
                 </button>
               );
@@ -405,25 +590,23 @@ export default function ShiftsTeamPage() {
             <p className="text-[22px] font-bold" style={{ color: "var(--foreground)" }}>{shifts.length}</p>
             <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Services ce mois</p>
           </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: totalDispatchedThisMonth > 0 ? "rgba(245,158,11,0.06)" : "var(--background-elev)", border: `1px solid ${totalDispatchedThisMonth > 0 ? "rgba(245,158,11,0.2)" : "var(--border)"}` }}>
-            <p className="text-[22px] font-bold" style={{ color: totalDispatchedThisMonth > 0 ? "#F59E0B" : "var(--foreground)" }}>
-              {totalDispatchedThisMonth > 0 ? formatTips(totalDispatchedThisMonth) : "—"}
-            </p>
+          <div className="rounded-xl px-4 py-3" style={{ background: totalDispatched > 0 ? "rgba(245,158,11,0.06)" : "var(--background-elev)", border: `1px solid ${totalDispatched > 0 ? "rgba(245,158,11,0.2)" : "var(--border)"}` }}>
+            <p className="text-[22px] font-bold" style={{ color: totalDispatched > 0 ? "#F59E0B" : "var(--foreground)" }}>{totalDispatched > 0 ? formatTips(totalDispatched) : "—"}</p>
             <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips distribués</p>
           </div>
         </div>
       )}
-
-      {selected && (
-        <DayModal
-          date={selected}
-          shifts={selectedShifts}
-          tipSettings={tipSettings}
-          supabase={supabase}
-          onClose={() => setSelected(null)}
-          onSaved={() => load(year, month)}
-        />
+      {!loading && (
+        <button onClick={() => setShowPayroll(true)}
+          className="w-full mt-3 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold"
+          style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
+          <FileText size={15} />
+          Récap paie
+        </button>
       )}
+
+      {selected && <DayModal date={selected} shifts={selectedShifts} tipSettings={tipSettings} supabase={supabase} onClose={() => setSelected(null)} onSaved={() => load(year, month)} />}
+      {showPayroll && <PayrollModal estId={estId} supabase={supabase} onClose={() => setShowPayroll(false)} />}
     </div>
   );
 }
