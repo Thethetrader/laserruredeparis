@@ -157,3 +157,31 @@ export function calcNetHours(startTime: string, endTime: string): number {
 export function shiftsToMap(shifts: Shift[]): Map<string, Shift> {
   return new Map(shifts.map(s => [s.shift_date, s]));
 }
+
+// ── CA (Chiffre d'Affaires) ──────────────────────────────────────────────────
+
+export type CAMode = "disabled" | "per_service" | "per_day" | "per_month";
+
+export interface CASettings {
+  mode: CAMode;
+  staff_can_enter: boolean;
+}
+
+export const DEFAULT_CA_SETTINGS: CASettings = {
+  mode: "disabled",
+  staff_can_enter: false,
+};
+
+export function parseCASettings(raw: unknown): CASettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_CA_SETTINGS;
+  const r = raw as Partial<CASettings>;
+  const validModes: CAMode[] = ["disabled", "per_service", "per_day", "per_month"];
+  return {
+    mode: validModes.includes(r.mode as CAMode) ? (r.mode as CAMode) : "disabled",
+    staff_can_enter: r.staff_can_enter === true,
+  };
+}
+
+export function formatCA(amount: number): string {
+  return amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€";
+}
