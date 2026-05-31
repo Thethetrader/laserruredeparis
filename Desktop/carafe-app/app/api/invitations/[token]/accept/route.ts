@@ -15,7 +15,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
 
   const { data: inv, error } = await admin
     .from("invitations")
-    .select("id, establishment_id, role, status, expires_at")
+    .select("id, establishment_id, role, status, expires_at, staff_status, hourly_rate")
     .eq("token", token)
     .single();
 
@@ -37,7 +37,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
 
   const { error: memberError } = await admin
     .from("establishment_members")
-    .insert({ establishment_id: inv.establishment_id, profile_id: user.id, role: inv.role });
+    .insert({ establishment_id: inv.establishment_id, profile_id: user.id, role: inv.role, staff_status: (inv as Record<string, unknown>).staff_status ?? null });
+
+  if (!memberError && (inv as Record<string, unknown>).hourly_rate) {
+    await admin.from("profiles").update({ hourly_rate: (inv as Record<string, unknown>).hourly_rate }).eq("id", user.id);
+  }
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
 

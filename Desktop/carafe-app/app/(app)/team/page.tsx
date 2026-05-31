@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { STAFF_STATUSES,
+ useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
@@ -114,6 +115,8 @@ export default function TeamPage() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteContract, setInviteContract] = useState<ContractType>(null);
+  const [inviteStaffStatus, setInviteStaffStatus] = useState("");
+  const [inviteHourlyRate, setInviteHourlyRate] = useState("");
   const [inviteAvailDays, setInviteAvailDays] = useState<string[]>([]);
   const [inviteAvailPeriods, setInviteAvailPeriods] = useState<string[]>([]);
   const [inviteAvailHourStart, setInviteAvailHourStart] = useState("9h");
@@ -235,7 +238,7 @@ export default function TeamPage() {
     const res = await fetch("/api/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ establishment_id: establishmentId, role: inviteRole, email: inviteEmail || null }),
+      body: JSON.stringify({ establishment_id: establishmentId, role: inviteRole, email: inviteEmail || null, staff_status: inviteStaffStatus || null, hourly_rate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : null }),
     });
     const data = await res.json();
     setInviting(false);
@@ -431,13 +434,35 @@ export default function TeamPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Rôle</label>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Rôle app</label>
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value as UserRole)}
                     className="w-full px-3 py-2 text-sm rounded-md outline-none"
                     style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
                     <option value="employee">Employé</option>
                     {role === "owner" && <option value="manager">Manager</option>}
                   </select>
+                </div>
+              </div>
+
+              {/* Statut + taux horaire */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste</label>
+                  <select value={inviteStaffStatus} onChange={e => setInviteStaffStatus(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="">— Choisir —</option>
+                    {(Object.entries(STAFF_STATUSES) as [string, { label: string }][]).map(([k, v]) => (
+                      <option key={k} value={k}>{v.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Taux horaire brut (€/h)</label>
+                  <input type="number" min="0" step="0.01" value={inviteHourlyRate} onChange={e => setInviteHourlyRate(e.target.value)}
+                    placeholder="Ex: 12.50"
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
                 </div>
               </div>
 
