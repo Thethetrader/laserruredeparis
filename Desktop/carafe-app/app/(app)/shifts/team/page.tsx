@@ -691,19 +691,25 @@ export default function ShiftsTeamPage() {
         <button onClick={nextMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronRight size={18} /></button>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-4 px-1">
-        {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(s => (
-          <div key={s} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: tipSettings.colors[s] ?? STAFF_STATUSES[s].color }} />
-            <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{STAFF_STATUSES[s].label}</span>
+      {/* Legend — collapsible */}
+      <details className="mb-3 px-1 group">
+        <summary className="text-[10px] font-mono uppercase tracking-widest cursor-pointer select-none list-none flex items-center gap-1.5" style={{ color: "var(--foreground-dim)" }}>
+          <span>Légende</span>
+          <span className="text-[8px] group-open:rotate-180 transition-transform inline-block">▼</span>
+        </summary>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(s => (
+            <div key={s} className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: tipSettings.colors[s] ?? STAFF_STATUSES[s].color }} />
+              <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{STAFF_STATUSES[s].label}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5">
+            <Ban size={7} style={{ color: "var(--danger)" }} />
+            <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>Sans pourboire</span>
           </div>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <Ban size={8} style={{ color: "var(--danger)" }} />
-          <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Sans pourboire</span>
         </div>
-      </div>
+      </details>
 
       {/* Calendar */}
       <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
