@@ -151,6 +151,7 @@ export default function TasksManagerPage() {
   });
   const [validating, setValidating] = useState<string | null>(null);
   const [showOneShotModal, setShowOneShotModal] = useState(false);
+  const [newOneShotProtocolId, setNewOneShotProtocolId] = useState("");
   const [newOneShotTitle, setNewOneShotTitle] = useState("");
   const [newOneShotDesc, setNewOneShotDesc] = useState("");
   const [newOneShotRole, setNewOneShotRole] = useState<TaskTargetRole>("all");
@@ -265,6 +266,7 @@ export default function TasksManagerPage() {
     setNewOneShotAssignedTo("");
     setNewOneShotRequiresPhoto(false);
     setNewOneShotIsCritical(false);
+    setNewOneShotProtocolId("");
   }
 
   async function createOneShot() {
@@ -282,7 +284,7 @@ export default function TasksManagerPage() {
         assigned_to: newOneShotAssignedTo || null,
         is_validated: false,
         creator_name: "Dev Mode",
-        protocol_id: null,
+        protocol_id: newOneShotProtocolId || null,
       }]);
       setShowOneShotModal(false);
       resetOneShotForm();
@@ -305,6 +307,7 @@ export default function TasksManagerPage() {
       requires_photo: newOneShotRequiresPhoto,
       is_critical: newOneShotIsCritical,
       due_date: today,
+      protocol_id: newOneShotProtocolId || null,
     });
 
     // Push notification to assigned person
@@ -635,6 +638,21 @@ export default function TasksManagerPage() {
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
                 <textarea value={newOneShotDesc} onChange={e => setNewOneShotDesc(e.target.value)} placeholder="Détails ou instructions…" rows={2} className="w-full px-3 py-2 rounded-base text-[13px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
+
+              {/* Protocole lié */}
+              {protocols.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Protocole lié <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
+                  <select value={newOneShotProtocolId} onChange={e => setNewOneShotProtocolId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
+                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="">— Aucun protocole —</option>
+                    {protocols.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Poste cible */}
               <div>
