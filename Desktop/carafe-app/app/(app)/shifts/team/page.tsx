@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp, BarChart2 } from "lucide-react";
 import {
   getDaysInMonth, isoWeekday, monthLabel, toDateStr,
-  formatHours, formatTips, parseTipSettings, calcTipDistribution,
+  formatHours, formatTips, formatCA, parseTipSettings, calcTipDistribution,
+  parseCASettings, DEFAULT_CA_SETTINGS,
   STAFF_STATUSES, DEFAULT_TIP_SETTINGS,
-  type TeamShift, type StaffStatus, type TipSettings,
+  type TeamShift, type StaffStatus, type TipSettings, type CASettings,
 } from "@/lib/shifts";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -45,9 +46,10 @@ interface EmployeePayroll {
 }
 
 /* ── Payroll recap modal ──────────────────────────────────────────────────── */
-function PayrollModal({ estId, supabase, onClose }: {
+function PayrollModal({ estId, supabase, caSettings, onClose }: {
   estId: string;
   supabase: ReturnType<typeof createClient>;
+  caSettings: CASettings;
   onClose: () => void;
 }) {
   const today = new Date();
@@ -56,6 +58,7 @@ function PayrollModal({ estId, supabase, onClose }: {
   const [to, setTo] = useState(toDateStr(today));
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<EmployeePayroll[] | null>(null);
+  const [totalCA, setTotalCA] = useState<number | null>(null);
 
   const periodDays = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1);
 
@@ -63,60 +66,36 @@ function PayrollModal({ estId, supabase, onClose }: {
     setLoading(true);
 
     if (DEV_MODE) {
-      // Demo payroll data
       const demo: EmployeePayroll[] = [
-        {
-          userId: "u1", firstName: "Yasmine", staffStatus: "chef_de_rang", tipsEnabled: true,
-          weeklyHours: 35, contractType: "CDI", services: Math.round(periodDays * 0.9),
-          totalHours: periodDays * 0.9 * 3.5,
-          totalTips: periodDays * 0.9 * 12,
-          ...calcPayroll(periodDays * 0.9 * 3.5, 35, periodDays),
-        },
-        {
-          userId: "u2", firstName: "Rayan", staffStatus: "serveur", tipsEnabled: true,
-          weeklyHours: 35, contractType: "Extra", services: Math.round(periodDays * 0.7),
-          totalHours: periodDays * 0.7 * 5.5,
-          totalTips: periodDays * 0.7 * 8,
-          ...calcPayroll(periodDays * 0.7 * 5.5, 35, periodDays),
-        },
-        {
-          userId: "u3", firstName: "Marco", staffStatus: "cuisinier", tipsEnabled: false,
-          weeklyHours: 39, contractType: "CDI", services: Math.round(periodDays * 0.95),
-          totalHours: periodDays * 0.95 * 8,
-          totalTips: 0,
-          ...calcPayroll(periodDays * 0.95 * 8, 39, periodDays),
-        },
-        {
-          userId: "u4", firstName: "Léa", staffStatus: "commis", tipsEnabled: false,
-          weeklyHours: 20, contractType: "CDD", services: Math.round(periodDays * 0.3),
-          totalHours: periodDays * 0.3 * 5,
-          totalTips: 0,
-          ...calcPayroll(periodDays * 0.3 * 5, 20, periodDays),
-        },
+        { userId: "u1", firstName: "Yasmine", staffStatus: "chef_de_rang", tipsEnabled: true, weeklyHours: 35, contractType: "CDI", services: Math.round(periodDays * 0.9), totalHours: periodDays * 0.9 * 3.5, totalTips: periodDays * 0.9 * 12, ...calcPayroll(periodDays * 0.9 * 3.5, 35, periodDays) },
+        { userId: "u2", firstName: "Rayan", staffStatus: "serveur", tipsEnabled: true, weeklyHours: 35, contractType: "Extra", services: Math.round(periodDays * 0.7), totalHours: periodDays * 0.7 * 5.5, totalTips: periodDays * 0.7 * 8, ...calcPayroll(periodDays * 0.7 * 5.5, 35, periodDays) },
+        { userId: "u3", firstName: "Marco", staffStatus: "cuisinier", tipsEnabled: false, weeklyHours: 39, contractType: "CDI", services: Math.round(periodDays * 0.95), totalHours: periodDays * 0.95 * 8, totalTips: 0, ...calcPayroll(periodDays * 0.95 * 8, 39, periodDays) },
+        { userId: "u4", firstName: "Léa", staffStatus: "commis", tipsEnabled: false, weeklyHours: 20, contractType: "CDD", services: Math.round(periodDays * 0.3), totalHours: periodDays * 0.3 * 5, totalTips: 0, ...calcPayroll(periodDays * 0.3 * 5, 20, periodDays) },
       ];
       setData(demo);
+      if (caSettings.mode !== "disabled") setTotalCA(periodDays * 850);
       setLoading(false);
       return;
     }
 
-    // Fetch members with contract info
-    const { data: members } = await supabase
-      .from("establishment_members")
-      .select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type)")
-      .eq("establishment_id", estId)
-      .eq("is_active", true);
+    const [membersRes, shiftsRes, caRes] = await Promise.all([
+      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type)").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("shifts").select("user_id, hours_worked, hours_worked_2, tips, tips_2").eq("establishment_id", estId).gte("shift_date", from).lte("shift_date", to),
+      caSettings.mode !== "disabled"
+        ? supabase.from("ca_entries").select("amount").eq("establishment_id", estId).gte("entry_date", from).lte("entry_date", to)
+        : Promise.resolve({ data: null }),
+    ]);
 
-    // Fetch shifts in period
-    const { data: shifts } = await supabase
-      .from("shifts")
-      .select("user_id, hours_worked, hours_worked_2, tips, tips_2")
-      .eq("establishment_id", estId)
-      .gte("shift_date", from)
-      .lte("shift_date", to);
-
+    const members = membersRes.data;
+    const shifts = shiftsRes.data;
     if (!members) { setLoading(false); return; }
 
-    // Aggregate per employee
+    if (caRes.data) {
+      setTotalCA((caRes.data as { amount: number }[]).reduce((s, r) => s + (r.amount ?? 0), 0));
+    } else {
+      setTotalCA(null);
+    }
+
     const agg: Record<string, { hours: number; tips: number; services: number }> = {};
     for (const s of (shifts ?? [])) {
       if (!agg[s.user_id]) agg[s.user_id] = { hours: 0, tips: 0, services: 0 };
@@ -129,19 +108,7 @@ function PayrollModal({ estId, supabase, onClose }: {
       const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null } | null;
       const weekly = prof?.weekly_hours ?? 35;
       const emp = agg[m.profile_id] ?? { hours: 0, tips: 0, services: 0 };
-      const payroll = calcPayroll(emp.hours, weekly, periodDays);
-      return {
-        userId: m.profile_id,
-        firstName: prof?.first_name ?? "—",
-        staffStatus: (m.staff_status ?? null) as StaffStatus | null,
-        tipsEnabled: m.tips_enabled ?? true,
-        weeklyHours: weekly,
-        contractType: prof?.contract_type ?? null,
-        services: emp.services,
-        totalHours: emp.hours,
-        totalTips: emp.tips,
-        ...payroll,
-      };
+      return { userId: m.profile_id, firstName: prof?.first_name ?? "—", staffStatus: (m.staff_status ?? null) as StaffStatus | null, tipsEnabled: m.tips_enabled ?? true, weeklyHours: weekly, contractType: prof?.contract_type ?? null, services: emp.services, totalHours: emp.hours, totalTips: emp.tips, ...calcPayroll(emp.hours, weekly, periodDays) };
     }).filter(e => e.services > 0);
 
     setData(result);
@@ -284,6 +251,28 @@ function PayrollModal({ estId, supabase, onClose }: {
             </div>
           </div>
 
+          {/* CA block */}
+          {totalCA !== null && totalCA > 0 && (
+            <div className="rounded-2xl px-4 py-4 mt-2"
+              style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart2 size={13} style={{ color: "var(--success)" }} />
+                <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--success)" }}>Chiffre d&apos;affaires</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <Row label="CA total (TTC)" value={formatCA(totalCA)} bold color="var(--success)" />
+                <Row label="CA / service" value={formatCA(totalCA / Math.max(1, data.reduce((s, e) => s + e.services, 0)))} />
+                {data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) > 0 && (
+                  <Row
+                    label="Tips / CA"
+                    value={`${Math.round((data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) / totalCA) * 100)}%`}
+                    color="#F59E0B"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
           <button onClick={() => setData(null)} className="w-full py-2.5 rounded-xl text-[12px] font-medium"
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
             ← Modifier la période
@@ -330,13 +319,18 @@ function buildDevShifts(year: number, month: number): TeamShift[] {
 }
 
 /* ── Day detail modal ─────────────────────────────────────────────────────── */
-function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
-  date: string; shifts: TeamShift[]; tipSettings: TipSettings;
+function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onClose, onSaved }: {
+  date: string; shifts: TeamShift[]; tipSettings: TipSettings; caSettings: CASettings; estId: string;
   supabase: ReturnType<typeof createClient>; onClose: () => void; onSaved: () => void;
 }) {
   const [totalTips, setTotalTips] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [caMidi, setCaMidi] = useState("");
+  const [caSoir, setCaSoir] = useState("");
+  const [caDay, setCaDay] = useState("");
+  const [caSaving, setCASaving] = useState(false);
+  const [caSaved, setCASaved] = useState(false);
 
   const isDispatch = tipSettings.mode === "dispatch";
   const totalTipsNum = parseFloat(totalTips) || 0;
@@ -358,6 +352,28 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
     }
     setSaving(false); setSaved(true);
     setTimeout(() => { setSaved(false); onSaved(); onClose(); }, 1200);
+  }
+
+  async function handleSaveCA() {
+    const mode = caSettings.mode;
+    if (mode === "disabled" || mode === "per_month") return;
+    setCASaving(true);
+    if (!DEV_MODE) {
+      if (mode === "per_service") {
+        const entries = [
+          { service: "midi", amount: parseFloat(caMidi) || 0 },
+          { service: "soir", amount: parseFloat(caSoir) || 0 },
+        ].filter(e => e.amount > 0);
+        for (const e of entries) {
+          await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: e.service, amount: e.amount }, { onConflict: "establishment_id,entry_date,service" });
+        }
+      } else {
+        const amount = parseFloat(caDay) || 0;
+        if (amount > 0) await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: "day", amount }, { onConflict: "establishment_id,entry_date,service" });
+      }
+    }
+    setCASaving(false); setCASaved(true);
+    setTimeout(() => setCASaved(false), 2000);
   }
 
   return (
@@ -416,6 +432,37 @@ function DayModal({ date, shifts, tipSettings, supabase, onClose, onSaved }: {
         ) : (
           <button onClick={onClose} className="w-full py-3 rounded-xl text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Fermer</button>
         )}
+
+        {/* CA entry */}
+        {(caSettings.mode === "per_service" || caSettings.mode === "per_day") && (
+          <div className="mt-3 rounded-xl p-3" style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
+            <p className="text-[11px] font-medium mb-2" style={{ color: "var(--success)" }}>
+              CA {caSettings.mode === "per_service" ? "du service" : "du jour"} (total caisse)
+            </p>
+            {caSettings.mode === "per_service" ? (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: "var(--foreground-dim)" }}>Midi €</span>
+                  <input type="number" min="0" step="1" value={caMidi} onChange={e => setCaMidi(e.target.value)} placeholder="0" className="w-full pl-12 pr-2 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                </div>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: "var(--foreground-dim)" }}>Soir €</span>
+                  <input type="number" min="0" step="1" value={caSoir} onChange={e => setCaSoir(e.target.value)} placeholder="0" className="w-full pl-12 pr-2 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                </div>
+              </div>
+            ) : (
+              <div className="relative mb-2">
+                <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
+                <input type="number" min="0" step="1" value={caDay} onChange={e => setCaDay(e.target.value)} placeholder="Ex: 2400" className="w-full pl-7 pr-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              </div>
+            )}
+            <button onClick={handleSaveCA} disabled={caSaving}
+              className="w-full py-2 rounded-base text-[12px] font-semibold flex items-center justify-center gap-1.5"
+              style={{ background: caSaved ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.3)" }}>
+              {caSaved ? <><Check size={12} />Enregistré</> : caSaving ? "…" : "Enregistrer le CA"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -428,6 +475,7 @@ export default function ShiftsTeamPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [shifts, setShifts] = useState<TeamShift[]>([]);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
+  const [caSettings, setCASettings] = useState<CASettings>(DEFAULT_CA_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [showPayroll, setShowPayroll] = useState(false);
@@ -440,6 +488,7 @@ export default function ShiftsTeamPage() {
     if (DEV_MODE) {
       setEstId("dev-establishment-2"); setEstName("La Brasserie Test");
       setTipSettings({ mode: "dispatch", coefficients: { chef_de_rang: 1.2, serveur: 1.0, cuisinier: 0.8, commis: 0.5, barman: 0.9, plongeur: 0.4, responsable: 1.5, autre: 0.7 }, colors: { chef_de_rang: "#06B6D4", serveur: "#10B981", cuisinier: "#F59E0B", commis: "#F97316", barman: "#8B5CF6", plongeur: "#6B7280", responsable: "#EF4444", autre: "#A1A1AA" } });
+      setCASettings({ mode: "per_day", staff_can_enter: false });
       setShifts(buildDevShifts(y, m)); setLoading(false); return;
     }
     const { data: { user } } = await supabase.auth.getUser();
@@ -447,13 +496,13 @@ export default function ShiftsTeamPage() {
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
-    let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
+    let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings, ca_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     const { data: member } = await memberQ.limit(1).maybeSingle();
     if (!member) { setLoading(false); return; }
     const eid = member.establishment_id; setEstId(eid);
-    const est = member.establishments as { name: string; tip_settings: unknown } | null;
-    if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); }
+    const est = member.establishments as { name: string; tip_settings: unknown; ca_settings: unknown } | null;
+    if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); setCASettings(parseCASettings(est.ca_settings)); }
     const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
     const last = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${String(m + 1).padStart(2, "0")}-${last}`;
@@ -605,8 +654,8 @@ export default function ShiftsTeamPage() {
         </button>
       )}
 
-      {selected && <DayModal date={selected} shifts={selectedShifts} tipSettings={tipSettings} supabase={supabase} onClose={() => setSelected(null)} onSaved={() => load(year, month)} />}
-      {showPayroll && <PayrollModal estId={estId} supabase={supabase} onClose={() => setShowPayroll(false)} />}
+      {selected && <DayModal date={selected} shifts={selectedShifts} tipSettings={tipSettings} caSettings={caSettings} estId={estId} supabase={supabase} onClose={() => setSelected(null)} onSaved={() => load(year, month)} />}
+      {showPayroll && <PayrollModal estId={estId} supabase={supabase} caSettings={caSettings} onClose={() => setShowPayroll(false)} />}
     </div>
   );
 }
