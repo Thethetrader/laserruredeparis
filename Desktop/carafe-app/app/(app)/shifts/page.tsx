@@ -242,7 +242,7 @@ export default function ShiftsPage() {
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
     if (ex) await supabase.from("shifts").update(data).eq("id", ex.id);
-    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId});
+    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId || null});
     setSelected(null);
     await load(year, month);
   }
@@ -318,18 +318,18 @@ export default function ShiftsPage() {
                       {/* Service 1 */}
                       <div className="flex items-center gap-0.5">
                         <Sunrise size={8} style={{ color: "#F59E0B", flexShrink: 0 }} />
-                        <p className="text-[9px] font-mono leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}{shift.tips > 0 ? ` · ${formatTips(shift.tips)}` : ""}</p>
+                        <p className="text-[9px] font-mono leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
                       </div>
                       {/* Service 2 */}
                       {hasCoupure && (
                         <div className="flex items-center gap-0.5">
                           <Sunset size={8} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                          <p className="text-[9px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.8)" }}>{formatHours(shift.hours_worked_2)}{shift.tips_2 > 0 ? ` · ${formatTips(shift.tips_2)}` : ""}</p>
+                          <p className="text-[9px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.8)" }}>{formatHours(shift.hours_worked_2)}</p>
                         </div>
                       )}
-                      {/* Total tips si coupure */}
-                      {hasCoupure && totalTips > 0 && (
-                        <p className="text-[9px] font-mono font-semibold leading-tight" style={{ color: "var(--accent)" }}>= {formatTips(totalTips)}</p>
+                      {/* Tips */}
+                      {totalTips > 0 && (
+                        <p className="text-[9px] font-mono font-semibold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
                       )}
                     </div>
                   )}
