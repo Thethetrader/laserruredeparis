@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Euro, X, Check, Ban, FileText, Printer, TrendingUp, BarChart2 } from "lucide-react";
@@ -43,7 +44,6 @@ interface EmployeePayroll {
   normalHours: number;
   overtime25: number;
   overtime50: number;
-  hourlyRate: number | null;
 }
 
 /* ── Payroll recap modal ──────────────────────────────────────────────────── */
@@ -68,10 +68,10 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
 
     if (DEV_MODE) {
       const demo: EmployeePayroll[] = [
-        { userId: "u1", firstName: "Yasmine", staffStatus: "chef_de_rang", tipsEnabled: true, weeklyHours: 35, contractType: "CDI", hourlyRate: 13.80, services: Math.round(periodDays * 0.9), totalHours: periodDays * 0.9 * 3.5, totalTips: periodDays * 0.9 * 12, ...calcPayroll(periodDays * 0.9 * 3.5, 35, periodDays) },
-        { userId: "u2", firstName: "Rayan", staffStatus: "serveur", tipsEnabled: true, weeklyHours: 35, contractType: "Extra", hourlyRate: 11.88, services: Math.round(periodDays * 0.7), totalHours: periodDays * 0.7 * 5.5, totalTips: periodDays * 0.7 * 8, ...calcPayroll(periodDays * 0.7 * 5.5, 35, periodDays) },
-        { userId: "u3", firstName: "Marco", staffStatus: "cuisinier", tipsEnabled: false, weeklyHours: 39, contractType: "CDI", hourlyRate: 12.50, services: Math.round(periodDays * 0.95), totalHours: periodDays * 0.95 * 8, totalTips: 0, ...calcPayroll(periodDays * 0.95 * 8, 39, periodDays) },
-        { userId: "u4", firstName: "Léa", staffStatus: "commis", tipsEnabled: false, weeklyHours: 20, contractType: "CDD", hourlyRate: 11.88, services: Math.round(periodDays * 0.3), totalHours: periodDays * 0.3 * 5, totalTips: 0, ...calcPayroll(periodDays * 0.3 * 5, 20, periodDays) },
+        { userId: "u1", firstName: "Yasmine", staffStatus: "chef_de_rang", tipsEnabled: true, weeklyHours: 35, contractType: "CDI", services: Math.round(periodDays * 0.9), totalHours: periodDays * 0.9 * 3.5, totalTips: periodDays * 0.9 * 12, ...calcPayroll(periodDays * 0.9 * 3.5, 35, periodDays) },
+        { userId: "u2", firstName: "Rayan", staffStatus: "serveur", tipsEnabled: true, weeklyHours: 35, contractType: "Extra", services: Math.round(periodDays * 0.7), totalHours: periodDays * 0.7 * 5.5, totalTips: periodDays * 0.7 * 8, ...calcPayroll(periodDays * 0.7 * 5.5, 35, periodDays) },
+        { userId: "u3", firstName: "Marco", staffStatus: "cuisinier", tipsEnabled: false, weeklyHours: 39, contractType: "CDI", services: Math.round(periodDays * 0.95), totalHours: periodDays * 0.95 * 8, totalTips: 0, ...calcPayroll(periodDays * 0.95 * 8, 39, periodDays) },
+        { userId: "u4", firstName: "Léa", staffStatus: "commis", tipsEnabled: false, weeklyHours: 20, contractType: "CDD", services: Math.round(periodDays * 0.3), totalHours: periodDays * 0.3 * 5, totalTips: 0, ...calcPayroll(periodDays * 0.3 * 5, 20, periodDays) },
       ];
       setData(demo);
       if (caSettings.mode !== "disabled") setTotalCA(periodDays * 850);
@@ -80,7 +80,7 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
     }
 
     const [membersRes, shiftsRes, caRes] = await Promise.all([
-      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type, hourly_rate)").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("shifts").select("user_id, hours_worked, hours_worked_2, tips, tips_2").eq("establishment_id", estId).gte("shift_date", from).lte("shift_date", to),
       caSettings.mode !== "disabled"
         ? supabase.from("ca_entries").select("amount").eq("establishment_id", estId).gte("entry_date", from).lte("entry_date", to)
@@ -106,10 +106,10 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
     }
 
     const result: EmployeePayroll[] = members.map(m => {
-      const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null; hourly_rate: number | null } | null;
+      const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null } | null;
       const weekly = prof?.weekly_hours ?? 35;
       const emp = agg[m.profile_id] ?? { hours: 0, tips: 0, services: 0 };
-      return { userId: m.profile_id, firstName: prof?.first_name ?? "—", staffStatus: (m.staff_status ?? null) as StaffStatus | null, tipsEnabled: m.tips_enabled ?? true, weeklyHours: weekly, contractType: prof?.contract_type ?? null, hourlyRate: prof?.hourly_rate ?? null, services: emp.services, totalHours: emp.hours, totalTips: emp.tips, ...calcPayroll(emp.hours, weekly, periodDays) };
+      return { userId: m.profile_id, firstName: prof?.first_name ?? "—", staffStatus: (m.staff_status ?? null) as StaffStatus | null, tipsEnabled: m.tips_enabled ?? true, weeklyHours: weekly, contractType: prof?.contract_type ?? null, services: emp.services, totalHours: emp.hours, totalTips: emp.tips, ...calcPayroll(emp.hours, weekly, periodDays) };
     }).filter(e => e.services > 0);
 
     setData(result);
@@ -252,45 +252,27 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
             </div>
           </div>
 
-          {/* CA + Rentabilité block */}
-          {totalCA !== null && totalCA > 0 && (() => {
-            const totalTipsAll = data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0);
-            const masseSalariale = data.reduce((s, e) => s + e.totalHours * (e.hourlyRate ?? 0), 0);
-            const masseSalarialeChargee = masseSalariale * 1.42;
-            const ratio = masseSalarialeChargee > 0 && totalCA > 0 ? Math.round((masseSalarialeChargee / totalCA) * 100) : null;
-            const ratioColor = ratio === null ? "var(--foreground-dim)" : ratio < 30 ? "var(--success)" : ratio <= 35 ? "#F59E0B" : "var(--danger)";
-            const ratioLabel = ratio === null ? "—" : ratio < 30 ? "✅ Rentable" : ratio <= 35 ? "⚠️ Limite" : "🔴 Élevé";
-            const hasMissingRate = data.some(e => e.hourlyRate === null || e.hourlyRate === 0);
-            return (
-              <div className="rounded-2xl px-4 py-4 mt-2"
-                style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <BarChart2 size={13} style={{ color: "var(--success)" }} />
-                  <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--success)" }}>Rentabilité</p>
-                </div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                  <Row label="CA total (TTC)" value={formatCA(totalCA)} bold color="var(--success)" />
-                  <Row label="CA / service" value={formatCA(totalCA / Math.max(1, data.reduce((s, e) => s + e.services, 0)))} />
-                  {masseSalarialeChargee > 0 && <Row label="Masse salariale chargée" value={formatCA(masseSalarialeChargee)} />}
-                  {ratio !== null && (
-                    <Row label="Ratio masse sal. / CA" value={`${ratio}%`} color={ratioColor} bold />
-                  )}
-                  {ratio !== null && (
-                    <Row label="Rentabilité" value={ratioLabel} color={ratioColor} bold />
-                  )}
-                  {totalTipsAll > 0 && <Row label="Tips / CA" value={`${Math.round((totalTipsAll / totalCA) * 100)}%`} color="#F59E0B" />}
-                </div>
-                {hasMissingRate && (
-                  <p className="text-[10px] mt-3 italic" style={{ color: "var(--foreground-dim)" }}>
-                    ⚠️ Taux horaire manquant pour certains employés — renseigne-le dans leur fiche
-                  </p>
-                )}
-                <p className="text-[9px] mt-1" style={{ color: "var(--foreground-dim)" }}>
-                  Masse salariale = heures × taux brut × 1.42 (charges patronales). Seuil conseillé : &lt; 35%.
-                </p>
+          {/* CA block */}
+          {totalCA !== null && totalCA > 0 && (
+            <div className="rounded-2xl px-4 py-4 mt-2"
+              style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart2 size={13} style={{ color: "var(--success)" }} />
+                <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--success)" }}>Chiffre d&apos;affaires</p>
               </div>
-            );
-          })()}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <Row label="CA total (TTC)" value={formatCA(totalCA)} bold color="var(--success)" />
+                <Row label="CA / service" value={formatCA(totalCA / Math.max(1, data.reduce((s, e) => s + e.services, 0)))} />
+                {data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) > 0 && (
+                  <Row
+                    label="Tips / CA"
+                    value={`${Math.round((data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) / totalCA) * 100)}%`}
+                    color="#F59E0B"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           <button onClick={() => setData(null)} className="w-full py-2.5 rounded-xl text-[12px] font-medium"
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
@@ -505,6 +487,7 @@ export default function ShiftsTeamPage() {
   const [estId, setEstId] = useState("");
   const [estName, setEstName] = useState("");
   const supabase = createClient();
+  const router = useRouter();
 
   const load = useCallback(async (y: number, m: number) => {
     setLoading(true);
@@ -516,14 +499,14 @@ export default function ShiftsTeamPage() {
       setShifts(buildDevShifts(y, m)); setLoading(false); return;
     }
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    if (!user) { router.replace("/shifts"); return; }
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
     let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings, ca_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     const { data: member } = await memberQ.limit(1).maybeSingle();
-    if (!member) { setLoading(false); return; }
+    if (!member) { router.replace("/shifts"); return; }
     const eid = member.establishment_id; setEstId(eid);
     const est = member.establishments as { name: string; tip_settings: unknown; ca_settings: unknown } | null;
     if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); setCASettings(parseCASettings(est.ca_settings)); }
