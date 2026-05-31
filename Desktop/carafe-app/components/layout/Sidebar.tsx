@@ -11,8 +11,8 @@ const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
 const nav = [
   { href: "/dashboard",             icon: LayoutDashboard, label: "Dashboard",       managerOnly: false },
-  { href: "/tasks",                  icon: ClipboardList,   label: "Tâches",           managerOnly: false },
   { href: "/protocols",              icon: BookOpen,        label: "Protocoles",       managerOnly: false },
+  { href: "/tasks",                  icon: ClipboardList,   label: "Tâches",           managerOnly: false },
   { href: "/customer-feedback",      icon: MessageSquare,   label: "Retours clients",  managerOnly: false },
   { href: "/challenges",             icon: Trophy,          label: "Challenges",       managerOnly: false },
   { href: "/team",                   icon: Users,           label: "Équipe",           managerOnly: false },
