@@ -12,8 +12,8 @@ const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
 const managerNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/team",               icon: Users,           label: "Équipe" },
