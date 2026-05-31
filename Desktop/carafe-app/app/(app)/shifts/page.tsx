@@ -199,10 +199,17 @@ export default function ShiftsPage() {
     if (!user) { setLoading(false); return; }
     setUserId(user.id);
 
-    const { data: member } = await supabase
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+    const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
+
+    let memberQuery = supabase
       .from("establishment_members")
       .select("establishment_id, establishments(name), profiles(first_name)")
-      .eq("profile_id", user.id).eq("is_active", true).single();
+      .eq("profile_id", user.id).eq("is_active", true);
+    if (validActiveId) memberQuery = memberQuery.eq("establishment_id", validActiveId);
+
+    const { data: member } = await memberQuery.limit(1).maybeSingle();
 
     if (member) {
       setEstId(member.establishment_id);
@@ -210,9 +217,8 @@ export default function ShiftsPage() {
       const prof = member.profiles as { first_name: string | null } | null;
       if (est) setEstName(est.name);
       if (prof?.first_name) setFirstName(prof.first_name);
-    } else {
-      const fallback = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
-      if (fallback) setEstId(fallback);
+    } else if (validActiveId) {
+      setEstId(validActiveId);
     }
 
     const from = `${y}-${String(m+1).padStart(2,"0")}-01`;
