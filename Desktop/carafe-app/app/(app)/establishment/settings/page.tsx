@@ -140,77 +140,6 @@ export default function EstablishmentSettingsPage() {
         </div>
       </div>
 
-      {/* Postes */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Renommer ou masquer un poste selon votre établissement</p>
-        </div>
-        <div style={{ background: "var(--background-elev)" }}>
-          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
-            const label = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
-            return (
-              <div key={status} className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? STAFF_STATUSES[status].color }} />
-                <input
-                  type="text"
-                  value={label}
-                  onChange={e => setLabel(status, e.target.value)}
-                  className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
-                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                />
-                <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-          {/* Postes supprimés */}
-          {tipSettings.hidden.length > 0 && (
-            <details style={{ borderTop: "1px solid var(--border)" }}>
-              <summary className="px-4 py-2.5 text-[11px] cursor-pointer list-none flex items-center gap-2" style={{ color: "var(--foreground-dim)" }}>
-                <RotateCcw size={11} />
-                {tipSettings.hidden.length} poste{tipSettings.hidden.length > 1 ? "s" : ""} supprimé{tipSettings.hidden.length > 1 ? "s" : ""}
-              </summary>
-              {tipSettings.hidden.map(status => (
-                <div key={status} className="flex items-center gap-3 px-4 py-2.5" style={{ opacity: 0.5 }}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? STAFF_STATUSES[status].color }} />
-                  <span className="flex-1 text-[12px]" style={{ color: "var(--foreground)" }}>{tipSettings.labels[status] ?? STAFF_STATUSES[status].label}</span>
-                  <button onClick={() => toggleHidden(status)} className="text-[10px] px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1" style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                    <RotateCcw size={9} />Restaurer
-                  </button>
-                </div>
-              ))}
-            </details>
-          )}
-        </div>
-      </div>
-
-      {/* Couleurs par poste */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Codes couleur par poste</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Couleurs affichées dans le calendrier équipe</p>
-        </div>
-        <div style={{ background: "var(--background-elev)" }}>
-          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map((status, i, arr) => {
-            const cfg = STAFF_STATUSES[status];
-            const color = tipSettings.colors[status] ?? cfg.color;
-            return (
-              <div key={status} className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <input type="color" value={color} onChange={e => setColor(status, e.target.value)}
-                  className="w-7 h-7 rounded-full cursor-pointer flex-shrink-0"
-                  style={{ border: "none", padding: 0, background: "none" }} />
-                <span className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{cfg.label}</span>
-                <span className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>{color}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Coefficients (dispatch mode only) */}
       {tipSettings.mode === "dispatch" && (
         <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
@@ -279,6 +208,56 @@ export default function EstablishmentSettingsPage() {
         )}
       </div>
 
+
+      {/* Postes */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Renommer ou masquer un poste selon votre établissement</p>
+        </div>
+        <div style={{ background: "var(--background-elev)" }}>
+          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
+            const label = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
+            return (
+              <div key={status} className="flex items-center gap-3 px-4 py-3"
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <input type="color" value={tipSettings.colors[status] ?? STAFF_STATUSES[status].color}
+                  onChange={e => setColor(status, e.target.value)}
+                  className="w-6 h-6 rounded-full cursor-pointer flex-shrink-0"
+                  style={{ border: "none", padding: 0, background: "none" }} />
+                <input
+                  type="text"
+                  value={label}
+                  onChange={e => setLabel(status, e.target.value)}
+                  className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+                <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+          {/* Postes supprimés */}
+          {tipSettings.hidden.length > 0 && (
+            <details style={{ borderTop: "1px solid var(--border)" }}>
+              <summary className="px-4 py-2.5 text-[11px] cursor-pointer list-none flex items-center gap-2" style={{ color: "var(--foreground-dim)" }}>
+                <RotateCcw size={11} />
+                {tipSettings.hidden.length} poste{tipSettings.hidden.length > 1 ? "s" : ""} supprimé{tipSettings.hidden.length > 1 ? "s" : ""}
+              </summary>
+              {tipSettings.hidden.map(status => (
+                <div key={status} className="flex items-center gap-3 px-4 py-2.5" style={{ opacity: 0.5 }}>
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? STAFF_STATUSES[status].color }} />
+                  <span className="flex-1 text-[12px]" style={{ color: "var(--foreground)" }}>{tipSettings.labels[status] ?? STAFF_STATUSES[status].label}</span>
+                  <button onClick={() => toggleHidden(status)} className="text-[10px] px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1" style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                    <RotateCcw size={9} />Restaurer
+                  </button>
+                </div>
+              ))}
+            </details>
+          )}
+        </div>
+      </div>
       {/* Save */}
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all"
