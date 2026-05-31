@@ -210,6 +210,9 @@ export default function ShiftsPage() {
       const prof = member.profiles as { first_name: string | null } | null;
       if (est) setEstName(est.name);
       if (prof?.first_name) setFirstName(prof.first_name);
+    } else {
+      const fallback = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+      if (fallback) setEstId(fallback);
     }
 
     const from = `${y}-${String(m+1).padStart(2,"0")}-01`;
