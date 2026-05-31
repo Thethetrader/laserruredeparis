@@ -13,12 +13,13 @@ import {
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 /* ── Shift Modal ──────────────────────────────────────────────────────────── */
-function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings }: {
+function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings, tipsEnabled }: {
   date: string; shift: Shift | null;
   onSave: (data: Partial<Shift>) => Promise<void>;
   onDelete: () => Promise<void>;
   onClose: () => void;
   tipSettings: TipSettings;
+  tipsEnabled: boolean;
 }) {
   const [startTime, setStartTime]   = useState(shift?.start_time ?? "09:00");
   const [endTime, setEndTime]       = useState(shift?.end_time   ?? "14:00");
@@ -78,15 +79,14 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings }: {
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
             </div>
           </div>
-          {tipSettings.mode === "self" ? (
+          {tipsEnabled && tipSettings.mode === "self" && (
             <div className="relative">
               <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
               <input type="number" min="0" step="0.5" value={tips} onChange={e => setTips(e.target.value)} placeholder="Tips midi (€)" className="w-full pl-7 pr-3 py-1.5 rounded-base text-[12px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
             </div>
-          ) : (
-            (shift?.tips ?? 0) > 0 && (
-              <p className="text-[11px] font-mono font-semibold mt-1" style={{ color: "#F59E0B" }}>Tips distribués : {formatTips(shift?.tips ?? 0)}</p>
-            )
+          )}
+          {tipsEnabled && tipSettings.mode === "dispatch" && (shift?.tips ?? 0) > 0 && (
+            <p className="text-[11px] font-mono font-semibold mt-1" style={{ color: "#F59E0B" }}>Tips distribués : {formatTips(shift?.tips ?? 0)}</p>
           )}
         </div>
 
@@ -114,15 +114,14 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings }: {
                 <input type="time" value={endTime2} onChange={e => setEndTime2(e.target.value)} className="w-full px-2.5 py-1.5 rounded-base text-[13px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
               </div>
             </div>
-            {tipSettings.mode === "self" ? (
+            {tipsEnabled && tipSettings.mode === "self" && (
               <div className="relative">
                 <Euro size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: "var(--foreground-dim)" }} />
                 <input type="number" min="0" step="0.5" value={tips2} onChange={e => setTips2(e.target.value)} placeholder="Tips soir (€)" className="w-full pl-7 pr-3 py-1.5 rounded-base text-[12px] outline-none" style={{ background: "var(--background-soft)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--foreground)" }} />
               </div>
-            ) : (
-              (shift?.tips_2 ?? 0) > 0 && (
-                <p className="text-[11px] font-mono font-semibold mt-1" style={{ color: "#F59E0B" }}>Tips distribués : {formatTips(shift?.tips_2 ?? 0)}</p>
-              )
+            )}
+            {tipsEnabled && tipSettings.mode === "dispatch" && (shift?.tips_2 ?? 0) > 0 && (
+              <p className="text-[11px] font-mono font-semibold mt-1" style={{ color: "#F59E0B" }}>Tips distribués : {formatTips(shift?.tips_2 ?? 0)}</p>
             )}
           </div>
         )}
@@ -195,6 +194,7 @@ export default function ShiftsPage() {
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<string | null>(null);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
+  const [tipsEnabled, setTipsEnabled] = useState(true);
   const [estId, setEstId]         = useState("");
   const [userId, setUserId]       = useState("");
   const [estName, setEstName]     = useState("");
@@ -219,7 +219,7 @@ export default function ShiftsPage() {
 
     let memberQuery = supabase
       .from("establishment_members")
-      .select("establishment_id, establishments(name, tip_settings), profiles(first_name)")
+      .select("establishment_id, tips_enabled, establishments(name, tip_settings), profiles(first_name)")
       .eq("profile_id", user.id).eq("is_active", true);
     if (validActiveId) memberQuery = memberQuery.eq("establishment_id", validActiveId);
 
@@ -227,6 +227,7 @@ export default function ShiftsPage() {
 
     if (member) {
       setEstId(member.establishment_id);
+      setTipsEnabled((member as unknown as { tips_enabled: boolean }).tips_enabled ?? true);
       const est = member.establishments as { name: string; tip_settings: unknown } | null;
       const prof = member.profiles as { first_name: string | null } | null;
       if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); }
@@ -423,7 +424,7 @@ export default function ShiftsPage() {
       </button>
 
       {selected && (
-        <ShiftModal date={selected} shift={shiftMap.get(selected) ?? null} onSave={handleSave} onDelete={handleDelete} onClose={() => setSelected(null)} tipSettings={tipSettings} />
+        <ShiftModal date={selected} shift={shiftMap.get(selected) ?? null} onSave={handleSave} onDelete={handleDelete} onClose={() => setSelected(null)} tipSettings={tipSettings} tipsEnabled={tipsEnabled} />
       )}
     </div>
   );

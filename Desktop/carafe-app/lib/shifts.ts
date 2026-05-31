@@ -66,6 +66,7 @@ export function calcTipDistribution(
 export interface TeamShift extends Shift {
   first_name: string | null;
   staff_status: StaffStatus | null;
+  tips_enabled: boolean;
 }
 
 export interface Shift {

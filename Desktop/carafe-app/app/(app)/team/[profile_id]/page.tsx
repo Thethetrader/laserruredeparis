@@ -30,6 +30,7 @@ interface MemberProfile {
   contract_type?: string | null;
   availability?: AvailabilitySlot[];
   staff_status?: string | null;
+  tips_enabled?: boolean;
 }
 
 interface Kudos {
@@ -130,6 +131,19 @@ export default function MemberProfilePage() {
   }
 
 
+  async function saveTipsEnabled(enabled: boolean) {
+    setSaving(true);
+    if (!DEV_MODE) {
+      await supabase.from("establishment_members")
+        .update({ tips_enabled: enabled })
+        .eq("profile_id", profileId)
+        .eq("is_active", true);
+    }
+    setMember(prev => prev ? { ...prev, tips_enabled: enabled } : prev);
+    setSaving(false);
+  }
+
+
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -141,13 +155,14 @@ export default function MemberProfilePage() {
       hired_at: string | null;
       establishment_id: string;
       staff_status: string | null;
+      tips_enabled: boolean;
       profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null } | null;
       establishments: { name: string } | null;
     };
 
     const { data: memberDataRaw } = await supabase
       .from("establishment_members")
-      .select("role, job_title, hired_at, establishment_id, staff_status, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
+      .select("role, job_title, hired_at, establishment_id, staff_status, tips_enabled, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
       .eq("profile_id", profileId)
       .eq("is_active", true)
       .single();
@@ -168,6 +183,7 @@ export default function MemberProfilePage() {
       establishment_name: est?.name ?? "",
       phone: p?.phone ?? null,
       staff_status: memberData.staff_status ?? null,
+      tips_enabled: memberData.tips_enabled ?? true,
     });
 
     const estId = memberData.establishment_id;
@@ -299,6 +315,20 @@ export default function MemberProfilePage() {
                   </button>
                 ))}
                 <button onClick={() => setEditingStatus(false)} className="px-2 py-1 rounded-full text-[10px]" style={{ color: "var(--foreground-dim)" }}>Annuler</button>
+              </div>
+            )}
+            {/* Tips enabled toggle */}
+            {isManager && (
+              <div className="flex items-center gap-2 mt-2">
+                <button onClick={() => saveTipsEnabled(!(member.tips_enabled ?? true))} disabled={saving}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+                  style={{
+                    background: (member.tips_enabled ?? true) ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                    color: (member.tips_enabled ?? true) ? "var(--success)" : "var(--danger)",
+                    border: `1px solid ${(member.tips_enabled ?? true) ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+                  }}>
+                  {(member.tips_enabled ?? true) ? "✓ Pourboires activés" : "✗ Sans pourboires"}
+                </button>
               </div>
             )}
             <div className="flex flex-wrap gap-2 mt-1.5">
