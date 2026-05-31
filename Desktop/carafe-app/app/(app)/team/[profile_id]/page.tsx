@@ -310,7 +310,7 @@ export default function MemberProfilePage() {
                 {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(s => (
                   <button key={s} onClick={() => saveStatus(s)} disabled={saving}
                     className="px-2 py-1 rounded-full text-[10px] font-medium transition-all"
-                    style={{ background: member.staff_status === s ? STAFF_STATUSES[s].color : "var(--background-elev)", color: member.staff_status === s ? "#09090B" : STAFF_STATUSES[s].color, border: \`1px solid \${STAFF_STATUSES[s].color}40\` }}>
+                    style={{ background: member.staff_status === s ? STAFF_STATUSES[s].color : "var(--background-elev)", color: member.staff_status === s ? "#09090B" : STAFF_STATUSES[s].color, border: `1px solid ${STAFF_STATUSES[s].color}40` }}>
                     {STAFF_STATUSES[s].label}
                   </button>
                 ))}
