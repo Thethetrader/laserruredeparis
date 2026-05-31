@@ -1,7 +1,7 @@
 "use client";
 
-import { STAFF_STATUSES,
- useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { STAFF_STATUSES } from "@/lib/shifts";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
