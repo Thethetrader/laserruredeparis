@@ -116,8 +116,8 @@ export default function PlanningPage() {
     setError(null);
     const supabase = createClient();
 
-    const eid = typeof window !== "undefined" ? localStorage.getItem("establishment_id") : null;
-    if (!eid) { setLoading(false); return; }
+    const eid = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+    if (!eid) { setPlanningWeek(null); setLoading(false); return; }
     setEstId(eid);
 
     const weekStr = toDateStr(monday);
