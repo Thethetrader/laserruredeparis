@@ -1,41 +1,57 @@
--- Planning IA
+-- Carafe — Planning IA
+-- Tables pour la génération et gestion du planning hebdomadaire par l'IA
+-- À exécuter dans Supabase SQL Editor
 
-CREATE TABLE IF NOT EXISTS planning_weeks (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  establishment_id uuid REFERENCES establishments(id) ON DELETE CASCADE NOT NULL,
-  week_start date NOT NULL,
-  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','validated')),
-  service_needs jsonb DEFAULT NULL,
-  created_by uuid REFERENCES profiles(id),
-  created_at timestamptz DEFAULT now(),
-  UNIQUE (establishment_id, week_start)
+create table if not exists planning_weeks (
+  id uuid primary key default gen_random_uuid(),
+  establishment_id uuid not null references establishments(id) on delete cascade,
+  week_start date not null,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  service_needs jsonb,
+  generated_at timestamptz,
+  validated_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (establishment_id, week_start)
 );
 
-CREATE TABLE IF NOT EXISTS planning_shifts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  planning_week_id uuid REFERENCES planning_weeks(id) ON DELETE CASCADE NOT NULL,
-  establishment_id uuid REFERENCES establishments(id) ON DELETE CASCADE NOT NULL,
-  user_id uuid REFERENCES profiles(id) NOT NULL,
-  shift_date date NOT NULL,
-  start_time text NOT NULL,
-  end_time text NOT NULL,
-  hours_worked numeric(4,2) NOT NULL DEFAULT 0,
-  service text CHECK (service IN ('midi','soir','journee')),
-  confirmed_at timestamptz DEFAULT NULL,
-  confirmed_by uuid REFERENCES profiles(id),
-  shift_id uuid REFERENCES shifts(id) ON DELETE SET NULL,
-  created_at timestamptz DEFAULT now()
+create table if not exists planning_shifts (
+  id uuid primary key default gen_random_uuid(),
+  planning_week_id uuid not null references planning_weeks(id) on delete cascade,
+  establishment_id uuid not null references establishments(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  shift_date date not null,
+  start_time time not null,
+  end_time time not null,
+  service text,
+  confirmation_status text not null default 'pending' check (confirmation_status in ('pending', 'confirmed', 'modified')),
+  confirmed_at timestamptz,
+  note text,
+  created_at timestamptz not null default now()
 );
 
-ALTER TABLE planning_weeks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE planning_shifts ENABLE ROW LEVEL SECURITY;
+create index if not exists idx_planning_weeks_establishment on planning_weeks(establishment_id);
+create index if not exists idx_planning_weeks_week on planning_weeks(week_start);
+create index if not exists idx_planning_shifts_week on planning_shifts(planning_week_id);
+create index if not exists idx_planning_shifts_user on planning_shifts(user_id);
+create index if not exists idx_planning_shifts_date on planning_shifts(shift_date);
 
-DO $$ BEGIN CREATE POLICY "members_view_planning_weeks" ON planning_weeks FOR SELECT USING (EXISTS (SELECT 1 FROM establishment_members em WHERE em.establishment_id = planning_weeks.establishment_id AND em.profile_id = auth.uid() AND em.is_active = true)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "managers_manage_planning_weeks" ON planning_weeks FOR ALL USING (EXISTS (SELECT 1 FROM establishment_members em WHERE em.establishment_id = planning_weeks.establishment_id AND em.profile_id = auth.uid() AND em.is_active = true AND em.role IN ('owner','manager'))); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "members_view_planning_shifts" ON planning_shifts FOR SELECT USING (EXISTS (SELECT 1 FROM establishment_members em WHERE em.establishment_id = planning_shifts.establishment_id AND em.profile_id = auth.uid() AND em.is_active = true)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "managers_manage_planning_shifts" ON planning_shifts FOR ALL USING (EXISTS (SELECT 1 FROM establishment_members em WHERE em.establishment_id = planning_shifts.establishment_id AND em.profile_id = auth.uid() AND em.is_active = true AND em.role IN ('owner','manager'))); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "employees_confirm_own_shifts" ON planning_shifts FOR UPDATE USING (auth.uid() = user_id); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+alter table planning_weeks enable row level security;
+alter table planning_shifts enable row level security;
 
--- confirmed field on shifts table (to track employee confirmation)
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS planning_shift_id uuid REFERENCES planning_shifts(id) ON DELETE SET NULL;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS is_confirmed boolean DEFAULT false;
+create policy "Managers can manage planning_weeks" on planning_weeks for all using (
+  exists (select 1 from establishment_members where establishment_id = planning_weeks.establishment_id and profile_id = auth.uid() and role in ('owner','manager') and is_active = true)
+);
+
+create policy "Members can view planning_shifts" on planning_shifts for select using (
+  exists (select 1 from establishment_members where establishment_id = planning_shifts.establishment_id and profile_id = auth.uid() and is_active = true)
+);
+
+create policy "Managers can manage planning_shifts" on planning_shifts for all using (
+  exists (select 1 from establishment_members where establishment_id = planning_shifts.establishment_id and profile_id = auth.uid() and role in ('owner','manager') and is_active = true)
+);
+
+create policy "Members can confirm own planning shifts" on planning_shifts for update using (
+  auth.uid() = user_id
+) with check (
+  confirmation_status in ('confirmed', 'modified')
+);
