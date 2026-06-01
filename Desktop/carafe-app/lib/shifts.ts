@@ -23,8 +23,6 @@ export interface TipSettings {
   mode: TipMode;
   coefficients: Record<StaffStatus, number>;
   colors: Record<StaffStatus, string>;
-  labels: Record<StaffStatus, string>;
-  hidden: StaffStatus[];
 }
 
 export const DEFAULT_TIP_SETTINGS: TipSettings = {
@@ -35,10 +33,6 @@ export const DEFAULT_TIP_SETTINGS: TipSettings = {
   colors: Object.fromEntries(
     (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].color])
   ) as Record<StaffStatus, string>,
-  labels: Object.fromEntries(
-    (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].label])
-  ) as Record<StaffStatus, string>,
-  hidden: [],
 };
 
 export function parseTipSettings(raw: unknown): TipSettings {
@@ -48,17 +42,7 @@ export function parseTipSettings(raw: unknown): TipSettings {
     mode: r.mode === "dispatch" ? "dispatch" : "self",
     coefficients: { ...DEFAULT_TIP_SETTINGS.coefficients, ...(r.coefficients ?? {}) },
     colors: { ...DEFAULT_TIP_SETTINGS.colors, ...(r.colors ?? {}) },
-    labels: { ...DEFAULT_TIP_SETTINGS.labels, ...(r.labels ?? {}) },
-    hidden: Array.isArray(r.hidden) ? r.hidden as StaffStatus[] : [],
   };
-}
-
-export function getPostLabel(status: StaffStatus, tipSettings: TipSettings): string {
-  return tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
-}
-
-export function isPostHidden(status: StaffStatus, tipSettings: TipSettings): boolean {
-  return tipSettings.hidden.includes(status);
 }
 
 export function calcTipDistribution(
@@ -161,43 +145,61 @@ export function monthlyContractHours(weeklyHours: number): number {
   return weeklyHours * 52 / 12;
 }
 
-export function calcNetHours(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(":").map(Number);
-  const [eh, em] = endTime.split(":").map(Number);
-  const raw = (eh * 60 + em) - (sh * 60 + sm);
-  if (raw <= 0) return 0;
-  const pause = raw > 360 ? 30 : 0;
-  return (raw - pause) / 60;
-}
+// ── CA settings ──────────────────────────────────────────────────────────────
 
-export function shiftsToMap(shifts: Shift[]): Map<string, Shift> {
-  return new Map(shifts.map(s => [s.shift_date, s]));
-}
-
-// ── CA (Chiffre d'Affaires) ──────────────────────────────────────────────────
-
-export type CAMode = "disabled" | "per_service" | "per_day" | "per_month";
+export type CAMode = "disabled" | "per_service" | "per_month";
 
 export interface CASettings {
   mode: CAMode;
   staff_can_enter: boolean;
 }
 
-export const DEFAULT_CA_SETTINGS: CASettings = {
-  mode: "disabled",
-  staff_can_enter: false,
-};
+export const DEFAULT_CA_SETTINGS: CASettings = { mode: "disabled", staff_can_enter: false };
 
 export function parseCASettings(raw: unknown): CASettings {
   if (!raw || typeof raw !== "object") return DEFAULT_CA_SETTINGS;
   const r = raw as Partial<CASettings>;
-  const validModes: CAMode[] = ["disabled", "per_service", "per_day", "per_month"];
   return {
-    mode: validModes.includes(r.mode as CAMode) ? (r.mode as CAMode) : "disabled",
+    mode: (["disabled", "per_service", "per_month"] as CAMode[]).includes(r.mode as CAMode)
+      ? (r.mode as CAMode)
+      : "disabled",
     staff_can_enter: r.staff_can_enter === true,
   };
 }
 
 export function formatCA(amount: number): string {
-  return amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€";
+  return amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + " €";
+}
+
+// ── Pause settings ────────────────────────────────────────────────────────────
+
+export interface PauseSettings {
+  break_6_8h: number;
+  break_over_8h: number;
+}
+
+export const DEFAULT_PAUSE_SETTINGS: PauseSettings = { break_6_8h: 20, break_over_8h: 30 };
+
+export function parsePauseSettings(raw: unknown): PauseSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_PAUSE_SETTINGS;
+  const r = raw as Partial<PauseSettings>;
+  return {
+    break_6_8h:    typeof r.break_6_8h === "number"    ? r.break_6_8h    : 20,
+    break_over_8h: typeof r.break_over_8h === "number" ? r.break_over_8h : 30,
+  };
+}
+
+// Shift <= 6h: 0min | 6h-8h: break_6_8h (def 20) | >8h: break_over_8h (def 30)
+export function calcNetHours(startTime: string, endTime: string, pause?: PauseSettings): number {
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const raw = (eh * 60 + em) - (sh * 60 + sm);
+  if (raw <= 0) return 0;
+  const p = pause ?? DEFAULT_PAUSE_SETTINGS;
+  const breakMin = raw > 480 ? p.break_over_8h : raw > 360 ? p.break_6_8h : 0;
+  return (raw - breakMin) / 60;
+}
+
+export function shiftsToMap(shifts: Shift[]): Map<string, Shift> {
+  return new Map(shifts.map(s => [s.shift_date, s]));
 }
