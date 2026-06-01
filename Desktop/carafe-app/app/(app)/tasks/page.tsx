@@ -464,6 +464,7 @@ export default function TasksManagerPage() {
                     {tasks.map(task => {
                       const comp = completionMap.get(task.id);
                       const isDone = task.frequency === "weekly" ? weeklyDoneIds.has(task.id) : !!comp;
+                      const isOverdue = task.frequency === "weekly" && !isDone;
                       const isValidatingThis = validating === task.id;
                       const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
 
@@ -471,7 +472,7 @@ export default function TasksManagerPage() {
                         <div
                           key={task.id}
                           className="flex items-start gap-3 px-4 py-3 transition-colors"
-                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}
+                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : isOverdue ? "rgba(239,68,68,0.04)" : "var(--background)", borderLeft: isOverdue ? "3px solid var(--danger)" : undefined }}
                         >
                           <div className="mt-0.5 flex-shrink-0">
                             {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
@@ -481,6 +482,11 @@ export default function TasksManagerPage() {
                               <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
                                 {task.title}
                               </span>
+                              {isOverdue && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                                  En retard
+                                </span>
+                              )}
                               {task.is_critical && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
                                   <AlertTriangle size={9} />HACCP
