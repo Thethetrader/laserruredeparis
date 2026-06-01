@@ -4,36 +4,32 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare,
-  Settings, CalendarDays, ClipboardList, CalendarRange, Wallet
+  Settings, CalendarDays, ClipboardList, CalendarRange, Wallet, Sparkles
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
 const managerNav = [
-  { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
-  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
-  { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
-  { href: "/team",               icon: Users,           label: "Équipe" },
-  { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
-  { href: "/shifts",             icon: Wallet,          label: "Mes Shifts" },
-  { href: "/shifts/team",        icon: CalendarRange,   label: "Shifts" },
-  { href: "/planning",             icon: CalendarDays,    label: "Planning" },
-  { href: "/establishment/settings", icon: Settings,    label: "Réglages" },
+  { href: "/dashboard",              icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/tasks",                  icon: ClipboardList,   label: "Tâches" },
+  { href: "/protocols",              icon: BookOpen,        label: "Protocoles" },
+  { href: "/customer-feedback",      icon: MessageSquare,   label: "Clients" },
+  { href: "/challenges",             icon: Trophy,          label: "Challenges" },
+  { href: "/team",                   icon: Users,           label: "Équipe" },
+  { href: "/delays",                 icon: Clock,           label: "Retards" },
+  { href: "/schedule",               icon: CalendarDays,    label: "Vote RDV" },
+  { href: "/shifts",                 icon: Wallet,          label: "Mes Shifts" },
+  { href: "/shifts/team",            icon: CalendarRange,   label: "Shifts" },
+  { href: "/planning",               icon: Sparkles,        label: "Planning" },
+  { href: "/establishment/settings", icon: Settings,        label: "Réglages" },
 ];
 
 const employeeNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Accueil" },
-  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
+  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
-  { href: "/team",               icon: Users,           label: "Équipe" },
-  { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: Wallet,          label: "Shifts" },
 ];
 
