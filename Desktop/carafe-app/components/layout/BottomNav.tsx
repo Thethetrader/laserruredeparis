@@ -26,9 +26,13 @@ const managerNav = [
 
 const employeeNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Accueil" },
-  { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/team",               icon: Users,           label: "Équipe" },
+  { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: Wallet,          label: "Shifts" },
 ];
 
