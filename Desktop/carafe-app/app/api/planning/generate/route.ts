@@ -4,98 +4,171 @@ import { createClient } from "@/lib/supabase/server";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+interface ServicePeriod {
+  start: string;
+  end: string;
+  salle: number;
+  cuisine: number;
+  bar: number;
+}
+
+interface ServiceNeeds {
+  midi: ServicePeriod;
+  soir: ServicePeriod;
+  service_days: number[];
+}
+
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { establishmentId, weekStart, serviceNeeds, breakSettings } = await req.json();
-
-  // Verify manager
-  const { data: member } = await supabase.from("establishment_members")
-    .select("role").eq("establishment_id", establishmentId).eq("profile_id", user.id)
-    .eq("is_active", true).single();
-  if (!member || !["owner","manager"].includes(member.role))
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  // Fetch team with contracts and availability
-  const { data: team } = await supabase.from("establishment_members")
-    .select("profile_id, staff_status, profiles(first_name, weekly_hours, contract_type, hourly_rate)")
-    .eq("establishment_id", establishmentId).eq("is_active", true).eq("role", "employee");
-
-  // Calculate week dates
-  const weekDates: string[] = [];
-  const start = new Date(weekStart + "T12:00:00");
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    weekDates.push(d.toISOString().split("T")[0]);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "API key not configured" }, { status: 500 });
   }
-  const dayNames = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
-  const teamData = (team ?? []).map(m => {
-    const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null } | null;
-    return {
-      id: m.profile_id,
-      name: prof?.first_name ?? "Inconnu",
-      post: m.staff_status ?? "autre",
-      contract: prof?.contract_type ?? "CDI",
-      weekly_hours: prof?.weekly_hours ?? 35,
+  try {
+    const { establishment_id, week_start, needs } = await req.json() as {
+      establishment_id: string;
+      week_start: string;
+      needs: ServiceNeeds;
     };
-  });
 
-  const breakInfo = breakSettings
-    ? `Pauses: ≤6h→${breakSettings.break_under_6h}min, 6-8h→${breakSettings.break_6h_to_8h}min, >8h→${breakSettings.break_over_8h}min`
-    : "Pauses: ≤6h→0min, 6-8h→20min, >8h→30min";
+    const supabase = await createClient();
 
-  const prompt = `Tu es un assistant de planification pour un restaurant. Génère un planning hebdomadaire optimisé.
+    const { data: members } = await supabase
+      .from("establishment_members")
+      .select("profile_id, staff_status, profiles(first_name, weekly_hours)")
+      .eq("establishment_id", establishment_id)
+      .eq("is_active", true);
 
-SEMAINE DU ${weekStart} (${dayNames[0]} au ${dayNames[6]})
-DATES: ${weekDates.join(", ")}
+    if (!members?.length) {
+      return NextResponse.json({ error: "Aucun employé actif" }, { status: 400 });
+    }
 
-ÉQUIPE:
-${JSON.stringify(teamData, null, 2)}
+    // Build week dates from week_start (Monday)
+    const monday = new Date(week_start + "T00:00:00Z");
+    const weekDates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setUTCDate(d.getUTCDate() + i);
+      return d.toISOString().split("T")[0];
+    });
 
-BESOINS PAR SERVICE:
-${JSON.stringify(serviceNeeds, null, 2)}
+    const serviceDayDates = weekDates.filter((_, i) => needs.service_days.includes(i + 1));
+    const DAYS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+    const serviceDayLabels = serviceDayDates.map((d, i) => {
+      const dayIdx = needs.service_days[i] - 1;
+      return `${DAYS_FR[dayIdx]} ${d}`;
+    }).join(", ");
 
-${breakInfo}
+    const staff = members.map((m: any) => ({
+      id: m.profile_id,
+      name: (m.profiles as any)?.first_name ?? "Employé",
+      role: m.staff_status ?? "serveur",
+      weekly_hours: (m.profiles as any)?.weekly_hours ?? 35,
+    }));
 
-RÈGLES:
-- Respecte les heures contractuelles hebdomadaires (heures nettes après pauses)
-- Chaque employé doit avoir au moins 1 jour de repos par semaine
-- Service midi: 11h00-15h00 (ou 11h30-15h30), soir: 18h00-23h00 (ou 19h00-23h30)
-- Journée complète: 10h00-18h00 ou 11h00-19h00
-- Respecte les postes (serveur reste serveur, cuisinier reste cuisinier)
-- Si un employé dépasse ses heures contractuelles, c'est des heures supplémentaires
+    const prompt = `Tu es un gestionnaire de restaurant expert. Génère un planning hebdomadaire optimisé.
 
-Réponds UNIQUEMENT avec un JSON valide de cette forme exacte:
+ÉQUIPE :
+${staff.map((s: {id: string; name: string; role: string; weekly_hours: number}) => `- id:"${s.id}" | ${s.name} | rôle:${s.role} | contrat:${s.weekly_hours}h/semaine`).join("\n")}
+
+BESOINS DE LA SEMAINE :
+Jours de service : ${serviceDayLabels}
+
+Service du midi (${needs.midi.start}–${needs.midi.end}) :
+- Salle : ${needs.midi.salle} personnes
+- Cuisine : ${needs.midi.cuisine} personnes
+- Bar : ${needs.midi.bar} personnes
+
+Service du soir (${needs.soir.start}–${needs.soir.end}) :
+- Salle : ${needs.soir.salle} personnes
+- Cuisine : ${needs.soir.cuisine} personnes
+- Bar : ${needs.soir.bar} personnes
+
+RÈGLES :
+- Au moins 2 jours de repos par semaine par personne
+- Respecte le rôle de chaque employé (salle→serveur/chef_de_rang/responsable, cuisine→cuisinier/commis/plongeur, bar→barman/responsable)
+- Répartis équitablement les jours entre les employés
+- Ne dépasse pas les heures contractuelles hebdomadaires
+- Pour les serveurs/chefs de rang/barmen : assigner soit midi soit soir ou les deux selon les besoins
+- Pour les cuisiniers/commis : assigner selon les besoins cuisine
+
+Réponds UNIQUEMENT en JSON valide, sans markdown :
 {
   "shifts": [
     {
-      "user_id": "uuid-de-l-employe",
-      "shift_date": "2024-01-15",
-      "start_time": "11:00",
-      "end_time": "15:00",
-      "service": "midi",
-      "hours_worked": 4.0
+      "user_id": "UUID_EXACT_DE_LA_LISTE",
+      "shift_date": "YYYY-MM-DD",
+      "start_time": "HH:MM",
+      "end_time": "HH:MM",
+      "service": "midi" ou "soir"
     }
-  ],
-  "summary": "Résumé en 2 phrases du planning généré"
+  ]
 }`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4000,
-    messages: [{ role: "user", content: prompt }],
-  });
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-  const text = (message.content[0] as { type: string; text: string }).text;
-  
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return NextResponse.json({ error: "Invalid AI response" }, { status: 500 });
-  
-  const result = JSON.parse(jsonMatch[0]);
-  return NextResponse.json(result);
+    const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+    let parsed: { shifts: Array<{ user_id: string; shift_date: string; start_time: string; end_time: string; service: string }> };
+    try {
+      const clean = text.startsWith("{") ? text : text.slice(text.indexOf("{"));
+      parsed = JSON.parse(clean);
+    } catch {
+      console.error("AI response:", text);
+      return NextResponse.json({ error: "Réponse IA invalide — réessayez" }, { status: 500 });
+    }
+
+    // Validate user_ids
+    const validIds = new Set(staff.map((s: {id: string}) => s.id));
+    const validShifts = parsed.shifts.filter(s =>
+      s.user_id && validIds.has(s.user_id) &&
+      s.shift_date && s.start_time && s.end_time &&
+      serviceDayDates.includes(s.shift_date)
+    );
+
+    if (validShifts.length === 0) {
+      return NextResponse.json({ error: "Aucun shift valide généré — réessayez" }, { status: 500 });
+    }
+
+    // Upsert planning_week
+    const { data: pw, error: pwError } = await supabase
+      .from("planning_weeks")
+      .upsert(
+        { establishment_id, week_start, status: "draft", service_needs: needs, generated_at: new Date().toISOString() },
+        { onConflict: "establishment_id,week_start" }
+      )
+      .select()
+      .single();
+
+    if (pwError || !pw) {
+      return NextResponse.json({ error: pwError?.message ?? "Erreur création semaine" }, { status: 500 });
+    }
+
+    // Clear existing draft shifts
+    await supabase.from("planning_shifts").delete().eq("planning_week_id", pw.id);
+
+    // Insert new planning_shifts
+    const { error: psError } = await supabase.from("planning_shifts").insert(
+      validShifts.map(s => ({
+        planning_week_id: pw.id,
+        establishment_id,
+        user_id: s.user_id,
+        shift_date: s.shift_date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        service: s.service ?? "midi",
+        confirmation_status: "pending",
+      }))
+    );
+
+    if (psError) {
+      return NextResponse.json({ error: psError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, shifts_count: validShifts.length });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erreur interne";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
