@@ -194,7 +194,7 @@ export default function TasksManagerPage() {
 
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
-      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
+      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).gte("service_date", (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0]; })()),
       supabase.from("task_one_shots").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
@@ -331,7 +331,12 @@ export default function TasksManagerPage() {
     setSavingOneShot(false);
   }
 
-  const completionMap = new Map(completions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
+  const todayCompletions = completions.filter(c => c.service_date === today);
+  const completionMap = new Map(todayCompletions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
+  const weeklyDoneIds = new Set(completions.filter(c => {
+    const tpl = templates.find(t => t.id === c.task_template_id);
+    return tpl?.frequency === "weekly";
+  }).map(c => c.task_template_id).filter(Boolean));
 
   const filteredTemplates = templates.filter(t =>
     filterRole === "all" || t.target_role === filterRole || t.target_role === "all"
@@ -458,7 +463,7 @@ export default function TasksManagerPage() {
                   <div className="divide-y" style={{ borderTop: "1px solid var(--border-soft)", borderColor: "var(--border-soft)" }}>
                     {tasks.map(task => {
                       const comp = completionMap.get(task.id);
-                      const isDone = !!comp;
+                      const isDone = task.frequency === "weekly" ? weeklyDoneIds.has(task.id) : !!comp;
                       const isValidatingThis = validating === task.id;
                       const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
 

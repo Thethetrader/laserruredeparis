@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import Link from "next/link";
@@ -125,6 +125,33 @@ export default function EstablishmentTasksPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchDragActive = useRef(false);
+
+  function handleGripTouchStart(e: React.TouchEvent, taskId: string, cat: TaskCategory) {
+    touchDragActive.current = false;
+    longPressTimer.current = setTimeout(() => {
+      touchDragActive.current = true;
+      setDragId(taskId);
+      try { navigator.vibrate?.(50); } catch (_) {}
+    }, 450);
+  }
+
+  function handleGripTouchMove(e: React.TouchEvent, cat: TaskCategory) {
+    if (!touchDragActive.current) { if (longPressTimer.current) clearTimeout(longPressTimer.current); return; }
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const row = el?.closest("[data-task-id]");
+    if (row) setDragOverId(row.getAttribute("data-task-id"));
+  }
+
+  function handleGripTouchEnd(cat: TaskCategory) {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    if (touchDragActive.current && dragOverId) handleDrop(dragOverId, cat);
+    touchDragActive.current = false;
+    setDragId(null); setDragOverId(null);
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -341,6 +368,7 @@ export default function EstablishmentTasksPage() {
                           key={task.id}
                           className="flex items-start gap-3 px-4 py-3 group transition-all"
                           draggable
+                          data-task-id={task.id}
                           onDragStart={() => setDragId(task.id)}
                           onDragOver={e => { e.preventDefault(); setDragOverId(task.id); }}
                           onDrop={e => { e.preventDefault(); handleDrop(task.id, cat); setDragId(null); setDragOverId(null); }}
@@ -351,7 +379,11 @@ export default function EstablishmentTasksPage() {
                             borderTop: isDragOver ? "2px solid var(--accent)" : undefined,
                           }}
                         >
-                          <GripVertical size={14} className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing" style={{ color: "var(--foreground-dim)" }} />
+                          <GripVertical size={14} className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none" style={{ color: "var(--foreground-dim)" }}
+                            onTouchStart={e => handleGripTouchStart(e, task.id, cat)}
+                            onTouchMove={e => handleGripTouchMove(e, cat)}
+                            onTouchEnd={() => handleGripTouchEnd(cat)}
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{task.title}</span>
