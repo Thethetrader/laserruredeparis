@@ -20,7 +20,8 @@ const managerNav = [
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: Wallet,          label: "Mes Shifts" },
-  { href: "/shifts/team",        icon: CalendarRange,   label: "Planning" },
+  { href: "/shifts/team",        icon: CalendarRange,   label: "Shifts" },
+  { href: "/planning",             icon: CalendarDays,    label: "Planning" },
   { href: "/establishment/settings", icon: Settings,    label: "Réglages" },
 ];
 

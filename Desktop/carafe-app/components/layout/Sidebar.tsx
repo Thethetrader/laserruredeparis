@@ -19,7 +19,8 @@ const nav = [
   { href: "/delays",                 icon: Clock,           label: "Retards",          managerOnly: false },
   { href: "/schedule",               icon: CalendarDays,    label: "Vote RDV",         managerOnly: false },
   { href: "/shifts",                 icon: Wallet,          label: "Mes Shifts",       managerOnly: false },
-  { href: "/shifts/team",            icon: CalendarRange,   label: "Planning équipe",  managerOnly: true  },
+  { href: "/shifts/team",            icon: CalendarRange,   label: "Shifts",           managerOnly: true  },
+  { href: "/planning",               icon: CalendarDays,    label: "Planning",         managerOnly: true  },
 ];
 
 interface SidebarProps {
