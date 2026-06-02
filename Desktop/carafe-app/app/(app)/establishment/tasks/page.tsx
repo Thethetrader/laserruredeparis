@@ -426,17 +426,18 @@ export default function EstablishmentTasksPage() {
         <div className="space-y-3">
           {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--background-elev)" }} />)}
         </div>
-      ) : view === "categories" && tasks.length === 0 ? (
-        <EmptyState
-          message="Aucune tâche configurée"
-          sub="Créez votre première tâche récurrente"
-          action={
-            <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "#09090B" }}>
-              Créer une tâche
-            </button>
-          }
-        />
       ) : view === "categories" ? (
+        tasks.length === 0 ? (
+          <EmptyState
+            message="Aucune tâche configurée"
+            sub="Créez votre première tâche récurrente"
+            action={
+              <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "#09090B" }}>
+                Créer une tâche
+              </button>
+            }
+          />
+        ) : (
         <div className="space-y-4">
           {(["opening", "continuous", "closing"] as TaskCategory[]).map(cat => {
             const catTasks = byCategory(cat);
@@ -539,9 +540,10 @@ export default function EstablishmentTasksPage() {
             );
           })}
         </div>
-      )}
+        )
+      ) : null}
 
-      {/* Modal créer/modifier */}
+      {/* Modal créer/modifier */
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
           <div
