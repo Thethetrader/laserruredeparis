@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopBar } from "@/components/layout/TopBar";
+// production auth enabled
 import { DevRoleSwitcher } from "@/components/DevRoleSwitcher";
 import type { Establishment, EstablishmentWithRole, Profile, UserRole } from "@/lib/types/database";
 
