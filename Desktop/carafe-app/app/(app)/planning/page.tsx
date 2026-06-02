@@ -35,6 +35,14 @@ const DEFAULT_NEEDS: ServiceNeeds = {
   service_days: [1, 2, 3, 4, 5, 6],
 };
 
+
+const DEV_EMPLOYEES = [
+  { id: "u1", name: "Yasmine", role: "chef_de_rang", weekly_hours: 35 },
+  { id: "u2", name: "Rayan",   role: "serveur",      weekly_hours: 30 },
+  { id: "u3", name: "Marco",   role: "cuisinier",    weekly_hours: 35 },
+  { id: "u4", name: "Léa",     role: "commis",       weekly_hours: 20 },
+];
+
 interface PlanningWeek {
   id: string;
   week_start: string;
@@ -114,6 +122,16 @@ export default function PlanningPage() {
   const load = useCallback(async (monday: Date) => {
     setLoading(true);
     setError(null);
+
+    if (DEV_MODE) {
+      setEstId("dev-establishment");
+      setPlanningWeek(null);
+      setPlanningShifts([]);
+      setNeeds(DEFAULT_NEEDS);
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
 
     const eid = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
@@ -193,6 +211,40 @@ export default function PlanningPage() {
     if (!estId) return;
     setGenerating(true);
     setError(null);
+
+    if (DEV_MODE) {
+      // Simulate AI generation with mock employees
+      await new Promise(r => setTimeout(r, 1200));
+      const monday = weekStart;
+      const weekDays = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(d.getDate() + i);
+        return toDateStr(d);
+      });
+      const serviceDates = weekDays.filter((_, i) => needs.service_days.includes(i + 1));
+      const shifts: PlanningShift[] = [];
+      let shiftId = 1;
+      for (const date of serviceDates) {
+        // Midi service
+        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u1", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Yasmine", staff_status: "chef_de_rang" });
+        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u3", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Marco", staff_status: "cuisinier" });
+        // Soir service
+        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u1", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Yasmine", staff_status: "chef_de_rang" });
+        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u2", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Rayan", staff_status: "serveur" });
+        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u3", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Marco", staff_status: "cuisinier" });
+        // Léa on weekends only (index 5=Sat, 6=Sun)
+        const dayIdx = weekDays.indexOf(date);
+        if (dayIdx >= 4) {
+          shifts.push({ id: `dev-s${shiftId++}`, user_id: "u4", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Léa", staff_status: "commis" });
+          shifts.push({ id: `dev-s${shiftId++}`, user_id: "u4", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Léa", staff_status: "commis" });
+        }
+      }
+      setPlanningWeek({ id: "dev-pw-1", week_start: toDateStr(weekStart), status: "draft", service_needs: needs });
+      setPlanningShifts(shifts);
+      setGenerating(false);
+      return;
+    }
+
     try {
       const resp = await fetch("/api/planning/generate", {
         method: "POST",
@@ -213,6 +265,14 @@ export default function PlanningPage() {
     if (!planningWeek || !estId) return;
     setValidating(true);
     setError(null);
+
+    if (DEV_MODE) {
+      await new Promise(r => setTimeout(r, 600));
+      setPlanningWeek(prev => prev ? { ...prev, status: "published" } : prev);
+      setValidating(false);
+      return;
+    }
+
     try {
       const supabase = createClient();
 
@@ -261,6 +321,11 @@ export default function PlanningPage() {
 
   async function handleRegenerate() {
     if (!planningWeek) return;
+    if (DEV_MODE) {
+      setPlanningWeek(null);
+      setPlanningShifts([]);
+      return;
+    }
     const supabase = createClient();
     await supabase.from("planning_shifts").delete().eq("planning_week_id", planningWeek.id);
     await supabase.from("planning_weeks").delete().eq("id", planningWeek.id);
