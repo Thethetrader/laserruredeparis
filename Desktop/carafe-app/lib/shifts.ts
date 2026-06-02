@@ -23,6 +23,8 @@ export interface TipSettings {
   mode: TipMode;
   coefficients: Record<StaffStatus, number>;
   colors: Record<StaffStatus, string>;
+  hidden: StaffStatus[];
+  labels: Partial<Record<StaffStatus, string>>;
 }
 
 export const DEFAULT_TIP_SETTINGS: TipSettings = {
@@ -33,6 +35,8 @@ export const DEFAULT_TIP_SETTINGS: TipSettings = {
   colors: Object.fromEntries(
     (Object.keys(STAFF_STATUSES) as StaffStatus[]).map(k => [k, STAFF_STATUSES[k].color])
   ) as Record<StaffStatus, string>,
+  hidden: [],
+  labels: {},
 };
 
 export function parseTipSettings(raw: unknown): TipSettings {
@@ -42,6 +46,8 @@ export function parseTipSettings(raw: unknown): TipSettings {
     mode: r.mode === "dispatch" ? "dispatch" : "self",
     coefficients: { ...DEFAULT_TIP_SETTINGS.coefficients, ...(r.coefficients ?? {}) },
     colors: { ...DEFAULT_TIP_SETTINGS.colors, ...(r.colors ?? {}) },
+    hidden: Array.isArray(r.hidden) ? r.hidden : [],
+    labels: (r.labels && typeof r.labels === "object") ? r.labels : {},
   };
 }
 
@@ -174,8 +180,8 @@ export function formatCA(amount: number): string {
 // ── Pause settings ────────────────────────────────────────────────────────────
 
 export interface PauseSettings {
-  break_6_8h: number;
-  break_over_8h: number;
+  break_6_8h: number;   // minutes déduits pour un shift entre 6h et 8h (défaut: 20)
+  break_over_8h: number; // minutes déduits pour un shift > 8h (défaut: 30)
 }
 
 export const DEFAULT_PAUSE_SETTINGS: PauseSettings = { break_6_8h: 20, break_over_8h: 30 };
@@ -189,7 +195,6 @@ export function parsePauseSettings(raw: unknown): PauseSettings {
   };
 }
 
-// Shift <= 6h: 0min | 6h-8h: break_6_8h (def 20) | >8h: break_over_8h (def 30)
 export function calcNetHours(startTime: string, endTime: string, pause?: PauseSettings): number {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
