@@ -215,8 +215,7 @@ export default function EstablishmentTasksPage() {
     setForm({
       title: task.title,
       description: task.description ?? "",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(task.section_id !== undefined ? { section_id: task.section_id } : {}),
+      section_id: task.section_id ?? null,
       category: task.category,
       target_role: task.target_role,
       frequency: task.frequency,
