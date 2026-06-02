@@ -543,7 +543,7 @@ export default function EstablishmentTasksPage() {
         )
       ) : null}
 
-      {/* Modal créer/modifier */
+      {/* Modal créer/modifier */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
           <div
