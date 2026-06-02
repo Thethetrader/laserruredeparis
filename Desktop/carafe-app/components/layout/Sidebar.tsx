@@ -86,10 +86,7 @@ export function Sidebar({ establishment, establishments }: SidebarProps) {
         {/* Manager-only section */}
         {isManager && (
           <>
-            <div className="pt-3 pb-1 px-2.5">
-              <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Manager</p>
-            </div>
-            {managerNav.map(({ href, icon: Icon, label }) => {
+{managerNav.map(({ href, icon: Icon, label }) => {
               const active = pathname === href || pathname.startsWith(href + "/");
               return (
                 <Link
