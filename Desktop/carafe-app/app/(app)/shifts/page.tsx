@@ -183,8 +183,6 @@ function TipsChart({ shifts, year, month }: { shifts: Shift[]; year: number; mon
 }
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
-const WAVE_STYLE = `@keyframes wave { 0%{transform:rotate(0deg)} 15%{transform:rotate(14deg)} 30%{transform:rotate(-8deg)} 40%{transform:rotate(14deg)} 50%{transform:rotate(-4deg)} 60%{transform:rotate(10deg)} 70%{transform:rotate(0deg)} 100%{transform:rotate(0deg)} }`;
-
 export default function ShiftsPage() {
   const today = new Date();
   const [year, setYear]           = useState(today.getFullYear());
@@ -294,13 +292,12 @@ export default function ShiftsPage() {
 
   return (
     <div className="px-4 py-8 lg:px-10 pb-32 max-w-2xl lg:max-w-4xl">
-      <style>{WAVE_STYLE}</style>
 
       {/* Header */}
       <div className="mb-8">
         <MonoLabel size="xs" className="mb-2 block">Mes Shifts</MonoLabel>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
-          {greeting}{firstName ? `, ${firstName}` : ""} <span style={{ display: "inline-block", animation: "wave 1.8s ease-in-out 1", transformOrigin: "70% 70%" }}>👋</span>
+          {greeting}{firstName ? `, ${firstName}` : ""} 👋
         </h1>
         <p className="text-sm mt-1 capitalize" style={{ color: "var(--foreground-dim)" }}>
           {estName && <span>{estName} · </span>}

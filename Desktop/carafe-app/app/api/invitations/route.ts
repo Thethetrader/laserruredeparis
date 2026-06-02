@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { establishment_id, role, email, staff_status, hourly_rate } = await req.json();
+  const { establishment_id, role, email } = await req.json();
   if (!establishment_id || !role) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
   const { data: member } = await supabase
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const { data: invitation, error } = await admin
     .from("invitations")
-    .insert({ establishment_id, role, email: email || null, invited_by: user.id, staff_status: staff_status || null, hourly_rate: hourly_rate || null })
+    .insert({ establishment_id, role, email: email || null, invited_by: user.id })
     .select()
     .single();
 

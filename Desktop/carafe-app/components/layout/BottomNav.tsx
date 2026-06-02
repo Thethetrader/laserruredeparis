@@ -30,7 +30,10 @@ const employeeNav = [
   { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
-  { href: "/shifts",             icon: Wallet,          label: "Shifts" },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/team",               icon: Users,           label: "Équipe" },
+  { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
 ];
 
 export function BottomNav() {

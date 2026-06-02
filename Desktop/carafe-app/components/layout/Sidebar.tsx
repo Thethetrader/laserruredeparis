@@ -15,7 +15,6 @@ const employeeNav = [
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
-  { href: "/shifts",             icon: Wallet,          label: "Mes Shifts" },
 ];
 
 const managerNav = [

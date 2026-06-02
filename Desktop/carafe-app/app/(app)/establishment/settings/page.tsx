@@ -4,13 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw } from "lucide-react";
-import {
-  STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS,
-  parseCASettings, DEFAULT_CA_SETTINGS,
-  type TipSettings, type StaffStatus, type TipMode,
-  type CASettings, type CAMode,
-} from "@/lib/shifts";
+import { Check } from "lucide-react";
+import { STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings, type StaffStatus, type TipMode } from "@/lib/shifts";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
@@ -21,7 +16,6 @@ export default function EstablishmentSettingsPage() {
   const router = useRouter();
   const [establishment, setEstablishment] = useState<EstablishmentInfo | null>(null);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
-  const [caSettings, setCASettings] = useState<CASettings>(DEFAULT_CA_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -40,36 +34,17 @@ export default function EstablishmentSettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     const { data } = await supabase.from("establishment_members")
-      .select("establishment_id, role, establishments(id, name, city, tip_settings, ca_settings)")
+      .select("establishment_id, role, establishments(id, name, city, tip_settings)")
       .eq("profile_id", user.id).in("role", ["owner", "manager"]).limit(1).maybeSingle();
     if (!data) { router.push("/dashboard"); return; }
-    const est = data.establishments as unknown as { id: string; name: string; city: string | null; tip_settings: unknown; ca_settings: unknown } | null;
+    const est = data.establishments as unknown as { id: string; name: string; city: string | null; tip_settings: unknown } | null;
     if (!est) { router.push("/dashboard"); return; }
     setEstablishment({ id: est.id, name: est.name, city: est.city });
     setTipSettings(parseTipSettings(est.tip_settings));
-    setCASettings(parseCASettings(est.ca_settings));
     setLoading(false);
   }
 
   function setMode(mode: TipMode) { setTipSettings(prev => ({ ...prev, mode })); }
-  function setCAMode(mode: CAMode) { setCASettings(prev => ({ ...prev, mode })); }
-
-  function setColor(status: StaffStatus, color: string) {
-    setTipSettings(prev => ({ ...prev, colors: { ...prev.colors, [status]: color } }));
-  }
-
-  function setLabel(status: StaffStatus, label: string) {
-    setTipSettings(prev => ({ ...prev, labels: { ...prev.labels, [status]: label } }));
-  }
-
-  function toggleHidden(status: StaffStatus) {
-    setTipSettings(prev => ({
-      ...prev,
-      hidden: prev.hidden.includes(status)
-        ? prev.hidden.filter(s => s !== status)
-        : [...prev.hidden, status],
-    }));
-  }
 
   function setCoef(status: StaffStatus, val: string) {
     const num = parseFloat(val);
@@ -82,10 +57,7 @@ export default function EstablishmentSettingsPage() {
     setSaving(true);
     if (DEV_MODE) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
     await supabase.from("establishments")
-      .update({
-        tip_settings: tipSettings as unknown as Record<string, unknown>,
-        ca_settings: caSettings as unknown as Record<string, unknown>,
-      })
+      .update({ tip_settings: tipSettings as unknown as Record<string, unknown> })
       .eq("id", establishment.id);
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
   }
@@ -98,13 +70,6 @@ export default function EstablishmentSettingsPage() {
     );
   }
   if (!establishment) return null;
-
-  const CA_MODES: { value: CAMode; label: string; desc: string }[] = [
-    { value: "disabled",    label: "Désactivé",     desc: "Pas de suivi du CA" },
-    { value: "per_service", label: "Par service",    desc: "Midi et soir séparément" },
-    { value: "per_day",     label: "Par jour",       desc: "1 montant par journée" },
-    { value: "per_month",   label: "Par mois",       desc: "1 montant par mois" },
-  ];
 
   return (
     <div className="px-4 py-8 lg:px-8 pb-32 max-w-2xl">
@@ -162,7 +127,7 @@ export default function EstablishmentSettingsPage() {
                       className="w-16 px-2 py-1 rounded-base text-center text-[13px] outline-none"
                       style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
                     <span className="text-[11px] w-10 text-right font-mono" style={{ color: "var(--foreground-dim)" }}>
-                      x{tipSettings.coefficients[status].toFixed(1)}
+                      ×{tipSettings.coefficients[status].toFixed(1)}
                     </span>
                   </div>
                 </div>
@@ -172,92 +137,6 @@ export default function EstablishmentSettingsPage() {
         </div>
       )}
 
-      {/* CA mode */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Suivi du chiffre d'affaires</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Saisir le total caisse pour analyser la rentabilité</p>
-        </div>
-        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
-          {CA_MODES.map(opt => (
-            <button key={opt.value} onClick={() => setCAMode(opt.value)}
-              className="p-3 rounded-xl text-left transition-all"
-              style={{
-                background: caSettings.mode === opt.value ? "rgba(16,185,129,0.08)" : "var(--background)",
-                border: `1px solid ${caSettings.mode === opt.value ? "rgba(16,185,129,0.3)" : "var(--border)"}`,
-              }}>
-              <p className="text-[13px] font-semibold" style={{ color: caSettings.mode === opt.value ? "var(--success)" : "var(--foreground)" }}>{opt.label}</p>
-              <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--foreground-dim)" }}>{opt.desc}</p>
-            </button>
-          ))}
-        </div>
-        {caSettings.mode !== "disabled" && (
-          <div className="px-4 py-3 flex items-center justify-between"
-            style={{ borderTop: "1px solid var(--border)", background: "var(--background-elev)" }}>
-            <div>
-              <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>Serveurs autorisés à saisir</p>
-              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Sinon, managers uniquement</p>
-            </div>
-            <button onClick={() => setCASettings(prev => ({ ...prev, staff_can_enter: !prev.staff_can_enter }))}
-              className="flex-shrink-0">
-              {caSettings.staff_can_enter
-                ? <ToggleRight size={28} style={{ color: "var(--success)" }} />
-                : <ToggleLeft size={28} style={{ color: "var(--foreground-dim)" }} />}
-            </button>
-          </div>
-        )}
-      </div>
-
-
-      {/* Postes */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Renommer ou masquer un poste selon votre établissement</p>
-        </div>
-        <div style={{ background: "var(--background-elev)" }}>
-          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
-            const label = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
-            return (
-              <div key={status} className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <input type="color" value={tipSettings.colors[status] ?? STAFF_STATUSES[status].color}
-                  onChange={e => setColor(status, e.target.value)}
-                  className="w-6 h-6 rounded-full cursor-pointer flex-shrink-0"
-                  style={{ border: "none", padding: 0, background: "none" }} />
-                <input
-                  type="text"
-                  value={label}
-                  onChange={e => setLabel(status, e.target.value)}
-                  className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
-                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                />
-                <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-          {/* Postes supprimés */}
-          {tipSettings.hidden.length > 0 && (
-            <details style={{ borderTop: "1px solid var(--border)" }}>
-              <summary className="px-4 py-2.5 text-[11px] cursor-pointer list-none flex items-center gap-2" style={{ color: "var(--foreground-dim)" }}>
-                <RotateCcw size={11} />
-                {tipSettings.hidden.length} poste{tipSettings.hidden.length > 1 ? "s" : ""} supprimé{tipSettings.hidden.length > 1 ? "s" : ""}
-              </summary>
-              {tipSettings.hidden.map(status => (
-                <div key={status} className="flex items-center gap-3 px-4 py-2.5" style={{ opacity: 0.5 }}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? STAFF_STATUSES[status].color }} />
-                  <span className="flex-1 text-[12px]" style={{ color: "var(--foreground)" }}>{tipSettings.labels[status] ?? STAFF_STATUSES[status].label}</span>
-                  <button onClick={() => toggleHidden(status)} className="text-[10px] px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1" style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                    <RotateCcw size={9} />Restaurer
-                  </button>
-                </div>
-              ))}
-            </details>
-          )}
-        </div>
-      </div>
       {/* Save */}
       <button onClick={handleSave} disabled={saving}
         className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all"

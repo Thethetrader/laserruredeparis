@@ -9,13 +9,13 @@ webpush.setVapidDetails(
 );
 
 export async function POST(req: NextRequest) {
-  const { establishmentId, userId, title, body, url } = await req.json();
+  const { establishmentId, title, body, url } = await req.json();
   const supabase = await createClient();
+  const { data: subs } = await supabase
+    .from('push_subscriptions')
+    .select('*')
+    .eq('establishment_id', establishmentId);
 
-  let query = supabase.from('push_subscriptions').select('*').eq('establishment_id', establishmentId);
-  if (userId) query = query.eq('profile_id', userId);
-
-  const { data: subs } = await query;
   if (!subs?.length) return NextResponse.json({ sent: 0 });
 
   const payload = JSON.stringify({ title, body, url });
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       );
       sent++;
     } catch {
-      // Subscription expired or invalid
+      // Subscription may be expired or invalid skip silently
     }
   }
   return NextResponse.json({ sent });
