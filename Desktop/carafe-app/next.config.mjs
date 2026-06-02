@@ -10,3 +10,4 @@ const nextConfig = {
 };
 
 export default nextConfig;
+// build: 1780423994
