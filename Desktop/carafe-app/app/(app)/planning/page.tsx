@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock } from "lucide-react";
-import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS } from "@/lib/shifts";
+import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
@@ -540,6 +540,97 @@ function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
 
 // ── Draft View ────────────────────────────────────────────────────────────────
 
+function ShiftChip({ shift, showStatus }: { shift: PlanningShift; showStatus?: boolean }) {
+  const color = STAFF_STATUSES[shift.staff_status as StaffStatus]?.color ?? "#A1A1AA";
+  return (
+    <div
+      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium leading-tight"
+      style={{ background: `${color}20`, border: `1px solid ${color}45`, color }}
+    >
+      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="truncate max-w-[52px]">{shift.first_name ?? "?"}</span>
+    </div>
+  );
+}
+
+const DAYS_FR_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+function WeekGrid({ shifts, weekDates, published }: {
+  shifts: PlanningShift[];
+  weekDates: Date[];
+  published?: boolean;
+}) {
+  // Only columns for days with at least 1 shift
+  const activeDates = weekDates.filter(d => shifts.some(s => s.shift_date === toDateStr(d)));
+  if (activeDates.length === 0) return null;
+
+  const getShifts = (date: Date, service: string) =>
+    shifts.filter(s => s.shift_date === toDateStr(date) && s.service === service);
+
+  const midiSample = shifts.find(s => s.service === "midi");
+  const soirSample = shifts.find(s => s.service === "soir");
+  const midiTime = midiSample ? `${midiSample.start_time.slice(0,5)}–${midiSample.end_time.slice(0,5)}` : null;
+  const soirTime = soirSample ? `${soirSample.start_time.slice(0,5)}–${soirSample.end_time.slice(0,5)}` : null;
+
+  const COL_W = 80;
+  const LABEL_W = 64;
+
+  const serviceRows: { key: string; label: string; color: string; time: string | null }[] = [];
+  if (midiTime) serviceRows.push({ key: "midi", label: "Midi", color: "#F59E0B", time: midiTime });
+  if (soirTime) serviceRows.push({ key: "soir", label: "Soir", color: "#818CF8", time: soirTime });
+
+  return (
+    <div className="overflow-x-auto -mx-4 px-4" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div style={{ minWidth: LABEL_W + activeDates.length * COL_W }}>
+
+        {/* Day headers */}
+        <div className="flex" style={{ borderBottom: "1px solid var(--border-soft)" }}>
+          <div style={{ width: LABEL_W, flexShrink: 0 }} />
+          {activeDates.map((date, i) => {
+            const today = new Date().toISOString().split("T")[0] === toDateStr(date);
+            const dayIdx = weekDates.indexOf(date);
+            return (
+              <div key={i} className="text-center py-2 flex-shrink-0"
+                style={{ width: COL_W, borderLeft: "1px solid var(--border-soft)" }}>
+                <p className="text-[9px] font-mono uppercase tracking-widest"
+                  style={{ color: "var(--foreground-dim)" }}>{DAYS_FR_SHORT[dayIdx]}</p>
+                <p className="text-[15px] font-semibold"
+                  style={{ color: today ? "var(--accent)" : "var(--foreground)" }}>
+                  {date.getDate()}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Service rows */}
+        {serviceRows.map(({ key, label, color, time }, rowIdx) => (
+          <div key={key} className="flex"
+            style={{ borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none" }}>
+            {/* Label */}
+            <div style={{ width: LABEL_W, flexShrink: 0 }}
+              className="flex flex-col justify-start gap-0.5 px-2 pt-2 pb-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color }}>{label}</p>
+              {time && <p className="text-[8px] font-mono leading-tight" style={{ color: "var(--foreground-dim)" }}>{time}</p>}
+            </div>
+            {/* Day cells */}
+            {activeDates.map((date, i) => {
+              const cell = getShifts(date, key);
+              return (
+                <div key={i} className="flex-shrink-0 flex flex-col gap-0.5 p-1.5"
+                  style={{ width: COL_W, borderLeft: "1px solid var(--border-soft)", background: "var(--background-elev)", minHeight: 56 }}>
+                  {cell.map(s => <ShiftChip key={s.id} shift={s} />)}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+      </div>
+    </div>
+  );
+}
+
 function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating }: {
   shifts: PlanningShift[];
   weekDates: Date[];
@@ -547,125 +638,53 @@ function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating }: 
   onRegenerate: () => void;
   validating: boolean;
 }) {
-  const byDate = weekDates.map(date => ({
-    date,
-    shifts: shifts.filter(s => s.shift_date === toDateStr(date)),
-  })).filter(({ shifts }) => shifts.length > 0);
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 px-1 mb-1">
+      <div className="flex items-center gap-2 px-1">
         <div className="w-2 h-2 rounded-full bg-amber-400" />
         <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
           Planning généré — {shifts.length} shift{shifts.length > 1 ? "s" : ""} · Vérifiez puis validez
         </p>
       </div>
 
-      {byDate.map(({ date, shifts: dayShifts }) => (
-        <div key={toDateStr(date)} className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-4 py-2.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
-            <p className="text-[12px] font-medium capitalize" style={{ color: "var(--foreground)" }}>
-              {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-          </div>
-          <div className="divide-y" style={{ borderColor: "var(--border-soft)" }}>
-            {dayShifts.map(shift => <ShiftRow key={shift.id} shift={shift} />)}
-          </div>
-        </div>
-      ))}
+      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <WeekGrid shifts={shifts} weekDates={weekDates} />
+      </div>
 
       {shifts.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun shift généré</p>
-        </div>
+        <p className="text-center text-[13px] py-8" style={{ color: "var(--foreground-dim)" }}>Aucun shift généré</p>
       )}
 
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={onRegenerate}
-          className="flex-1 py-2.5 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2 transition-colors"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground-dim)", background: "transparent" }}
-        >
+      <div className="flex gap-3 pt-1">
+        <button onClick={onRegenerate}
+          className="flex-1 py-2.5 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2"
+          style={{ border: "1px solid var(--border)", color: "var(--foreground-dim)", background: "transparent" }}>
           <RefreshCw size={14} />Régénérer
         </button>
-        <button
-          onClick={onValidate}
-          disabled={validating || shifts.length === 0}
-          className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors"
-          style={{ background: "var(--accent)", color: "#fff", border: "none", opacity: validating ? 0.6 : 1 }}
-        >
-          {validating ? "Validation…" : <><Check size={14} />Valider le planning</>}
+        <button onClick={onValidate} disabled={validating || shifts.length === 0}
+          className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
+          style={{ background: "var(--accent)", color: "#fff", border: "none", opacity: validating ? 0.6 : 1 }}>
+          {validating ? "Validation…" : <><Check size={14} />Valider</>}
         </button>
       </div>
     </div>
   );
 }
 
-// ── Published View ────────────────────────────────────────────────────────────
-
 function PublishedView({ shifts, weekDates }: { shifts: PlanningShift[]; weekDates: Date[] }) {
-  const byDate = weekDates.map(date => ({
-    date,
-    shifts: shifts.filter(s => s.shift_date === toDateStr(date)),
-  })).filter(({ shifts }) => shifts.length > 0);
-
   const confirmed = shifts.filter(s => s.confirmation_status === "confirmed").length;
-  const total = shifts.length;
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between px-1 mb-1">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: "var(--success, #10B981)" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: "#10B981" }} />
           <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Planning publié</p>
         </div>
-        <MonoLabel size="xs">{confirmed}/{total} confirmés</MonoLabel>
+        <MonoLabel size="xs">{confirmed}/{shifts.length} confirmés</MonoLabel>
       </div>
-
-      {byDate.map(({ date, shifts: dayShifts }) => (
-        <div key={toDateStr(date)} className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-4 py-2.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
-            <p className="text-[12px] font-medium capitalize" style={{ color: "var(--foreground)" }}>
-              {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-          </div>
-          <div className="divide-y" style={{ borderColor: "var(--border-soft)" }}>
-            {dayShifts.map(shift => <ShiftRow key={shift.id} shift={shift} showConfirmation />)}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Shift Row ────────────────────────────────────────────────────────────────
-
-function ShiftRow({ shift, showConfirmation }: { shift: PlanningShift; showConfirmation?: boolean }) {
-  const hours = calcHours(shift.start_time, shift.end_time);
-  const confirmColor =
-    shift.confirmation_status === "confirmed" ? "#10B981"
-    : shift.confirmation_status === "modified" ? "#F59E0B"
-    : "var(--border)";
-
-  return (
-    <div className="px-4 py-3 flex items-center gap-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>
-          {shift.first_name ?? "Employé"}
-        </p>
-        {shift.staff_status && (
-          <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{shift.staff_status.replace(/_/g, " ")}</p>
-        )}
+      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+        <WeekGrid shifts={shifts} weekDates={weekDates} published />
       </div>
-      <div className="text-right flex-shrink-0">
-        <p className="text-[12px] font-mono" style={{ color: "var(--foreground)" }}>
-          {shift.start_time.slice(0, 5)}–{shift.end_time.slice(0, 5)}
-        </p>
-        <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{formatHours(hours)}</p>
-      </div>
-      {showConfirmation && (
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: confirmColor }} />
-      )}
     </div>
   );
 }
