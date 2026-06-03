@@ -784,6 +784,18 @@ export default function ShiftsTeamPage() {
 
   useEffect(() => { load(year, month); }, [year, month, load]);
 
+  // Realtime — rafraîchit le calendrier quand un employé modifie ses heures
+  useEffect(() => {
+    if (!estId) return;
+    const channel = supabase
+      .channel(`shifts-team-${estId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `establishment_id=eq.${estId}` },
+        () => { load(year, month); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [estId, year, month, load, supabase]);
+
   async function saveMonthlyCa() {
     const amount = parseFloat(monthlyCaInput) || 0;
     if (!estId || amount <= 0) return;
