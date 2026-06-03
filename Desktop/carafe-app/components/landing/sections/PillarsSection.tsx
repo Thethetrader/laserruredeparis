@@ -293,6 +293,14 @@ const features = [
   },
   {
     num: "04",
+    icon: TrendingUp,
+    name: "Planning",
+    desc: "L'IA analyse ton CA et propose le planning optimal. Ta marge s'optimise sans que tu fasses les calculs.",
+    ai: true,
+    Preview: PlanningPreview,
+  },
+  {
+    num: "05",
     icon: Clock,
     name: "Retards",
     desc: "Un tap. Le manager est notifié en privé. La trace est faite.",
@@ -300,20 +308,12 @@ const features = [
     Preview: LatePreview,
   },
   {
-    num: "05",
+    num: "06",
     icon: Trophy,
     name: "Défis & points",
     desc: "Lance un défi. Le classement motive. Tu n'as plus à pousser.",
     ai: false,
     Preview: ChallengesPreview,
-  },
-  {
-    num: "06",
-    icon: TrendingUp,
-    name: "Planning",
-    desc: "L'IA analyse ton CA et propose le planning optimal. Ta marge s'optimise sans que tu fasses les calculs.",
-    ai: true,
-    Preview: PlanningPreview,
   },
 ];
 
