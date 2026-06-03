@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { CheckCircle, Building2 } from "lucide-react";
+import { CheckCircle, Building2, Plus } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
 const DEV_MODE = false;
@@ -34,8 +35,10 @@ const ROLE_STYLE: Record<UserRole, { color: string }> = {
   employee: { color: "var(--foreground-dim)" },
 };
 
-export default function SwitchEstablishmentPage() {
+function SwitchEstablishmentInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justAdded = searchParams.get("added") === "1";
   const supabase = createClient();
   const [establishments, setEstablishments] = useState<EstablishmentOption[]>([]);
   const [activeId, setActiveId] = useState<string>("");
@@ -108,9 +111,24 @@ export default function SwitchEstablishmentPage() {
   return (
     <div className="px-4 py-8 lg:px-8 max-w-md">
       <MonoLabel size="xs" className="mb-6 block">Établissements</MonoLabel>
-      <h1 className="text-2xl font-semibold mb-2" style={{ color: "var(--foreground)" }}>
-        Changer d&apos;établissement
-      </h1>
+      <div className="flex items-start justify-between mb-2">
+        <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+          Changer d&apos;établissement
+        </h1>
+        <Link
+          href="/establishment/add"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+        >
+          <Plus size={13} />
+          Ajouter
+        </Link>
+      </div>
+      {justAdded && (
+        <p className="text-[12px] px-3 py-2 rounded-base mb-4" style={{ background: "rgba(16,185,129,0.08)", color: "#10B981", border: "1px solid rgba(16,185,129,0.2)" }}>
+          Établissement ajouté avec succès.
+        </p>
+      )}
       <p className="text-sm mb-8" style={{ color: "var(--foreground-dim)" }}>
         Sélectionnez l&apos;établissement que vous souhaitez gérer.
       </p>
@@ -177,5 +195,13 @@ export default function SwitchEstablishmentPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SwitchEstablishmentPage() {
+  return (
+    <Suspense fallback={null}>
+      <SwitchEstablishmentInner />
+    </Suspense>
   );
 }

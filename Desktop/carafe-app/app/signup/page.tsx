@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Users } from "lucide-react";
 
 const directorSchema = z.object({
   first_name: z.string().min(1, "Prénom requis"),
@@ -25,6 +26,7 @@ const memberSchema = z.object({
 
 type DirectorData = z.infer<typeof directorSchema>;
 type MemberData = z.infer<typeof memberSchema>;
+type Size = "small" | "large";
 
 function SignupInner() {
   const router = useRouter();
@@ -34,6 +36,7 @@ function SignupInner() {
 
   const supabase = createClient();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [size, setSize] = useState<Size>("small");
 
   const directorForm = useForm<DirectorData>({ resolver: zodResolver(directorSchema) });
   const memberForm = useForm<MemberData>({ resolver: zodResolver(memberSchema) });
@@ -41,11 +44,12 @@ function SignupInner() {
   const onSubmitDirector = async (data: DirectorData) => {
     setServerError(null);
 
-    // Create account + establishment via server-side API (no email confirmation needed)
-    const res = await fetch("/api/signup", {
+    const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        type: "signup",
+        size,
         email: data.email,
         password: data.password,
         first_name: data.first_name,
@@ -53,18 +57,10 @@ function SignupInner() {
         establishment_name: data.establishment_name,
       }),
     });
+
     const json = await res.json();
     if (!res.ok) { setServerError(json.error ?? "Erreur. Réessayez."); return; }
-
-    // Sign in after account creation
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
-    if (signInError) { setServerError("Compte créé. Connectez-vous."); router.push("/login"); return; }
-
-    router.push("/dashboard");
-    router.refresh();
+    window.location.href = json.url;
   };
 
   const onSubmitMember = async (data: MemberData) => {
@@ -123,11 +119,48 @@ function SignupInner() {
   }
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = directorForm;
+  const price = size === "small" ? "29€/mois" : "39€/mois";
+
   return (
     <>
-      <p className="mt-1.5 text-[13px] mb-10" style={{ color: "var(--foreground-dim)" }}>
-        14 jours gratuits · Sans carte bancaire
+      <p className="mt-1.5 text-[13px] mb-8" style={{ color: "var(--foreground-dim)" }}>
+        Abonnement mensuel · Sans engagement
       </p>
+
+      {/* Sélecteur de taille */}
+      <div className="mb-6">
+        <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+          Taille de votre équipe
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["small", "large"] as Size[]).map((s) => {
+            const active = size === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSize(s)}
+                className="flex flex-col items-start px-4 py-3 rounded-base text-left transition-colors"
+                style={{
+                  background: active ? "rgba(6,182,212,0.08)" : "var(--background-soft)",
+                  border: active ? "1px solid rgba(6,182,212,0.4)" : "1px solid var(--border)",
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Users size={12} style={{ color: active ? "var(--accent)" : "var(--foreground-dim)" }} />
+                  <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: active ? "var(--accent)" : "var(--foreground-dim)" }}>
+                    {s === "small" ? "< 20" : "≥ 20"}
+                  </span>
+                </div>
+                <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  {s === "small" ? "29€" : "39€"}<span className="text-[11px] font-normal" style={{ color: "var(--foreground-dim)" }}>/mois</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit(onSubmitDirector)} className="space-y-4">
         {directorFields.map(({ name, label, type, placeholder }) => (
           <div key={name}>
@@ -142,8 +175,11 @@ function SignupInner() {
         ))}
         {serverError && <p className="text-[12px] px-3 py-2 rounded-base" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>{serverError}</p>}
         <button type="submit" disabled={isSubmitting} className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: isSubmitting ? 0.6 : 1 }}>
-          {isSubmitting ? "Création…" : "Créer mon compte"}
+          {isSubmitting ? "Redirection…" : `Continuer · ${price}`}
         </button>
+        <p className="text-center text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+          Paiement sécurisé par Stripe
+        </p>
       </form>
     </>
   );
