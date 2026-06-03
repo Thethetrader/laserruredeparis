@@ -8,6 +8,7 @@ import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, 
 import Link from "next/link";
 import type { UserRole } from "@/lib/types/database";
 import { useDevRole } from "@/hooks/useDevRole";
+import { STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
@@ -114,6 +115,7 @@ export default function TeamPage() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteContract, setInviteContract] = useState<ContractType>(null);
+  const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [inviteJobTitle, setInviteJobTitle] = useState("");
   const [inviteStaffStatus, setInviteStaffStatus] = useState("");
   const [inviteHourlyRate, setInviteHourlyRate] = useState("");
@@ -143,12 +145,14 @@ export default function TeamPage() {
     setMyProfileId(user.id);
 
     const { data: memberData } = await supabase
-      .from("establishment_members").select("role, establishment_id")
+      .from("establishment_members").select("role, establishment_id, establishments(tip_settings)")
       .eq("profile_id", user.id).eq("is_active", true).single();
 
     if (!memberData) { setLoading(false); return; }
     setRole(memberData.role);
     setEstablishmentId(memberData.establishment_id);
+    const estData = memberData.establishments as { tip_settings: unknown } | null;
+    if (estData?.tip_settings) setTipSettings(parseTipSettings(estData.tip_settings));
     if (memberData.role === "owner" || memberData.role === "manager") {
       loadPendingInvites(memberData.establishment_id);
     }
@@ -430,32 +434,32 @@ export default function TeamPage() {
                   onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
 
-              {/* Poste + Statut */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste</label>
-                  <input type="text" value={inviteJobTitle} onChange={e => setInviteJobTitle(e.target.value)} placeholder="Ex: Serveur, Chef..."
-                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Statut</label>
-                  <select value={inviteStaffStatus} onChange={e => setInviteStaffStatus(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                    <option value="">Non précisé</option>
-                    <option value="chef_de_rang">Chef de rang</option>
-                    <option value="serveur">Serveur</option>
-                    <option value="cuisinier">Cuisinier</option>
-                    <option value="commis">Commis</option>
-                    <option value="barman">Barman</option>
-                    <option value="plongeur">Plongeur</option>
-                    <option value="responsable">Responsable</option>
-                    <option value="autre">Autre</option>
-                  </select>
-                </div>
+              {/* Poste — menu déroulant depuis les postes du responsable */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste</label>
+                <select
+                  value={inviteStaffStatus}
+                  onChange={e => {
+                    const key = e.target.value as StaffStatus | "";
+                    setInviteStaffStatus(key);
+                    if (key) {
+                      const label = tipSettings.labels[key as StaffStatus] ?? STAFF_STATUSES[key as StaffStatus]?.label ?? key;
+                      setInviteJobTitle(label);
+                    } else {
+                      setInviteJobTitle("");
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                  <option value="">— Choisir un poste —</option>
+                  {(Object.keys(STAFF_STATUSES) as StaffStatus[])
+                    .filter(s => !tipSettings.hidden.includes(s))
+                    .map(s => {
+                      const label = tipSettings.labels[s] ?? STAFF_STATUSES[s].label;
+                      return <option key={s} value={s}>{label}</option>;
+                    })
+                  }
+                </select>
               </div>
 
               {/* Contrat + Rôle */}
