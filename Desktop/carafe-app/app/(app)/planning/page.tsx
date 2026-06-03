@@ -314,43 +314,13 @@ export default function PlanningPage() {
     }
 
     try {
-      const supabase = createClient();
-
-      // Group by (user_id, shift_date) to handle midi + soir → 1 or 2 rows
-      const byUserDate = new Map<string, PlanningShift[]>();
-      for (const ps of planningShifts) {
-        const key = `${ps.user_id}__${ps.shift_date}`;
-        if (!byUserDate.has(key)) byUserDate.set(key, []);
-        byUserDate.get(key)!.push(ps);
-      }
-
-      const shiftsToCreate = Array.from(byUserDate.values()).map(group => {
-        const sorted = group.sort((a, b) => a.start_time.localeCompare(b.start_time));
-        const first = sorted[0];
-        const second = sorted[1];
-        return {
-          user_id: first.user_id,
-          establishment_id: estId,
-          shift_date: first.shift_date,
-          start_time: first.start_time,
-          end_time: first.end_time,
-          hours_worked: calcHours(first.start_time, first.end_time),
-          tips: 0,
-          start_time_2: second?.start_time ?? null,
-          end_time_2: second?.end_time ?? null,
-          hours_worked_2: second ? calcHours(second.start_time, second.end_time) : 0,
-          tips_2: 0,
-        };
+      const resp = await fetch("/api/planning/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planning_week_id: planningWeek.id }),
       });
-
-      const { error: shiftError } = await supabase.from("shifts").insert(shiftsToCreate);
-      if (shiftError) throw new Error(shiftError.message);
-
-      await supabase
-        .from("planning_weeks")
-        .update({ status: "published", validated_at: new Date().toISOString() })
-        .eq("id", planningWeek.id);
-
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error ?? "Erreur validation");
       await load(weekStart);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erreur");
