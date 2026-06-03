@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock, BarChart2, TrendingUp } from "lucide-react";
-import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
+import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = false;
 
