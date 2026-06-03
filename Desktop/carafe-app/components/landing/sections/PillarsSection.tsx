@@ -166,86 +166,108 @@ function ChallengesPreview() {
 }
 
 function PlanningPreview() {
-  const [phase, setPhase] = useState<"raw" | "optimized">("raw");
-  const [margin, setMargin] = useState(23);
+  const [phase, setPhase] = useState<"needs" | "generating" | "done">("needs");
   useEffect(() => {
     let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>, t3: ReturnType<typeof setTimeout>;
     const cycle = () => {
-      setPhase("raw");
-      setMargin(23);
-      t1 = setTimeout(() => setPhase("optimized"), 1800);
-      t2 = setTimeout(() => setMargin(38), 2100);
-      t3 = setTimeout(cycle, 5000);
+      setPhase("needs");
+      t1 = setTimeout(() => setPhase("generating"), 2200);
+      t2 = setTimeout(() => setPhase("done"), 3800);
+      t3 = setTimeout(cycle, 6800);
     };
-    const init = setTimeout(cycle, 600);
+    const init = setTimeout(cycle, 500);
     return () => { clearTimeout(init); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
-  const shifts = [
-    { day: "L", raw: 3, opt: 3 },
-    { day: "M", raw: 5, opt: 3 },
-    { day: "M", raw: 2, opt: 3 },
-    { day: "J", raw: 5, opt: 4 },
-    { day: "V", raw: 3, opt: 5 },
-    { day: "S", raw: 6, opt: 6 },
-    { day: "D", raw: 4, opt: 3 },
+  const needs = [
+    { service: "Vendredi soir", staff: "3 serveurs · 2 cuisiniers" },
+    { service: "Samedi midi", staff: "4 serveurs · 3 cuisiniers" },
+    { service: "Dimanche soir", staff: "2 serveurs · 1 cuisinier" },
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
-        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — planning optimisé selon ton chiffre d'affaires</span>
+    <div className="space-y-2">
+      {/* Needs list */}
+      <div className="space-y-1.5">
+        {needs.map(({ service, staff }, i) => (
+          <motion.div
+            key={service}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.12, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-medium truncate" style={{ color: "var(--foreground)" }}>{service}</p>
+              <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{staff}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
-      <div className="flex gap-1.5 justify-between px-1">
-        {shifts.map(({ day, raw, opt }, i) => {
-          const val = phase === "optimized" ? opt : raw;
-          const isOver = raw > opt;
-          return (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span className="text-[8px] font-mono" style={{ color: "var(--foreground-dim)" }}>{day}</span>
-              <div style={{ height: 48, width: 22, display: "flex", alignItems: "flex-end", position: "relative" }}>
-                <motion.div
-                  className="w-full rounded-sm"
-                  animate={{
-                    height: val * 8,
-                    background: phase === "optimized" ? "rgba(16,185,129,0.22)" : isOver ? "rgba(239,68,68,0.2)" : "rgba(251,191,36,0.18)",
-                    borderColor: phase === "optimized" ? "rgba(16,185,129,0.35)" : isOver ? "rgba(239,68,68,0.3)" : "rgba(251,191,36,0.3)",
-                  }}
-                  transition={{ duration: 0.4, delay: i * 0.045, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ border: "1px solid" }}
-                />
+
+      {/* Button + result */}
+      <AnimatePresence mode="wait">
+        {phase === "needs" && (
+          <motion.button
+            key="btn"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[11px] font-semibold"
+            style={{ color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)", background: "rgba(6,182,212,0.05)" }}
+          >
+            Générer le planning
+          </motion.button>
+        )}
+
+        {phase === "generating" && (
+          <motion.div
+            key="generating"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[11px] font-semibold"
+            style={{ color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)", background: "rgba(6,182,212,0.07)" }}
+          >
+            <motion.span
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ repeat: Infinity, duration: 0.9, ease: "easeInOut" }}
+            >
+              ✦
+            </motion.span>
+            Génération en cours…
+          </motion.div>
+        )}
+
+        {phase === "done" && (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-1.5"
+          >
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)" }}>
+              <Check size={10} strokeWidth={2.5} style={{ color: "#10b981" }} />
+              <span className="text-[10px] font-medium" style={{ color: "#10b981" }}>Planning généré</span>
+            </div>
+            <div className="flex gap-1.5">
+              <div className="flex-1 px-3 py-2 rounded-lg text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <p className="text-[8px] font-mono mb-0.5" style={{ color: "var(--foreground-dim)" }}>Masse salariale</p>
+                <p className="text-[12px] font-semibold font-mono" style={{ color: "#10b981" }}>−18%</p>
+              </div>
+              <div className="flex-1 px-3 py-2 rounded-lg text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <p className="text-[8px] font-mono mb-0.5" style={{ color: "var(--foreground-dim)" }}>Marge estimée</p>
+                <p className="text-[12px] font-semibold font-mono" style={{ color: "#10b981" }}>+15 pts</p>
               </div>
             </div>
-          );
-        })}
-      </div>
-      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <div className="flex-1">
-          <p className="text-[9px] font-mono mb-0.5" style={{ color: "var(--foreground-dim)" }}>Marge brute / service</p>
-          <motion.p
-            key={margin}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-[15px] font-semibold font-mono"
-            style={{ color: margin > 30 ? "#10b981" : "var(--foreground)" }}
-          >
-            {margin}%
-          </motion.p>
-        </div>
-        <AnimatePresence>
-          {phase === "optimized" && (
-            <motion.span
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-[9px] font-mono px-2 py-1 rounded"
-              style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981" }}
-            >
-              +15 pts
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
