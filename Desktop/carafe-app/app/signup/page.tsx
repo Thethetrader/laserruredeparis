@@ -42,23 +42,27 @@ function SignupInner() {
 
   const onSubmitDirector = async (data: DirectorData) => {
     setServerError(null);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "signup",
+          size,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          establishment_name: data.establishment_name,
+        }),
+      });
 
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "signup",
-        size,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        establishment_name: data.establishment_name,
-      }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) { setServerError(json.error ?? "Erreur. Réessayez."); return; }
-    window.location.href = json.url;
+      const json = await res.json();
+      if (!res.ok) { setServerError(json.error ?? "Erreur. Réessayez."); return; }
+      if (!json.url) { setServerError("Lien de paiement manquant. Réessayez."); return; }
+      window.location.href = json.url;
+    } catch {
+      setServerError("Erreur réseau. Vérifiez votre connexion et réessayez.");
+    }
   };
 
   const onSubmitMember = async (data: MemberData) => {
