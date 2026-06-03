@@ -270,9 +270,13 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data: memberData } = await supabase
-      .from("establishment_members").select("role, establishment_id")
-      .eq("profile_id", user.id).eq("is_active", true).single();
+    const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
+    let memberQ = supabase.from("establishment_members").select("role, establishment_id")
+      .eq("profile_id", user.id).eq("is_active", true);
+    if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
+    const { data: memberData } = await memberQ.limit(1).maybeSingle();
 
     if (!memberData) { setLoading(false); return; }
 
