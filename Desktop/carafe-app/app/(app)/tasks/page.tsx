@@ -194,7 +194,7 @@ export default function TasksManagerPage() {
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
       supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
-      supabase.from("task_one_shots").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
+      supabase.from("task_one_shots").select("*, profiles!task_one_shots_created_by_fkey(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
     ]);
