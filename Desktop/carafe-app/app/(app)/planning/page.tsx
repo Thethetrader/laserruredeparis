@@ -167,12 +167,14 @@ export default function PlanningPage() {
       setPlanningWeek(pw as PlanningWeek);
       if (pw.service_needs) setNeeds(pw.service_needs as ServiceNeeds);
 
-      const { data: ps } = await supabase
+      const { data: ps, error: psError } = await supabase
         .from("planning_shifts")
         .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name, staff_status)")
         .eq("planning_week_id", pw.id)
         .order("shift_date")
         .order("start_time");
+
+      console.log("[planning] shifts:", ps?.length, "error:", psError?.message, "pw.id:", pw.id);
 
       if (ps) {
         setPlanningShifts(ps.map((s: any) => ({
