@@ -482,15 +482,25 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              {/* Taux horaire + Heures/sem */}
+              {/* Taux horaire net → brut auto + Heures/sem */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Taux horaire (€)</label>
-                  <input type="number" min="0" step="0.01" value={inviteHourlyRate} onChange={e => setInviteHourlyRate(e.target.value)} placeholder="Ex: 12.50"
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Taux horaire NET (€)</label>
+                  <input type="number" min="0" step="0.01" value={inviteHourlyRate} onChange={e => setInviteHourlyRate(e.target.value)} placeholder="Ex: 9.76"
                     className="w-full px-3 py-2 text-sm rounded-md outline-none"
                     style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
                     onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
                     onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                  {inviteHourlyRate && parseFloat(inviteHourlyRate) > 0 && (
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                        Brut : <span className="font-mono font-semibold" style={{ color: "var(--foreground)" }}>{(parseFloat(inviteHourlyRate) / 0.78).toFixed(2)} €/h</span>
+                      </p>
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                        Coût employeur : <span className="font-mono font-semibold" style={{ color: "#F59E0B" }}>{(parseFloat(inviteHourlyRate) / 0.78 * 1.45).toFixed(2)} €/h</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Heures / sem</label>
@@ -499,6 +509,16 @@ export default function TeamPage() {
                     style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
                     onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
                     onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                  {inviteHourlyRate && inviteWeeklyHours && parseFloat(inviteHourlyRate) > 0 && parseInt(inviteWeeklyHours) > 0 && (
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                        Net/mois : <span className="font-mono font-semibold" style={{ color: "var(--foreground)" }}>{(parseFloat(inviteHourlyRate) * parseInt(inviteWeeklyHours) * 52 / 12).toFixed(0)} €</span>
+                      </p>
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                        Coût/mois : <span className="font-mono font-semibold" style={{ color: "#F59E0B" }}>{(parseFloat(inviteHourlyRate) / 0.78 * 1.45 * parseInt(inviteWeeklyHours) * 52 / 12).toFixed(0)} €</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

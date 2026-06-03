@@ -40,12 +40,19 @@ interface ValidationStatus {
   validated_at: string | null;
 }
 
+// Net → Brut : ÷ 0.78 (cotisations salariales ~22%)
+// Brut → Coût employeur : × 1.45 (cotisations patronales ~45%)
+function netToGross(net: number) { return net / 0.78; }
+function grossToEmployerCost(gross: number) { return gross * 1.45; }
+function netToEmployerCost(net: number) { return grossToEmployerCost(netToGross(net)); }
+
 interface EmployeePayroll {
   userId: string;
   firstName: string;
   staffStatus: StaffStatus | null;
   tipsEnabled: boolean;
   weeklyHours: number;
+  hourlyRateNet: number | null;
   contractType: string | null;
   services: number;
   totalHours: number;
@@ -90,7 +97,7 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
     }
 
     const [membersRes, shiftsRes, caRes] = await Promise.all([
-      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type)").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name, weekly_hours, contract_type, hourly_rate)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("shifts").select("user_id, hours_worked, hours_worked_2, tips, tips_2").eq("establishment_id", estId).gte("shift_date", from).lte("shift_date", to),
       caSettings.mode !== "disabled"
         ? supabase.from("ca_entries").select("amount").eq("establishment_id", estId).gte("entry_date", from).lte("entry_date", to)
@@ -116,10 +123,10 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
     }
 
     const result: EmployeePayroll[] = members.map(m => {
-      const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null } | null;
+      const prof = m.profiles as { first_name: string | null; weekly_hours: number | null; contract_type: string | null; hourly_rate: number | null } | null;
       const weekly = prof?.weekly_hours ?? 35;
       const emp = agg[m.profile_id] ?? { hours: 0, tips: 0, services: 0 };
-      return { userId: m.profile_id, firstName: prof?.first_name ?? "—", staffStatus: (m.staff_status ?? null) as StaffStatus | null, tipsEnabled: m.tips_enabled ?? true, weeklyHours: weekly, contractType: prof?.contract_type ?? null, services: emp.services, totalHours: emp.hours, totalTips: emp.tips, ...calcPayroll(emp.hours, weekly, periodDays) };
+      return { userId: m.profile_id, firstName: prof?.first_name ?? "—", staffStatus: (m.staff_status ?? null) as StaffStatus | null, tipsEnabled: m.tips_enabled ?? true, weeklyHours: weekly, hourlyRateNet: prof?.hourly_rate ?? null, contractType: prof?.contract_type ?? null, services: emp.services, totalHours: emp.hours, totalTips: emp.tips, ...calcPayroll(emp.hours, weekly, periodDays) };
     }).filter(e => e.services > 0);
 
     setData(result);
@@ -236,6 +243,33 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
                   )}
                 </div>
 
+                {/* Salaire Net / Brut / Coût employeur */}
+                {emp.hourlyRateNet && emp.hourlyRateNet > 0 && emp.totalHours > 0 && (
+                  <div className="mx-4 mb-3 rounded-lg px-3 py-2.5" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
+                    <p className="text-[9px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Salaire estimé sur la période</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center">
+                        <p className="text-[13px] font-bold font-mono" style={{ color: "var(--foreground)" }}>
+                          {(emp.hourlyRateNet * emp.totalHours).toFixed(0)} €
+                        </p>
+                        <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>NET</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[13px] font-bold font-mono" style={{ color: "var(--foreground)" }}>
+                          {(netToGross(emp.hourlyRateNet) * emp.totalHours).toFixed(0)} €
+                        </p>
+                        <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>BRUT</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[13px] font-bold font-mono" style={{ color: "#F59E0B" }}>
+                          {(netToEmployerCost(emp.hourlyRateNet) * emp.totalHours).toFixed(0)} €
+                        </p>
+                        <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>COÛT</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Overtime alert */}
                 {hasOvertime && (
                   <div className="mx-4 mb-3 px-3 py-2 rounded-lg flex items-center gap-2"
@@ -261,6 +295,48 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
               <Row label="Total services" value={String(data.reduce((s, e) => s + e.services, 0))} dim />
             </div>
           </div>
+
+          {/* Masse salariale */}
+          {(() => {
+            const withRate = data.filter(e => e.hourlyRateNet && e.hourlyRateNet > 0 && e.totalHours > 0);
+            if (withRate.length === 0) return null;
+            const totalNet = withRate.reduce((s, e) => s + (e.hourlyRateNet! * e.totalHours), 0);
+            const totalBrut = withRate.reduce((s, e) => s + (netToGross(e.hourlyRateNet!) * e.totalHours), 0);
+            const totalCout = withRate.reduce((s, e) => s + (netToEmployerCost(e.hourlyRateNet!) * e.totalHours), 0);
+            const pctCA = totalCA && totalCA > 0 ? Math.round((totalCout / totalCA) * 100) : null;
+            return (
+              <div className="rounded-2xl px-4 py-4 mt-2" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <p className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--danger)" }}>Masse salariale</p>
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="text-center rounded-lg py-2" style={{ background: "var(--background)" }}>
+                    <p className="text-[15px] font-bold font-mono" style={{ color: "var(--foreground)" }}>{totalNet.toFixed(0)} €</p>
+                    <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Net total</p>
+                  </div>
+                  <div className="text-center rounded-lg py-2" style={{ background: "var(--background)" }}>
+                    <p className="text-[15px] font-bold font-mono" style={{ color: "var(--foreground)" }}>{totalBrut.toFixed(0)} €</p>
+                    <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Brut total</p>
+                  </div>
+                  <div className="text-center rounded-lg py-2" style={{ background: "rgba(239,68,68,0.08)" }}>
+                    <p className="text-[15px] font-bold font-mono" style={{ color: "var(--danger)" }}>{totalCout.toFixed(0)} €</p>
+                    <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Coût réel</p>
+                  </div>
+                </div>
+                {pctCA !== null && (
+                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: "1px solid rgba(239,68,68,0.15)" }}>
+                    <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "var(--background)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(pctCA, 100)}%`, background: pctCA > 40 ? "var(--danger)" : pctCA > 30 ? "#F59E0B" : "var(--success)", transition: "width 0.5s" }} />
+                    </div>
+                    <p className="text-[12px] font-mono font-bold flex-shrink-0" style={{ color: pctCA > 40 ? "var(--danger)" : pctCA > 30 ? "#F59E0B" : "var(--success)" }}>
+                      {pctCA}% du CA
+                    </p>
+                  </div>
+                )}
+                <p className="text-[9px] mt-2" style={{ color: "var(--foreground-dim)" }}>
+                  {withRate.length}/{data.length} employés avec taux horaire · Charges estimées (22% sal. + 45% pat.)
+                </p>
+              </div>
+            );
+          })()}
 
           {/* CA block */}
           {totalCA !== null && totalCA > 0 && (
