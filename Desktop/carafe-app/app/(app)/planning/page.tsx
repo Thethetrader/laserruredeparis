@@ -345,7 +345,7 @@ export default function PlanningPage() {
   const hasPlanning = !!planningWeek;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 lg:pb-8">
+    <div className="max-w-2xl px-4 py-6 pb-24 lg:pb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
