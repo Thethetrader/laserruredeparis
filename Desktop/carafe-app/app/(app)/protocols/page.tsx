@@ -216,6 +216,7 @@ export default function ProtocolsPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
@@ -357,7 +358,7 @@ export default function ProtocolsPage() {
       return;
     }
 
-    const { data } = await supabase.from("protocols").insert({
+    const { data, error } = await supabase.from("protocols").insert({
       establishment_id: establishmentId,
       author_id: profileId,
       title: formTitle,
@@ -370,6 +371,11 @@ export default function ProtocolsPage() {
       steps: formSteps.length > 0 ? formSteps : null,
     }).select().single();
 
+    if (error) {
+      setFormError(error.message ?? "Erreur lors de la création. Réessayez.");
+      setSubmitting(false);
+      return;
+    }
     if (data) setProtocols(prev => [data as Protocol, ...prev]);
     resetForm();
     setSubmitting(false);
@@ -378,6 +384,7 @@ export default function ProtocolsPage() {
   const resetForm = () => {
     setFormTitle(""); setFormContent(""); setFormCategory("salle");
     setFormMandatory(false); setFormFile(null); setFormSteps([]);
+    setFormError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setShowForm(false);
   };
@@ -471,6 +478,7 @@ export default function ProtocolsPage() {
             extracting={extracting} onExtractSteps={extractSteps}
             fileInputRef={fileInputRef} handleFileChange={handleFileChange}
             submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
+            error={formError}
           />
         )}
 
@@ -588,8 +596,11 @@ export default function ProtocolsPage() {
           formCategory={formCategory} setFormCategory={setFormCategory}
           formMandatory={formMandatory} setFormMandatory={setFormMandatory}
           formFile={formFile} setFormFile={setFormFile}
+          formSteps={formSteps} setFormSteps={setFormSteps}
+          extracting={extracting} onExtractSteps={extractSteps}
           fileInputRef={fileInputRef} handleFileChange={handleFileChange}
           submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
+          error={formError}
         />
       )}
 
@@ -875,6 +886,7 @@ interface ProtocolFormProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   submitting: boolean; onSubmit: () => void; onCancel: () => void;
+  error?: string | null;
 }
 
 function ProtocolForm({
@@ -882,7 +894,7 @@ function ProtocolForm({
   formCategory, setFormCategory, formMandatory, setFormMandatory,
   formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
   fileInputRef, handleFileChange,
-  submitting, onSubmit, onCancel,
+  submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
   const updateStep = (index: number, value: string) => {
     const next = [...formSteps];
@@ -1026,6 +1038,11 @@ function ProtocolForm({
             </label>
           </div>
         </div>
+        {error && (
+          <p className="text-[12px] px-3 py-2 rounded-md" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            {error}
+          </p>
+        )}
         <div className="flex gap-2 pt-1">
           <button onClick={onSubmit} disabled={submitting || !formTitle.trim()}
             className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
