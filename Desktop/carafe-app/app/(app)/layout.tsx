@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopBar } from "@/components/layout/TopBar";
@@ -10,6 +12,24 @@ import type { Establishment, EstablishmentWithRole, Profile, UserRole } from "@/
 type MemberRow = { role: UserRole; establishments: Establishment };
 
 const DEV_MODE = false;
+
+// Cache les données du layout 60s par user — évite 3 appels Supabase à chaque nav
+const getCachedUserData = unstable_cache(
+  async (userId: string) => {
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const [profileRes, membersRes] = await Promise.all([
+      admin.from("profiles").select("*").eq("id", userId).single(),
+      admin.from("establishment_members").select("role, establishments(*)").eq("profile_id", userId).eq("is_active", true),
+    ]);
+    return { profile: profileRes.data, members: membersRes.data };
+  },
+  ["layout-user-data"],
+  { revalidate: 60 }
+);
 
 const DEV_PROFILE: Profile = {
   id: "dev-user",
@@ -86,20 +106,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     establishments = DEV_ESTABLISHMENTS_LIST;
   } else {
     const supabase = await createClient();
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect("/login");
 
-    const [profileResult, membersResult] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", user.id).single(),
-      supabase.from("establishment_members").select("role, establishments(*)").eq("profile_id", user.id),
-    ]);
+    const { profile: fetchedProfile, members: fetchedMembers } = await getCachedUserData(user.id);
 
-    const fetchedProfile = profileResult.data as Profile | null;
     if (!fetchedProfile) redirect("/login");
-    profile = fetchedProfile;
+    profile = fetchedProfile as Profile;
 
-    const rawMembers = (membersResult.data ?? []) as unknown as MemberRow[];
+    const rawMembers = (fetchedMembers ?? []) as unknown as MemberRow[];
     establishments = rawMembers
       .filter(m => m.establishments)
       .map(m => ({ ...m.establishments, role: m.role }));
