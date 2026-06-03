@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { establishment_id, role, email, job_title, staff_status, hourly_rate, contract_type, weekly_hours } = await req.json();
+  const { establishment_id, role, email, first_name, last_name, phone, job_title, staff_status, hourly_rate, contract_type, weekly_hours } = await req.json();
   if (!establishment_id || !role) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
   const { data: member } = await supabase
@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
       establishment_id,
       role,
       email: email || null,
+      first_name: first_name || null,
+      last_name: last_name || null,
+      phone: phone || null,
       invited_by: user.id,
       job_title: job_title || null,
       staff_status: staff_status || null,

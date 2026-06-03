@@ -15,7 +15,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
 
   const { data: inv, error } = await admin
     .from("invitations")
-    .select("id, establishment_id, role, status, expires_at, job_title, staff_status, hourly_rate, contract_type, weekly_hours")
+    .select("id, establishment_id, role, status, expires_at, first_name, last_name, phone, job_title, staff_status, hourly_rate, contract_type, weekly_hours")
     .eq("token", token)
     .single();
 
@@ -49,8 +49,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
 
-  // Update profile with contract info if provided
+  // Update profile with pre-filled info from invitation
   const profileUpdates: Record<string, unknown> = {};
+  if (inv.first_name) profileUpdates.first_name = inv.first_name;
+  if (inv.last_name) profileUpdates.last_name = inv.last_name;
+  if (inv.phone) profileUpdates.phone = inv.phone;
   if (inv.hourly_rate) profileUpdates.hourly_rate = inv.hourly_rate;
   if (inv.contract_type) profileUpdates.contract_type = inv.contract_type;
   if (inv.weekly_hours) profileUpdates.weekly_hours = inv.weekly_hours;
