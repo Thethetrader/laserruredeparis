@@ -7,7 +7,9 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 interface ServicePeriod {
   start: string;
   end: string;
-  staff: Record<string, number>;
+  salle: number;
+  cuisine: number;
+  bar: number;
 }
 
 interface ServiceNeeds {
@@ -32,8 +34,19 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
-    // Resolve establishment: use client-provided ID if the user is a member, otherwise use their first active establishment
-    let establishment_id = clientEstId;
+    // Resolve establishment: validate client-provided ID (user must be member), otherwise fall back to their own
+    let establishment_id: string | undefined;
+
+    if (clientEstId) {
+      const { data: membership } = await supabase
+        .from("establishment_members")
+        .select("establishment_id")
+        .eq("profile_id", user.id)
+        .eq("establishment_id", clientEstId)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (membership) establishment_id = clientEstId;
+    }
 
     if (!establishment_id) {
       const { data: membership } = await supabase
@@ -94,14 +107,18 @@ BESOINS DE LA SEMAINE :
 Jours de service : ${serviceDayLabels}
 
 Service du midi (${needs.midi.start}–${needs.midi.end}) :
-${Object.entries(needs.midi.staff || {}).filter(([,n]) => n > 0).map(([role, n]) => `- ${role} : ${n} personne${n > 1 ? 's' : ''}`).join('\n') || '- Aucun besoin défini'}
+- Salle : ${needs.midi.salle} personnes
+- Cuisine : ${needs.midi.cuisine} personnes
+- Bar : ${needs.midi.bar} personnes
 
 Service du soir (${needs.soir.start}–${needs.soir.end}) :
-${Object.entries(needs.soir.staff || {}).filter(([,n]) => n > 0).map(([role, n]) => `- ${role} : ${n} personne${n > 1 ? 's' : ''}`).join('\n') || '- Aucun besoin défini'}
+- Salle : ${needs.soir.salle} personnes
+- Cuisine : ${needs.soir.cuisine} personnes
+- Bar : ${needs.soir.bar} personnes
 
 RÈGLES :
 - Au moins 2 jours de repos par semaine par personne
-- Respecte le rôle de chaque employé pour couvrir les besoins par poste
+- Respecte le rôle de chaque employé (salle→serveur/chef_de_rang/responsable, cuisine→cuisinier/commis/plongeur, bar→barman/responsable)
 - Répartis équitablement les jours entre les employés
 - Ne dépasse pas les heures contractuelles hebdomadaires
 - Pour les serveurs/chefs de rang/barmen : assigner soit midi soit soir ou les deux selon les besoins
