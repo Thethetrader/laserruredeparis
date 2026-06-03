@@ -277,7 +277,7 @@ export default function ShiftsPage() {
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
     if (ex) await supabase.from("shifts").update(data).eq("id", ex.id);
-    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId || null});
+    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId || undefined});
     setSelected(null);
     await load(year, month);
   }
