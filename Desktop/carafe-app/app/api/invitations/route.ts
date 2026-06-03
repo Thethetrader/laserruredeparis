@@ -27,6 +27,28 @@ export async function POST(req: NextRequest) {
   if (member.role === "employee") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (member.role === "manager" && role === "manager") return NextResponse.json({ error: "Managers can only invite employees" }, { status: 403 });
 
+  // Enforce 20-member limit for small plan
+  const { data: estab } = await admin
+    .from("establishments")
+    .select("subscription_tier")
+    .eq("id", establishment_id)
+    .single();
+
+  if (estab?.subscription_tier === "small") {
+    const { count } = await admin
+      .from("establishment_members")
+      .select("id", { count: "exact", head: true })
+      .eq("establishment_id", establishment_id)
+      .eq("is_active", true);
+
+    if ((count ?? 0) >= 20) {
+      return NextResponse.json(
+        { error: "Limite atteinte. Votre abonnement (< 20 salariés) ne permet pas plus de 20 membres. Passez au plan supérieur pour continuer." },
+        { status: 403 }
+      );
+    }
+  }
+
   const { data: invitation, error } = await admin
     .from("invitations")
     .insert({
