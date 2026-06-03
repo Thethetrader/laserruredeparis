@@ -16,6 +16,7 @@ const managerNav = [
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
   { href: "/shifts",             icon: CalendarDays,    label: "Shifts" },
   { href: "/planning",           icon: LayoutDashboard, label: "Planning IA" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
