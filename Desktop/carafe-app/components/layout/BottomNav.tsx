@@ -18,6 +18,7 @@ const managerNav = [
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: CalendarDays,    label: "Shifts" },
+  { href: "/planning",           icon: LayoutDashboard, label: "Planning" },
   { href: "/establishment/settings", icon: Settings,    label: "Paramètres" },
 ];
 
@@ -31,6 +32,7 @@ const employeeNav = [
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
+  { href: "/planning",           icon: LayoutDashboard, label: "Planning" },
 ];
 
 interface BottomNavProps {
