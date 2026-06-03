@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, ClipboardList, Sparkles } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
@@ -15,6 +15,7 @@ const adminNav = [
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/planning",           icon: Sparkles,        label: "Planning IA" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
   { href: "/shifts",             icon: CalendarRange,   label: "Shifts" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
 ];
