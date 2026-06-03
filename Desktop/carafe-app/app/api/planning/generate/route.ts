@@ -146,8 +146,10 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
     const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
     let parsed: { shifts: Array<{ user_id: string; shift_date: string; start_time: string; end_time: string; service: string }> };
     try {
-      const clean = text.startsWith("{") ? text : text.slice(text.indexOf("{"));
-      parsed = JSON.parse(clean);
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("no JSON object");
+      parsed = JSON.parse(text.slice(start, end + 1));
     } catch {
       console.error("AI response:", text);
       return NextResponse.json({ error: "Réponse IA invalide — réessayez" }, { status: 500 });
