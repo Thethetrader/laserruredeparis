@@ -14,12 +14,12 @@ const FEATURES = [
 ];
 
 const TABLE_ROWS = [
-  { label: "1 établissement", total: "39€", devis: false },
-  { label: "2 établissements", total: "68€", devis: false },
-  { label: "3 établissements", total: "97€", devis: false },
-  { label: "4 établissements", total: "126€", devis: false },
-  { label: "5 établissements", total: "155€", devis: false },
-  { label: "6 établissements et plus", total: "Sur devis", devis: true },
+  { label: "1 petit étab (< 20 sal.)", total: "29€", devis: false },
+  { label: "1 grand étab (≥ 20 sal.)", total: "39€", devis: false },
+  { label: "2 petits étabs", total: "48€", devis: false },
+  { label: "2 grands étabs", total: "68€", devis: false },
+  { label: "Petit + grand", total: "58€", devis: false },
+  { label: "3 étabs et plus", total: "Sur devis", devis: true },
 ];
 
 export default function PricingSection() {
@@ -27,7 +27,7 @@ export default function PricingSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="pricing" className="py-12 md:py-16" style={{ background: "var(--background-soft)" }}>
+    <section id="pricing" className="py-20" style={{ background: "var(--background-soft)" }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
 
         {/* Header */}
@@ -69,16 +69,23 @@ export default function PricingSection() {
             [ TARIF DE BASE ]
           </p>
 
-          <div className="mb-2">
-            <span
-              className="font-semibold leading-none"
-              style={{ fontSize: 72, color: "var(--accent)", letterSpacing: "-0.04em" }}
-            >
-              39€
-            </span>
+          <div className="flex items-end gap-4 mb-2">
+            <div>
+              <span
+                className="font-semibold leading-none"
+                style={{ fontSize: 72, color: "var(--accent)", letterSpacing: "-0.04em" }}
+              >
+                29€
+              </span>
+              <span className="text-base ml-1" style={{ color: "var(--foreground-muted)" }}>/mois</span>
+            </div>
+            <div className="pb-3 flex flex-col items-start">
+              <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded mb-1" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>ou 39€</span>
+              <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>≥ 20 salariés</span>
+            </div>
           </div>
           <p className="text-base mb-8" style={{ color: "var(--foreground-muted)" }}>
-            /mois HT par établissement
+            HT par établissement · 19€ ou 29€ pour chaque étab supplémentaire
           </p>
 
           <div className="mb-8" style={{ height: 1, background: "var(--border)" }} />
@@ -104,11 +111,20 @@ export default function PricingSection() {
           </p>
 
           <a
-            href="#cta"
-            className="block w-full text-center py-3.5 rounded-xl text-[14px] font-semibold transition-opacity hover:opacity-90"
+            href="/signup"
+            className="block w-full text-center py-3.5 rounded-xl text-[14px] font-semibold transition-opacity hover:opacity-90 mb-3"
             style={{ background: "var(--accent)", color: "#09090B" }}
           >
-            Essayer 14 jours · Sans CB
+            Commencer maintenant
+          </a>
+          <a
+            href="#cta"
+            className="block w-full text-center py-3 rounded-xl text-[13px] transition-colors duration-150"
+            style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+          >
+            Rejoindre la liste d&apos;attente
           </a>
         </motion.div>
 
@@ -184,7 +200,7 @@ export default function PricingSection() {
           className="text-center font-mono text-[11px]"
           style={{ color: "var(--foreground-dim)" }}
         >
-          14 jours d&apos;essai gratuit · Sans carte bancaire · Sans engagement · Annulation en un clic
+          Accès immédiat après paiement · Sans engagement · Annulation en un clic
         </motion.p>
       </div>
 

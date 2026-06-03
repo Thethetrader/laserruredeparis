@@ -76,27 +76,26 @@ export default function HeroSection() {
 
           <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
             <a
-              href="/login"
+              href="/signup"
               className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
               style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
             >
-              Se connecter
+              Commencer
               <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
             </a>
             <a
-              href="#features"
+              href="/login"
               className="inline-flex items-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
               style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             >
-              Voir comment ça marche
-              <span className="arrow-pulse inline-block">↓</span>
+              Se connecter <span className="inline-block">→</span>
             </a>
           </div>
 
           <p className="font-mono text-xs" style={{ color: "var(--foreground-dim)" }}>
-            14 jours gratuits · Sans CB · 5 min pour démarrer
+            Dès 29€/mois · Accès immédiat · Sans engagement
           </p>
         </div>
       </div>

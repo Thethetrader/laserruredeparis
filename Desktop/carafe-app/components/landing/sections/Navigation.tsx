@@ -75,9 +75,6 @@ export default function Navigation() {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <span className="font-mono text-[11px] tracking-wider" style={{ color: "var(--foreground-dim)" }}>
-              v0.1 · BETA
-            </span>
             <a
               href="/login"
               className="text-sm px-3 py-1.5 transition-colors duration-150 group flex items-center gap-1"
@@ -88,11 +85,11 @@ export default function Navigation() {
               Se connecter <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
             </a>
             <a
-              href="#cta"
+              href="/signup"
               className="btn-shine text-sm font-medium px-4 py-2 rounded-md flex items-center gap-1.5 group active:scale-[0.98] transition-transform duration-100"
               style={{ background: "var(--accent)", color: "#09090B" }}
             >
-              Essayer Karaf
+              Commencer
               <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
           </div>
@@ -134,12 +131,12 @@ export default function Navigation() {
             <div className="mt-12 flex flex-col gap-4">
               <a href="/login" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
               <a
-                href="#cta"
+                href="/signup"
                 onClick={() => setMenuOpen(false)}
                 className="font-medium px-6 py-3 rounded-md text-center text-sm"
                 style={{ background: "var(--accent)", color: "#09090B" }}
               >
-                Essayer Karaf
+                Commencer
               </a>
             </div>
             <p className="mt-auto mb-8 font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>v0.1 · BETA</p>

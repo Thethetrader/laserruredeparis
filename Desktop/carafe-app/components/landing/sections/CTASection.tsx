@@ -121,7 +121,7 @@ export default function CTASection() {
   return (
     <section
       id="cta"
-      className="py-14 md:py-20"
+      className="py-24"
       style={{
         background: "var(--background-soft)",
         borderTop: "1px solid rgba(6,182,212,0.12)",
@@ -142,8 +142,32 @@ export default function CTASection() {
           >
             Prêt à driver votre équipe autrement ?
           </h2>
-          <p className="text-base mb-10" style={{ color: "var(--foreground-muted)" }}>
-            Rejoignez les premiers restaurants à tester Karaf. Accès prioritaire à l&apos;ouverture.
+          <p className="text-base mb-8" style={{ color: "var(--foreground-muted)" }}>
+            Commencez maintenant ou rejoignez la liste d&apos;attente.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
+            <a
+              href="/signup"
+              className="btn-shine inline-flex items-center justify-center gap-2 font-medium px-7 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
+              style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
+            >
+              Commencer · dès 29€/mois
+              <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
+            </a>
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
+              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+            >
+              Se connecter →
+            </a>
+          </div>
+
+          <p className="text-sm mb-8" style={{ color: "var(--foreground-muted)" }}>
+            — ou rejoignez la liste d&apos;attente —
           </p>
 
           {status === "success" ? (
