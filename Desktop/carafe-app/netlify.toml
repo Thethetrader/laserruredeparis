@@ -2,6 +2,9 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  NEXT_PUBLIC_APP_URL = "https://karaf.fr"
+
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
