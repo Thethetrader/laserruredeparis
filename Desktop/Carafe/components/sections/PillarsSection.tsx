@@ -192,74 +192,64 @@ function PlanningPreview() {
   ];
 
   return (
-    <div className="space-y-2">
-      <AnimatePresence mode="wait">
-        {(phase === "needs" || phase === "generating") && (
-          <motion.div key="needs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }} className="space-y-1.5">
-            {needs.map(({ service, staff }, i) => (
-              <motion.div
-                key={service}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-medium" style={{ color: "var(--foreground)" }}>{service}</p>
-                  <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{staff}</p>
-                </div>
-              </motion.div>
-            ))}
-            <motion.div
-              animate={phase === "generating" ? { scale: [1, 0.97, 1] } : { scale: 1 }}
-              transition={{ duration: 0.35 }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[11px] font-semibold"
-              style={{ color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)", background: phase === "generating" ? "rgba(6,182,212,0.1)" : "rgba(6,182,212,0.05)" }}
-            >
-              {phase === "generating" ? (
-                <>
-                  <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 0.7 }}>✦</motion.span>
-                  Génération en cours…
-                </>
-              ) : "Générer le planning"}
-            </motion.div>
-          </motion.div>
-        )}
+    <div style={{ display: "block" }}>
+      {/* Besoins — toujours visibles */}
+      <div style={{ marginBottom: 8 }}>
+        {needs.map(({ service, staff }) => (
+          <div key={service} style={{ display: "block", marginBottom: 6, padding: "8px 12px", borderRadius: 8, background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 10, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>{service}</p>
+            <p style={{ fontSize: 9, color: "var(--foreground-dim)", margin: 0 }}>{staff}</p>
+          </div>
+        ))}
+      </div>
 
-        {phase === "done" && (
-          <motion.div key="done" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }} className="space-y-1.5">
-            <div className="flex items-center justify-between px-3 py-1.5 rounded-lg" style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.2)" }}>
-              <div className="flex items-center gap-2">
-                <Check size={9} strokeWidth={2.5} style={{ color: "#10b981" }} />
-                <span className="text-[9px] font-medium" style={{ color: "#10b981" }}>Planning généré</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-[9px] font-mono" style={{ color: "#10b981" }}>−18% masse sal.</span>
-                <span className="text-[9px] font-mono" style={{ color: "#10b981" }}>+15 pts marge</span>
-              </div>
-            </div>
-            {planning.map(({ jour, heure, noms, color, border }, i) => (
-              <motion.div
-                key={jour}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.07, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
-                style={{ background: color, border: `1px solid ${border}` }}
-              >
-                <span className="text-[9px] font-mono font-semibold w-7 flex-shrink-0" style={{ color: "var(--accent)" }}>{jour}</span>
-                <span className="text-[9px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{heure}</span>
-                <div className="flex gap-1 flex-wrap">
-                  {noms.map(n => (
-                    <span key={n} className="text-[8px] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "var(--foreground-muted)" }}>{n}</span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+      {/* Bouton / génération — disparaît en phase done */}
+      <motion.div
+        animate={{ opacity: phase === "done" ? 0 : 1, y: phase === "done" ? -4 : 0 }}
+        transition={{ duration: 0.2 }}
+        style={{ display: phase === "done" ? "none" : "block" }}
+      >
+        <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(6,182,212,0.25)", background: phase === "generating" ? "rgba(6,182,212,0.1)" : "rgba(6,182,212,0.05)", fontSize: 11, fontWeight: 600, color: "var(--accent)" }}>
+          {phase === "generating" ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 0.7 }}>✦</motion.span>
+              Génération en cours…
+            </span>
+          ) : "Générer le planning"}
+        </div>
+      </motion.div>
+
+      {/* Planning généré */}
+      <motion.div
+        animate={{ opacity: phase === "done" ? 1 : 0, y: phase === "done" ? 0 : 8 }}
+        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+        style={{ display: phase === "done" ? "block" : "none" }}
+      >
+        <div style={{ marginBottom: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.2)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 9, fontWeight: 500, color: "#10b981", marginRight: 12 }}>
+            <Check size={9} strokeWidth={2.5} style={{ color: "#10b981" }} />
+            Planning généré
+          </span>
+          <span style={{ fontSize: 9, fontFamily: "monospace", color: "#10b981", marginRight: 8 }}>−18% masse sal.</span>
+          <span style={{ fontSize: 9, fontFamily: "monospace", color: "#10b981" }}>+15 pts marge</span>
+        </div>
+        {planning.map(({ jour, heure, noms, color, border }, i) => (
+          <motion.div
+            key={jour}
+            animate={phase === "done" ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }}
+            transition={{ delay: i * 0.07, duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, background: color, border: `1px solid ${border}`, marginBottom: 6 }}
+          >
+            <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 600, width: 28, flexShrink: 0, color: "var(--accent)" }}>{jour}</span>
+            <span style={{ fontSize: 9, fontFamily: "monospace", flexShrink: 0, color: "var(--foreground-dim)" }}>{heure}</span>
+            <span style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
+              {noms.map(n => (
+                <span key={n} style={{ fontSize: 8, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", color: "var(--foreground-muted)" }}>{n}</span>
+              ))}
+            </span>
           </motion.div>
-        )}
-      </AnimatePresence>
+        ))}
+      </motion.div>
     </div>
   );
 }
