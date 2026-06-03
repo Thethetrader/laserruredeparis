@@ -21,35 +21,21 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === "signup") {
-    const { email, password, first_name, last_name, establishment_name } = body;
-    if (!email || !password || !first_name || !last_name || !establishment_name) {
+    const { email, first_name, last_name, establishment_name } = body;
+    if (!email || !first_name || !last_name || !establishment_name) {
       return NextResponse.json({ error: "Champs manquants" }, { status: 400 });
-    }
-
-    // Store pending signup temporarily
-    const { data: pending, error: pendingError } = await admin
-      .from("pending_signups")
-      .insert({ email, password, first_name, last_name, establishment_name, size })
-      .select("id")
-      .single();
-
-    if (pendingError || !pending) {
-      return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: getPriceId("first", size), quantity: 1 }],
-      metadata: { type: "signup", pending_signup_id: pending.id },
+      metadata: { type: "signup", email, first_name, last_name, establishment_name, size },
       customer_email: email,
       success_url: `${APP_URL}/signup/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/signup`,
       locale: "fr",
     });
-
-    // Save session_id to pending signup
-    await admin.from("pending_signups").update({ stripe_session_id: session.id }).eq("id", pending.id);
 
     return NextResponse.json({ url: session.url });
   }

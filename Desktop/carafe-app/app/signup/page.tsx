@@ -14,7 +14,6 @@ const directorSchema = z.object({
   last_name: z.string().min(1, "Nom requis"),
   establishment_name: z.string().min(2, "Nom de l'établissement requis"),
   email: z.string().email("Adresse email invalide"),
-  password: z.string().min(8, "8 caractères minimum"),
 });
 
 const memberSchema = z.object({
@@ -51,7 +50,6 @@ function SignupInner() {
         type: "signup",
         size,
         email: data.email,
-        password: data.password,
         first_name: data.first_name,
         last_name: data.last_name,
         establishment_name: data.establishment_name,
@@ -80,7 +78,6 @@ function SignupInner() {
     { name: "last_name" as const, label: "Nom", type: "text", placeholder: "Dupont" },
     { name: "establishment_name" as const, label: "Nom de votre établissement", type: "text", placeholder: "Le Comptoir des Halles" },
     { name: "email" as const, label: "Email", type: "email", placeholder: "marie@restaurant.fr" },
-    { name: "password" as const, label: "Mot de passe", type: "password", placeholder: "8 caractères minimum" },
   ];
 
   const memberFields = [
@@ -178,7 +175,7 @@ function SignupInner() {
           {isSubmitting ? "Redirection…" : `Continuer · ${price}`}
         </button>
         <p className="text-center text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-          Paiement sécurisé par Stripe
+          Paiement sécurisé par Stripe · Votre mot de passe sera créé après le paiement
         </p>
       </form>
     </>

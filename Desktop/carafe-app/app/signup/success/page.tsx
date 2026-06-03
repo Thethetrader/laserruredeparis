@@ -1,57 +1,94 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle, Loader2 } from "lucide-react";
 
 function SuccessInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const sessionId = searchParams.get("session_id");
-  const [status, setStatus] = useState<"waiting" | "ready" | "error">("waiting");
 
-  useEffect(() => {
-    if (!sessionId) { setStatus("error"); return; }
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
 
-    // Poll until the webhook has created the account (max 15s)
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      const res = await fetch(`/api/stripe/checkout/status?session_id=${sessionId}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.ready) { clearInterval(interval); setStatus("ready"); }
-      }
-      if (attempts >= 15) { clearInterval(interval); setStatus("ready"); }
-    }, 1000);
+  if (!sessionId) {
+    return <p className="text-sm text-center" style={{ color: "var(--danger)" }}>Lien invalide.</p>;
+  }
 
-    return () => clearInterval(interval);
-  }, [sessionId]);
+  const handleCreate = async () => {
+    if (password.length < 8) { setError("8 caractères minimum"); return; }
+    setError(null);
+    setStatus("loading");
 
-  if (status === "waiting") {
+    const res = await fetch("/api/stripe/checkout/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) { setError(json.error ?? "Erreur. Réessayez."); setStatus("idle"); return; }
+
+    setStatus("done");
+    setTimeout(() => router.push("/login"), 2000);
+  };
+
+  if (status === "done") {
     return (
       <div className="text-center">
-        <Loader2 size={40} className="animate-spin mx-auto mb-4" style={{ color: "var(--accent)" }} />
-        <p className="text-[15px] font-medium mb-2" style={{ color: "var(--foreground)" }}>Activation en cours…</p>
-        <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Votre compte est en cours de création.</p>
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center justify-center rounded-full" style={{ width: 64, height: 64, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)" }}>
+            <CheckCircle size={28} style={{ color: "#10B981" }} />
+          </div>
+        </div>
+        <p className="text-[15px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>Compte créé !</p>
+        <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Redirection vers la connexion…</p>
       </div>
     );
   }
 
   return (
-    <div className="text-center">
+    <div>
       <div className="flex justify-center mb-6">
-        <div className="flex items-center justify-center rounded-full" style={{ width: 64, height: 64, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)" }}>
-          <CheckCircle size={28} style={{ color: "#10B981" }} />
+        <div className="flex items-center justify-center rounded-full" style={{ width: 56, height: 56, background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.3)" }}>
+          <CheckCircle size={24} style={{ color: "var(--accent)" }} />
         </div>
       </div>
-      <p className="text-[15px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>Paiement confirmé !</p>
-      <p className="text-[13px] mb-8" style={{ color: "var(--foreground-dim)" }}>
-        Votre compte a été créé. Connectez-vous pour accéder à l&apos;application.
+      <p className="text-[16px] font-semibold mb-1 text-center" style={{ color: "var(--foreground)" }}>Paiement confirmé !</p>
+      <p className="text-[13px] mb-8 text-center" style={{ color: "var(--foreground-dim)" }}>
+        Créez votre mot de passe pour finaliser votre compte.
       </p>
-      <Link href="/login" className="inline-block w-full py-2.5 text-sm font-medium rounded-base text-center" style={{ background: "var(--accent)", color: "#09090B" }}>
-        Se connecter
-      </Link>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+            Mot de passe
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="8 caractères minimum"
+            className="w-full px-3 py-2.5 text-sm rounded-base outline-none"
+            style={{ background: "var(--background-soft)", border: error ? "1px solid var(--danger)" : "1px solid var(--border)", color: "var(--foreground)" }}
+            onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+            onBlur={e => e.currentTarget.style.borderColor = error ? "var(--danger)" : "var(--border)"}
+            onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
+          />
+          {error && <p className="mt-1 text-[11px]" style={{ color: "var(--danger)" }}>{error}</p>}
+        </div>
+
+        <button
+          onClick={handleCreate}
+          disabled={status === "loading"}
+          className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity flex items-center justify-center gap-2"
+          style={{ background: "var(--accent)", color: "#09090B", opacity: status === "loading" ? 0.6 : 1 }}
+        >
+          {status === "loading" ? <><Loader2 size={14} className="animate-spin" />Création…</> : "Créer mon compte"}
+        </button>
+      </div>
     </div>
   );
 }

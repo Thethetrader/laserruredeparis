@@ -29,9 +29,8 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session;
     const meta = session.metadata ?? {};
 
-    if (meta.type === "signup") {
-      await handleSignup(session, meta);
-    } else if (meta.type === "add_establishment") {
+    // signup is handled client-side via /api/stripe/checkout/complete
+    if (meta.type === "add_establishment") {
       await handleAddEstablishment(session, meta);
     }
   }
