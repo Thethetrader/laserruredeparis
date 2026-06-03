@@ -346,7 +346,7 @@ export default function PlanningPage() {
   }
 
   return (
-    <div className="px-4 py-8 lg:px-10 pb-32 max-w-2xl lg:max-w-4xl">
+    <div className="max-w-2xl mx-auto px-4 py-6 pb-24 lg:pb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

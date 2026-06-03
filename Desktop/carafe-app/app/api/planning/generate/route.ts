@@ -24,13 +24,31 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { establishment_id, week_start, needs } = await req.json() as {
-      establishment_id: string;
+    const { establishment_id: clientEstId, week_start, needs } = await req.json() as {
+      establishment_id?: string;
       week_start: string;
       needs: ServiceNeeds;
     };
 
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+
+    // Resolve establishment: use client-provided ID if the user is a member, otherwise use their first active establishment
+    let establishment_id = clientEstId;
+
+    if (!establishment_id) {
+      const { data: membership } = await supabase
+        .from("establishment_members")
+        .select("establishment_id")
+        .eq("profile_id", user.id)
+        .eq("is_active", true)
+        .in("role", ["owner", "manager"])
+        .limit(1)
+        .maybeSingle();
+      if (!membership) return NextResponse.json({ error: "Aucun établissement trouvé" }, { status: 403 });
+      establishment_id = membership.establishment_id;
+    }
 
     const { data: members } = await supabase
       .from("establishment_members")
@@ -38,8 +56,13 @@ export async function POST(req: NextRequest) {
       .eq("establishment_id", establishment_id)
       .eq("is_active", true);
 
-    if (!members?.length) {
-      return NextResponse.json({ error: "Aucun employé actif" }, { status: 400 });
+    // Exclude owner from planning if they have no staff_status (optional)
+    const staff = (members ?? []).filter((m: any) => m.staff_status);
+
+    if (!staff.length) {
+      return NextResponse.json({
+        error: "Aucun employé actif avec un statut défini. Définissez le statut (Serveur, Cuisinier…) de vos employés dans la page Équipe."
+      }, { status: 400 });
     }
 
     // Build week dates from week_start (Monday)
@@ -57,7 +80,7 @@ export async function POST(req: NextRequest) {
       return `${DAYS_FR[dayIdx]} ${d}`;
     }).join(", ");
 
-    const staff = members.map((m: any) => ({
+    const staffMapped = staff.map((m: any) => ({
       id: m.profile_id,
       name: (m.profiles as any)?.first_name ?? "Employé",
       role: m.staff_status ?? "serveur",
@@ -67,7 +90,7 @@ export async function POST(req: NextRequest) {
     const prompt = `Tu es un gestionnaire de restaurant expert. Génère un planning hebdomadaire optimisé.
 
 ÉQUIPE :
-${staff.map((s: {id: string; name: string; role: string; weekly_hours: number}) => `- id:"${s.id}" | ${s.name} | rôle:${s.role} | contrat:${s.weekly_hours}h/semaine`).join("\n")}
+${staffMapped.map((s: {id: string; name: string; role: string; weekly_hours: number}) => `- id:"${s.id}" | ${s.name} | rôle:${s.role} | contrat:${s.weekly_hours}h/semaine`).join("\n")}
 
 BESOINS DE LA SEMAINE :
 Jours de service : ${serviceDayLabels}
@@ -120,7 +143,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown :
     }
 
     // Validate user_ids
-    const validIds = new Set(staff.map((s: {id: string}) => s.id));
+    const validIds = new Set(staffMapped.map((s: {id: string}) => s.id));
     const validShifts = parsed.shifts.filter(s =>
       s.user_id && validIds.has(s.user_id) &&
       s.shift_date && s.start_time && s.end_time &&
