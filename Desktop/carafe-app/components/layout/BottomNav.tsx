@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BookOpen, Users, Clock, Trophy,
-  MessageSquare, Settings, CalendarDays, ClipboardList, Zap
+  MessageSquare, Settings, CalendarDays, CalendarCheck2, ClipboardList, Zap
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
@@ -16,9 +16,9 @@ const managerNav = [
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: CalendarDays,    label: "Shifts" },
   { href: "/planning",           icon: LayoutDashboard, label: "Planning IA" },
+  { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
   { href: "/establishment/settings", icon: Settings,    label: "Paramètres" },
 ];
 
@@ -31,7 +31,7 @@ const employeeNav = [
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
+  { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
   { href: "/shifts/team",        icon: LayoutDashboard, label: "Planning" },
 ];
 
