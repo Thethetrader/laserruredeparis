@@ -416,6 +416,7 @@ export default function PlanningPage() {
           setNeeds={setNeeds}
           onGenerate={handleGenerate}
           generating={generating}
+          tipSettings={tipSettings}
         />
       )}
     </div>
@@ -424,14 +425,15 @@ export default function PlanningPage() {
 
 // ── Needs Form ────────────────────────────────────────────────────────────────
 
-function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
+function NeedsForm({ needs, setNeeds, onGenerate, generating, tipSettings }: {
   needs: ServiceNeeds;
   setNeeds: (n: ServiceNeeds) => void;
   onGenerate: () => void;
   generating: boolean;
+  tipSettings: TipSettings;
 }) {
-  function updateCount(period: "midi" | "soir", service: ServiceType, value: number) {
-    setNeeds({ ...needs, [period]: { ...needs[period], [service]: Math.max(0, value) } });
+  function updateCount(period: "midi" | "soir", status: string, value: number) {
+    setNeeds({ ...needs, [period]: { ...needs[period], staff: { ...needs[period].staff, [status]: Math.max(0, value) } } });
   }
 
   function updateTime(period: "midi" | "soir", field: "start" | "end", value: string) {
@@ -475,6 +477,7 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
       <ServicePeriodCard
         label="Midi"
         period={needs.midi}
+        tipSettings={tipSettings}
         onCountChange={(s, v) => updateCount("midi", s, v)}
         onTimeChange={(f, v) => updateTime("midi", f, v)}
       />
@@ -482,6 +485,7 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
       <ServicePeriodCard
         label="Soir"
         period={needs.soir}
+        tipSettings={tipSettings}
         onCountChange={(s, v) => updateCount("soir", s, v)}
         onTimeChange={(f, v) => updateTime("soir", f, v)}
       />
