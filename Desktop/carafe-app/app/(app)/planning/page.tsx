@@ -4,14 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock, BarChart2, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Sparkles, Check, RefreshCw, Clock, BarChart2, TrendingUp, Plus, X, Settings2 } from "lucide-react";
 import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = false;
-
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const SERVICE_PALETTE = ["#F59E0B", "#818CF8", "#10B981", "#F87171", "#34D399", "#60A5FA"];
 
-interface ServicePeriod {
+interface ServiceEntry {
+  id: string;
+  name: string;
   start: string;
   end: string;
   staff: Record<string, number>;
@@ -24,19 +26,19 @@ interface PlanningRules {
 }
 
 interface ServiceNeeds {
-  midi: ServicePeriod;
-  soir: ServicePeriod;
+  services: ServiceEntry[];
   service_days: number[];
   rules: PlanningRules;
 }
 
 const DEFAULT_NEEDS: ServiceNeeds = {
-  midi: { start: "11:30", end: "15:30", staff: { chef_de_rang: 1, cuisinier: 1 } },
-  soir: { start: "18:30", end: "23:00", staff: { serveur: 2, cuisinier: 1 } },
+  services: [
+    { id: "midi", name: "Midi", start: "11:30", end: "15:30", staff: { chef_de_rang: 1, cuisinier: 1 } },
+    { id: "soir", name: "Soir", start: "18:30", end: "23:00", staff: { serveur: 2, cuisinier: 1 } },
+  ],
   service_days: [1, 2, 3, 4, 5, 6],
   rules: { allow_overtime: false, consecutive_rest_days: true, allow_split_shifts: false },
 };
-
 
 const DEV_EMPLOYEES = [
   { id: "u1", name: "Yasmine", role: "chef_de_rang", weekly_hours: 35, hourly_rate: 14.00 },
@@ -62,6 +64,25 @@ interface PlanningShift {
   confirmation_status: "pending" | "confirmed" | "modified";
   first_name?: string | null;
   staff_status?: string | null;
+}
+
+function parseServiceNeeds(sn: any): ServiceNeeds {
+  if (sn?.services) {
+    return {
+      services: sn.services,
+      service_days: sn.service_days ?? DEFAULT_NEEDS.service_days,
+      rules: { ...DEFAULT_NEEDS.rules, ...sn.rules },
+    };
+  }
+  // Backwards compat: old midi/soir format
+  return {
+    services: [
+      { id: "midi", name: "Midi", start: "11:30", end: "15:30", ...sn?.midi, staff: sn?.midi?.staff ?? DEFAULT_NEEDS.services[0].staff },
+      { id: "soir", name: "Soir", start: "18:30", end: "23:00", ...sn?.soir, staff: sn?.soir?.staff ?? DEFAULT_NEEDS.services[1].staff },
+    ],
+    service_days: sn?.service_days ?? DEFAULT_NEEDS.service_days,
+    rules: { ...DEFAULT_NEEDS.rules, ...sn?.rules },
+  };
 }
 
 function getMondayOf(date: Date): Date {
@@ -136,7 +157,6 @@ export default function PlanningPage() {
 
     const supabase = createClient();
 
-    // Always resolve establishment from DB membership (fixes stale localStorage)
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setPlanningWeek(null); setLoading(false); return; }
 
@@ -152,7 +172,6 @@ export default function PlanningPage() {
     const resolvedEid = membershipData?.establishment_id ?? null;
     if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
 
-    // Fix stale localStorage value
     if (typeof window !== "undefined") localStorage.setItem("active_establishment_id", resolvedEid);
     setEstId(resolvedEid);
 
@@ -167,25 +186,14 @@ export default function PlanningPage() {
 
     if (pw) {
       setPlanningWeek(pw as PlanningWeek);
-      if (pw.service_needs) {
-        const sn = pw.service_needs as any;
-        setNeeds({
-          ...DEFAULT_NEEDS,
-          ...sn,
-          midi: { ...DEFAULT_NEEDS.midi, ...sn.midi, staff: sn.midi?.staff ?? DEFAULT_NEEDS.midi.staff },
-          soir: { ...DEFAULT_NEEDS.soir, ...sn.soir, staff: sn.soir?.staff ?? DEFAULT_NEEDS.soir.staff },
-          rules: { ...DEFAULT_NEEDS.rules, ...sn.rules },
-        });
-      }
+      if (pw.service_needs) setNeeds(parseServiceNeeds(pw.service_needs));
 
-      const { data: ps, error: psError } = await supabase
+      const { data: ps } = await supabase
         .from("planning_shifts")
         .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name)")
         .eq("planning_week_id", pw.id)
         .order("shift_date")
         .order("start_time");
-
-      console.log("[planning] shifts:", ps?.length, "error:", psError?.message, "pw.id:", pw.id);
 
       if (ps) {
         setPlanningShifts(ps.map((s: any) => ({
@@ -198,7 +206,6 @@ export default function PlanningPage() {
       setPlanningWeek(null);
       setPlanningShifts([]);
 
-      // Pre-fill needs from previous week
       const prevMonday = new Date(monday);
       prevMonday.setDate(prevMonday.getDate() - 7);
       const { data: prevPw } = await supabase
@@ -208,18 +215,7 @@ export default function PlanningPage() {
         .eq("week_start", toDateStr(prevMonday))
         .maybeSingle();
 
-      if (prevPw?.service_needs) {
-        const sn = prevPw.service_needs as any;
-        setNeeds({
-          ...DEFAULT_NEEDS,
-          ...sn,
-          midi: { ...DEFAULT_NEEDS.midi, ...sn.midi, staff: sn.midi?.staff ?? DEFAULT_NEEDS.midi.staff },
-          soir: { ...DEFAULT_NEEDS.soir, ...sn.soir, staff: sn.soir?.staff ?? DEFAULT_NEEDS.soir.staff },
-          rules: { ...DEFAULT_NEEDS.rules, ...sn.rules },
-        });
-      } else {
-        setNeeds(DEFAULT_NEEDS);
-      }
+      setNeeds(prevPw?.service_needs ? parseServiceNeeds(prevPw.service_needs) : DEFAULT_NEEDS);
     }
 
     setLoading(false);
@@ -253,7 +249,6 @@ export default function PlanningPage() {
     setError(null);
 
     if (DEV_MODE) {
-      // Simulate AI generation with mock employees
       await new Promise(r => setTimeout(r, 1200));
       const monday = weekStart;
       const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -265,18 +260,14 @@ export default function PlanningPage() {
       const shifts: PlanningShift[] = [];
       let shiftId = 1;
       for (const date of serviceDates) {
-        // Midi service
-        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u1", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Yasmine", staff_status: "chef_de_rang" });
-        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u3", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Marco", staff_status: "cuisinier" });
-        // Soir service
-        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u1", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Yasmine", staff_status: "chef_de_rang" });
-        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u2", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Rayan", staff_status: "serveur" });
-        shifts.push({ id: `dev-s${shiftId++}`, user_id: "u3", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Marco", staff_status: "cuisinier" });
-        // Léa on weekends only (index 5=Sat, 6=Sun)
-        const dayIdx = weekDays.indexOf(date);
-        if (dayIdx >= 4) {
-          shifts.push({ id: `dev-s${shiftId++}`, user_id: "u4", shift_date: date, start_time: needs.midi.start, end_time: needs.midi.end, service: "midi", confirmation_status: "pending", first_name: "Léa", staff_status: "commis" });
-          shifts.push({ id: `dev-s${shiftId++}`, user_id: "u4", shift_date: date, start_time: needs.soir.start, end_time: needs.soir.end, service: "soir", confirmation_status: "pending", first_name: "Léa", staff_status: "commis" });
+        for (const service of needs.services) {
+          for (const [role, count] of Object.entries(service.staff)) {
+            if (!count) continue;
+            const emps = DEV_EMPLOYEES.filter(e => e.role === role).slice(0, count);
+            for (const emp of emps) {
+              shifts.push({ id: `dev-s${shiftId++}`, user_id: emp.id, shift_date: date, start_time: service.start, end_time: service.end, service: service.id, confirmation_status: "pending", first_name: emp.name, staff_status: emp.role });
+            }
+          }
         }
       }
       setPlanningWeek({ id: "dev-pw-1", week_start: toDateStr(weekStart), status: "draft", service_needs: needs });
@@ -351,6 +342,8 @@ export default function PlanningPage() {
     );
   }
 
+  const hasPlanning = !!planningWeek;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24 lg:pb-8">
       {/* Header */}
@@ -364,22 +357,16 @@ export default function PlanningPage() {
 
       {/* Week selector */}
       <div className="flex items-center gap-3 mb-5">
-        <button
-          onClick={prevWeek}
-          className="p-1.5 rounded-lg transition-colors"
-          style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
-        >
+        <button onClick={prevWeek} className="p-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
           <ChevronLeft size={16} />
         </button>
         <div className="flex-1 text-center">
           <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{weekLabel(weekStart)}</p>
           <MonoLabel size="xs" className="mt-0.5">S{getISOWeek(weekStart)}</MonoLabel>
         </div>
-        <button
-          onClick={nextWeek}
-          className="p-1.5 rounded-lg transition-colors"
-          style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
-        >
+        <button onClick={nextWeek} className="p-1.5 rounded-lg transition-colors"
+          style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
           <ChevronRight size={16} />
         </button>
       </div>
@@ -395,24 +382,33 @@ export default function PlanningPage() {
         <div className="flex items-center justify-center h-32">
           <div className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
         </div>
-      ) : planningWeek?.status === "published" ? (
-        <PublishedView shifts={planningShifts} weekDates={weekDates} rates={devRates} />
-      ) : planningWeek?.status === "draft" ? (
-        <DraftView
-          shifts={planningShifts}
-          weekDates={weekDates}
-          onValidate={handleValidate}
-          onRegenerate={handleRegenerate}
-          validating={validating}
-          rates={devRates}
-        />
       ) : (
-        <NeedsForm
-          needs={needs}
-          setNeeds={setNeeds}
-          onGenerate={handleGenerate}
-          generating={generating}
-        />
+        <div className="space-y-4">
+          {/* Settings — always at top */}
+          <NeedsForm
+            needs={needs}
+            setNeeds={setNeeds}
+            onGenerate={handleGenerate}
+            generating={generating}
+            collapsible={hasPlanning}
+            defaultOpen={!hasPlanning}
+          />
+
+          {/* Planning grid */}
+          {planningWeek?.status === "published" && (
+            <PublishedView shifts={planningShifts} weekDates={weekDates} rates={devRates} />
+          )}
+          {planningWeek?.status === "draft" && (
+            <DraftView
+              shifts={planningShifts}
+              weekDates={weekDates}
+              onValidate={handleValidate}
+              onRegenerate={handleRegenerate}
+              validating={validating}
+              rates={devRates}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -420,19 +416,15 @@ export default function PlanningPage() {
 
 // ── Needs Form ────────────────────────────────────────────────────────────────
 
-function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
+function NeedsForm({ needs, setNeeds, onGenerate, generating, collapsible, defaultOpen }: {
   needs: ServiceNeeds;
   setNeeds: (n: ServiceNeeds) => void;
   onGenerate: () => void;
   generating: boolean;
+  collapsible: boolean;
+  defaultOpen: boolean;
 }) {
-  function updateCount(period: "midi" | "soir", status: string, value: number) {
-    setNeeds({ ...needs, [period]: { ...needs[period], staff: { ...needs[period].staff, [status]: Math.max(0, value) } } });
-  }
-
-  function updateTime(period: "midi" | "soir", field: "start" | "end", value: string) {
-    setNeeds({ ...needs, [period]: { ...needs[period], [field]: value } });
-  }
+  const [open, setOpen] = useState(defaultOpen);
 
   function toggleDay(isoDay: number) {
     const days = needs.service_days.includes(isoDay)
@@ -441,138 +433,244 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
     setNeeds({ ...needs, service_days: days });
   }
 
+  function updateService(idx: number, updated: ServiceEntry) {
+    const services = [...needs.services];
+    services[idx] = updated;
+    setNeeds({ ...needs, services });
+  }
+
+  function removeService(idx: number) {
+    setNeeds({ ...needs, services: needs.services.filter((_, i) => i !== idx) });
+  }
+
+  function addService() {
+    const newService: ServiceEntry = {
+      id: `service-${Date.now()}`,
+      name: "Nouveau service",
+      start: "10:00",
+      end: "14:00",
+      staff: {},
+    };
+    setNeeds({ ...needs, services: [...needs.services, newService] });
+  }
+
   return (
-    <div className="space-y-4">
-      {/* Service days */}
-      <div className="rounded-2xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--foreground-dim)" }}>Jours de service</p>
-        <div className="flex gap-1.5">
-          {DAYS_SHORT.map((label, i) => {
-            const isoDay = i + 1;
-            const active = needs.service_days.includes(isoDay);
-            return (
-              <button
-                key={isoDay}
-                onClick={() => toggleDay(isoDay)}
-                className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-                style={{
-                  background: active ? "rgba(245,158,11,0.12)" : "var(--background)",
-                  color: active ? "#F59E0B" : "var(--foreground-dim)",
-                  border: active ? "1px solid rgba(245,158,11,0.25)" : "1px solid var(--border-soft)",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <ServicePeriodCard
-        label="Midi"
-        period={needs.midi}
-        onCountChange={(s, v) => updateCount("midi", s, v)}
-        onTimeChange={(f, v) => updateTime("midi", f, v)}
-      />
-
-      <ServicePeriodCard
-        label="Soir"
-        period={needs.soir}
-        onCountChange={(s, v) => updateCount("soir", s, v)}
-        onTimeChange={(f, v) => updateTime("soir", f, v)}
-      />
-
-      {/* Planning rules */}
-      <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Règles IA</p>
-        {([
-          { key: "allow_overtime", label: "Heures supplémentaires autorisées" },
-          { key: "consecutive_rest_days", label: "Jours de repos consécutifs" },
-          { key: "allow_split_shifts", label: "Coupures autorisées" },
-        ] as { key: keyof PlanningRules; label: string }[]).map(({ key, label }) => (
-          <div key={key} className="flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: "var(--foreground)" }}>{label}</span>
-            <button
-              onClick={() => setNeeds({ ...needs, rules: { ...needs.rules, [key]: !needs.rules?.[key] } })}
-              className="relative w-10 h-5 rounded-full transition-colors"
-              style={{ background: needs.rules?.[key] ? "#F59E0B" : "var(--border)" }}
-            >
-              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
-                style={{ transform: needs.rules?.[key] ? "translateX(22px)" : "translateX(2px)" }} />
-            </button>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      {/* Collapsible header */}
+      {collapsible ? (
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-3 transition-colors"
+          style={{ background: "var(--background-elev)" }}
+        >
+          <div className="flex items-center gap-2">
+            <Settings2 size={14} style={{ color: "var(--foreground-dim)" }} />
+            <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Paramètres de génération</span>
           </div>
-        ))}
-      </div>
+          <ChevronDown size={14} style={{ color: "var(--foreground-dim)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
+          <Settings2 size={14} style={{ color: "var(--foreground-dim)" }} />
+          <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Paramètres de génération</span>
+        </div>
+      )}
 
-      <button
-        onClick={onGenerate}
-        disabled={generating || needs.service_days.length === 0}
-        className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-semibold transition-all"
-        style={{
-          background: generating ? "var(--background-elev)" : "linear-gradient(135deg, #F59E0B, #D97706)",
-          color: generating ? "var(--foreground-dim)" : "#fff",
-          border: "none",
-          opacity: needs.service_days.length === 0 ? 0.5 : 1,
-        }}
-      >
-        {generating
-          ? <><RefreshCw size={15} className="animate-spin" />Génération en cours…</>
-          : <><Sparkles size={15} />Générer le planning</>
-        }
-      </button>
+      {(!collapsible || open) && (
+        <div className="p-4 space-y-3" style={{ borderTop: collapsible ? "1px solid var(--border-soft)" : undefined }}>
+
+          {/* Service days */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--foreground-dim)" }}>Jours de service</p>
+            <div className="flex gap-1.5">
+              {DAYS_SHORT.map((label, i) => {
+                const isoDay = i + 1;
+                const active = needs.service_days.includes(isoDay);
+                return (
+                  <button key={isoDay} onClick={() => toggleDay(isoDay)}
+                    className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                    style={{
+                      background: active ? "rgba(245,158,11,0.12)" : "var(--background)",
+                      color: active ? "#F59E0B" : "var(--foreground-dim)",
+                      border: active ? "1px solid rgba(245,158,11,0.25)" : "1px solid var(--border-soft)",
+                    }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Services */}
+          {needs.services.map((service, idx) => (
+            <ServicePeriodCard
+              key={service.id}
+              service={service}
+              onUpdate={(updated) => updateService(idx, updated)}
+              onRemove={() => removeService(idx)}
+              canRemove={needs.services.length > 1}
+            />
+          ))}
+
+          {/* Add service */}
+          <button onClick={addService}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] transition-colors"
+            style={{ border: "1px dashed var(--border)", color: "var(--foreground-dim)", background: "transparent" }}>
+            <Plus size={13} />
+            Ajouter un service
+          </button>
+
+          {/* Rules */}
+          <div className="rounded-xl p-3 space-y-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
+            <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Règles IA</p>
+            {([
+              { key: "allow_overtime", label: "Heures supplémentaires autorisées" },
+              { key: "consecutive_rest_days", label: "Jours de repos consécutifs" },
+              { key: "allow_split_shifts", label: "Coupures autorisées" },
+            ] as { key: keyof PlanningRules; label: string }[]).map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-[13px]" style={{ color: "var(--foreground)" }}>{label}</span>
+                <button
+                  onClick={() => setNeeds({ ...needs, rules: { ...needs.rules, [key]: !needs.rules?.[key] } })}
+                  className="relative w-10 h-5 rounded-full transition-colors"
+                  style={{ background: needs.rules?.[key] ? "#F59E0B" : "var(--border)" }}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                    style={{ transform: needs.rules?.[key] ? "translateX(22px)" : "translateX(2px)" }} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Generate button */}
+          <button
+            onClick={onGenerate}
+            disabled={generating || needs.service_days.length === 0 || needs.services.length === 0}
+            className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[14px] font-semibold transition-all"
+            style={{
+              background: generating ? "var(--background-elev)" : "linear-gradient(135deg, #F59E0B, #D97706)",
+              color: generating ? "var(--foreground-dim)" : "#fff",
+              border: "none",
+              opacity: (needs.service_days.length === 0 || needs.services.length === 0) ? 0.5 : 1,
+            }}>
+            {generating
+              ? <><RefreshCw size={15} className="animate-spin" />Génération en cours…</>
+              : <><Sparkles size={15} />Générer le planning</>}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
-  label: string;
-  period: ServicePeriod;
-  onCountChange: (status: string, value: number) => void;
-  onTimeChange: (field: "start" | "end", value: string) => void;
+function ServicePeriodCard({ service, onUpdate, onRemove, canRemove }: {
+  service: ServiceEntry;
+  onUpdate: (updated: ServiceEntry) => void;
+  onRemove: () => void;
+  canRemove: boolean;
 }) {
+  const [showRoleSelect, setShowRoleSelect] = useState(false);
+
+  const activeStaff = Object.entries(service.staff).filter(([, count]) => count > 0);
+  const available = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !service.staff[s] || service.staff[s] === 0);
+
+  function updateCount(status: string, delta: number) {
+    const current = service.staff[status] ?? 0;
+    const next = Math.max(0, current + delta);
+    const newStaff = { ...service.staff };
+    if (next === 0) delete newStaff[status];
+    else newStaff[status] = next;
+    onUpdate({ ...service, staff: newStaff });
+  }
+
+  function addRole(status: string) {
+    onUpdate({ ...service, staff: { ...service.staff, [status]: 1 } });
+    setShowRoleSelect(false);
+  }
+
   return (
-    <div className="rounded-2xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Service du {label}</p>
-        <div className="flex items-center gap-1.5">
-          <Clock size={10} style={{ color: "var(--foreground-dim)" }} />
-          <input type="time" value={period.start} onChange={e => onTimeChange("start", e.target.value)}
-            className="text-[11px] font-mono rounded px-1.5 py-0.5 w-20"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>→</span>
-          <input type="time" value={period.end} onChange={e => onTimeChange("end", e.target.value)}
-            className="text-[11px] font-mono rounded px-1.5 py-0.5 w-20"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-        </div>
+    <div className="rounded-xl p-3 space-y-2" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <input
+          value={service.name}
+          onChange={e => onUpdate({ ...service, name: e.target.value })}
+          className="flex-1 text-[13px] font-semibold bg-transparent outline-none min-w-0"
+          style={{ color: "var(--foreground)" }}
+        />
+        <Clock size={10} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+        <input type="time" value={service.start} onChange={e => onUpdate({ ...service, start: e.target.value })}
+          className="text-[11px] font-mono rounded px-1.5 py-0.5 w-[76px]"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>→</span>
+        <input type="time" value={service.end} onChange={e => onUpdate({ ...service, end: e.target.value })}
+          className="text-[11px] font-mono rounded px-1.5 py-0.5 w-[76px]"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+        {canRemove && (
+          <button onClick={onRemove} className="p-1 rounded-lg flex-shrink-0"
+            style={{ color: "var(--foreground-dim)", background: "transparent", border: "none" }}>
+            <X size={13} />
+          </button>
+        )}
       </div>
-      <div className="space-y-2">
-        {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(status => {
-          const count = period.staff[status] ?? 0;
-          const color = STAFF_STATUSES[status].color;
-          return (
-            <div key={status} className="flex items-center gap-3 px-3 py-2 rounded-xl"
-              style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-              <span className="flex-1 text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{STAFF_STATUSES[status].label}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onCountChange(status, Math.max(0, count - 1))}
-                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
-                  style={{ background: count > 0 ? `${color}18` : "var(--background-soft)", border: `1px solid ${count > 0 ? color + "40" : "var(--border)"}`, color: count > 0 ? color : "var(--foreground-dim)" }}>
-                  −
-                </button>
-                <span className="w-5 text-center text-[15px] font-bold" style={{ color: count > 0 ? color : "var(--foreground-dim)" }}>
-                  {count}
-                </span>
-                <button onClick={() => onCountChange(status, count + 1)}
-                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
-                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
-                  +
-                </button>
+
+      {/* Active roles */}
+      {activeStaff.length > 0 && (
+        <div className="space-y-1.5">
+          {activeStaff.map(([status, count]) => {
+            const info = STAFF_STATUSES[status as StaffStatus];
+            const color = info?.color ?? "#A1A1AA";
+            const label = info?.label ?? status;
+            return (
+              <div key={status} className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg"
+                style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <span className="flex-1 text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{label}</span>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => updateCount(status, -1)}
+                    className="w-6 h-6 rounded-md text-[13px] font-bold flex items-center justify-center"
+                    style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
+                    −
+                  </button>
+                  <span className="w-4 text-center text-[14px] font-bold" style={{ color }}>
+                    {count}
+                  </span>
+                  <button onClick={() => updateCount(status, 1)}
+                    className="w-6 h-6 rounded-md text-[13px] font-bold flex items-center justify-center"
+                    style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
+                    +
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add role */}
+      {available.length > 0 && (
+        showRoleSelect ? (
+          <select
+            autoFocus
+            className="w-full text-[12px] rounded-lg px-2.5 py-2"
+            style={{ background: "var(--background)", border: "1px solid var(--accent)", color: "var(--foreground)" }}
+            onChange={e => { if (e.target.value) addRole(e.target.value); }}
+            onBlur={() => setShowRoleSelect(false)}
+            defaultValue=""
+          >
+            <option value="" disabled>Choisir un poste…</option>
+            {available.map(s => (
+              <option key={s} value={s}>{STAFF_STATUSES[s].label}</option>
+            ))}
+          </select>
+        ) : (
+          <button onClick={() => setShowRoleSelect(true)}
+            className="flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-lg w-full transition-colors"
+            style={{ color: "var(--foreground-dim)", border: "1px dashed var(--border)", background: "transparent" }}>
+            <Plus size={12} />
+            Ajouter un poste
+          </button>
+        )
+      )}
     </div>
   );
 }
@@ -616,25 +714,22 @@ function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; 
   const getShifts = (date: Date, service: string) =>
     shifts.filter(s => s.shift_date === toDateStr(date) && s.service === service);
 
-  const midiSample = shifts.find(s => s.service === "midi");
-  const soirSample = shifts.find(s => s.service === "soir");
-  const midiTime = midiSample ? `${midiSample.start_time.slice(0,5)} – ${midiSample.end_time.slice(0,5)}` : null;
-  const soirTime = soirSample ? `${soirSample.start_time.slice(0,5)} – ${soirSample.end_time.slice(0,5)}` : null;
-
-  const serviceRows = [
-    midiTime ? { key: "midi", label: "MIDI", color: "#F59E0B", time: midiTime } : null,
-    soirTime ? { key: "soir", label: "SOIR", color: "#818CF8", time: soirTime } : null,
-  ].filter(Boolean) as { key: string; label: string; color: string; time: string }[];
+  // Detect services dynamically, preserve order of first appearance
+  const serviceKeys = [...new Set(shifts.map(s => s.service))];
+  const serviceRows = serviceKeys.map((key, i) => {
+    const sample = shifts.find(s => s.service === key);
+    const time = sample ? `${sample.start_time.slice(0, 5)} – ${sample.end_time.slice(0, 5)}` : "";
+    const color = SERVICE_PALETTE[i % SERVICE_PALETTE.length];
+    return { key, label: key.toUpperCase(), color, time };
+  });
 
   const n = activeDates.length;
-  // Flexible columns — expand on wide screen, min 88px on scroll
   const MIN_COL = 92;
   const LABEL_W = 76;
 
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ minWidth: LABEL_W + n * MIN_COL }}>
-
         {/* Day headers */}
         <div className="flex items-stretch" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0 }} />
@@ -657,13 +752,11 @@ function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; 
         {serviceRows.map(({ key, label, color, time }, rowIdx) => (
           <div key={key} className="flex items-stretch"
             style={{ borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none" }}>
-            {/* Row label */}
             <div className="flex flex-col justify-center gap-0.5 px-3 py-3"
               style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0, borderRight: "1px solid var(--border-soft)" }}>
               <span className="text-[11px] font-black tracking-widest" style={{ color }}>{label}</span>
               <span className="text-[9px] font-mono leading-snug" style={{ color: "var(--foreground-dim)" }}>{time}</span>
             </div>
-            {/* Day cells */}
             {activeDates.map((date, i) => {
               const cell = getShifts(date, key);
               return (
@@ -705,31 +798,24 @@ function WeekSummary({ shifts, rates }: {
   const totalCost = employees.reduce((s, e) => s + e.cost, 0);
   const ca30 = totalCost / 0.30;
   const ca35 = totalCost / 0.35;
-
   const fmt = (n: number) => Math.round(n).toLocaleString("fr-FR");
 
   return (
     <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-      {/* Header */}
       <div className="px-4 py-3 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
         <BarChart2 size={13} style={{ color: "var(--accent)" }} />
         <p className="text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>Récap masse salariale</p>
       </div>
-
-      {/* Employee rows */}
       <div style={{ background: "var(--background-elev)" }}>
-        {/* Column headers */}
         <div className="grid px-4 py-1.5" style={{ gridTemplateColumns: "1fr 64px 56px 60px", borderBottom: "1px solid var(--border-soft)" }}>
           {["Employé", "Heures", "Taux", "Coût"].map(h => (
             <p key={h} className="text-[9px] font-mono uppercase tracking-widest text-right first:text-left"
               style={{ color: "var(--foreground-dim)" }}>{h}</p>
           ))}
         </div>
-
         {employees.map((emp) => (
           <div key={emp.userId} className="grid items-center px-4 py-3"
             style={{ gridTemplateColumns: "1fr 64px 56px 60px", borderBottom: "1px solid var(--border-soft)" }}>
-            {/* Name */}
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: emp.color }} />
               <div className="min-w-0">
@@ -737,36 +823,19 @@ function WeekSummary({ shifts, rates }: {
                 <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{emp.status.replace(/_/g, " ")}</p>
               </div>
             </div>
-            {/* Hours */}
-            <p className="text-[13px] font-mono font-semibold text-right" style={{ color: "var(--foreground)" }}>
-              {formatHours(emp.hours)}
-            </p>
-            {/* Rate */}
-            <p className="text-[11px] font-mono text-right" style={{ color: "var(--foreground-dim)" }}>
-              {emp.hourly_rate.toFixed(2)}€
-            </p>
-            {/* Cost */}
-            <p className="text-[15px] font-bold text-right" style={{ color: emp.color }}>
-              {fmt(emp.cost)}€
-            </p>
+            <p className="text-[13px] font-mono font-semibold text-right" style={{ color: "var(--foreground)" }}>{formatHours(emp.hours)}</p>
+            <p className="text-[11px] font-mono text-right" style={{ color: "var(--foreground-dim)" }}>{emp.hourly_rate.toFixed(2)}€</p>
+            <p className="text-[15px] font-bold text-right" style={{ color: emp.color }}>{fmt(emp.cost)}€</p>
           </div>
         ))}
-
-        {/* Total row */}
         <div className="grid items-center px-4 py-3"
           style={{ gridTemplateColumns: "1fr 64px 56px 60px", background: "rgba(0,0,0,0.15)" }}>
           <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Total</p>
-          <p className="text-[13px] font-mono font-bold text-right" style={{ color: "var(--foreground)" }}>
-            {formatHours(totalHours)}
-          </p>
+          <p className="text-[13px] font-mono font-bold text-right" style={{ color: "var(--foreground)" }}>{formatHours(totalHours)}</p>
           <p className="text-[11px] text-right" style={{ color: "var(--foreground-dim)" }} />
-          <p className="text-[16px] font-black text-right" style={{ color: "var(--foreground)" }}>
-            {fmt(totalCost)}€
-          </p>
+          <p className="text-[16px] font-black text-right" style={{ color: "var(--foreground)" }}>{fmt(totalCost)}€</p>
         </div>
       </div>
-
-      {/* CA minimum */}
       <div className="px-4 py-4" style={{ background: "rgba(6,182,212,0.04)", borderTop: "1px solid var(--border)" }}>
         <div className="flex items-center gap-1.5 mb-3">
           <TrendingUp size={12} style={{ color: "var(--accent)" }} />
@@ -776,26 +845,14 @@ function WeekSummary({ shifts, rates }: {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl px-3 py-3" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.2)" }}>
-            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
-              Objectif 30% MS
-            </p>
-            <p className="text-[22px] font-black leading-none" style={{ color: "var(--accent)" }}>
-              {fmt(ca30)} €
-            </p>
-            <p className="text-[9px] mt-1" style={{ color: "var(--foreground-dim)" }}>
-              Ratio cible restaurants
-            </p>
+            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Objectif 30% MS</p>
+            <p className="text-[22px] font-black leading-none" style={{ color: "var(--accent)" }}>{fmt(ca30)} €</p>
+            <p className="text-[9px] mt-1" style={{ color: "var(--foreground-dim)" }}>Ratio cible restaurants</p>
           </div>
           <div className="rounded-xl px-3 py-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>
-              Seuil critique 35% MS
-            </p>
-            <p className="text-[22px] font-black leading-none" style={{ color: "var(--warning)" }}>
-              {fmt(ca35)} €
-            </p>
-            <p className="text-[9px] mt-1" style={{ color: "var(--foreground-dim)" }}>
-              Maximum acceptable
-            </p>
+            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Seuil critique 35% MS</p>
+            <p className="text-[22px] font-black leading-none" style={{ color: "var(--warning)" }}>{fmt(ca35)} €</p>
+            <p className="text-[9px] mt-1" style={{ color: "var(--foreground-dim)" }}>Maximum acceptable</p>
           </div>
         </div>
         <p className="text-[9px] mt-3 text-center" style={{ color: "var(--foreground-dim)" }}>
@@ -822,13 +879,10 @@ function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating, ra
           Planning généré — {shifts.length} shift{shifts.length > 1 ? "s" : ""} · Vérifiez puis validez
         </p>
       </div>
-
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <WeekGrid shifts={shifts} weekDates={weekDates} />
       </div>
-
       <WeekSummary shifts={shifts} rates={rates} />
-
       <div className="flex gap-3 pt-2">
         <button onClick={onRegenerate}
           className="flex-1 py-3 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2"
@@ -854,7 +908,6 @@ function PublishedView({ shifts, weekDates, rates }: {
   const pending = shifts.filter(s => s.confirmation_status === "pending").length;
   const modified = shifts.filter(s => s.confirmation_status === "modified").length;
 
-  // Group by employee
   const byEmployee = Object.values(
     shifts.reduce((acc, s) => {
       if (!acc[s.user_id]) acc[s.user_id] = { name: s.first_name ?? "?", shifts: [] };
@@ -876,12 +929,9 @@ function PublishedView({ shifts, weekDates, rates }: {
           {modified > 0 && <span className="text-[11px] font-bold" style={{ color: "#EF4444" }}>✗ {modified}</span>}
         </div>
       </div>
-
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <WeekGrid shifts={shifts} weekDates={weekDates} showStatus />
       </div>
-
-      {/* Confirmation status per employee */}
       <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--foreground-dim)" }}>Confirmations</p>
         {byEmployee.map(({ name, shifts: emp }) => {
@@ -905,7 +955,6 @@ function PublishedView({ shifts, weekDates, rates }: {
           );
         })}
       </div>
-
       <WeekSummary shifts={shifts} rates={rates} />
     </div>
   );
