@@ -18,7 +18,8 @@ const managerNav = [
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/schedule",           icon: CalendarDays,    label: "Vote RDV" },
   { href: "/shifts",             icon: CalendarDays,    label: "Shifts" },
-  { href: "/shifts/team",        icon: LayoutDashboard, label: "Planning" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Validation" },
+  { href: "/planning",           icon: LayoutDashboard, label: "Planning IA" },
   { href: "/establishment/settings", icon: Settings,    label: "Paramètres" },
 ];
 
