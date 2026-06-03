@@ -5,17 +5,22 @@ import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock, BarChart2, TrendingUp } from "lucide-react";
-import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings, type StaffStatus } from "@/lib/shifts";
+import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
 
 const DEV_MODE = false;
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-// staff: Record<staff_status_key, count_needed>
+const SERVICES_LIST = ["salle", "cuisine", "bar"] as const;
+type ServiceType = typeof SERVICES_LIST[number];
+const SERVICE_LABELS: Record<ServiceType, string> = { salle: "Salle", cuisine: "Cuisine", bar: "Bar" };
+
 interface ServicePeriod {
   start: string;
   end: string;
-  staff: Record<string, number>;
+  salle: number;
+  cuisine: number;
+  bar: number;
 }
 
 interface ServiceNeeds {
@@ -25,8 +30,8 @@ interface ServiceNeeds {
 }
 
 const DEFAULT_NEEDS: ServiceNeeds = {
-  midi: { start: "11:30", end: "15:30", staff: { chef_de_rang: 1, cuisinier: 1 } },
-  soir: { start: "18:30", end: "23:00", staff: { serveur: 2, cuisinier: 1 } },
+  midi: { start: "11:30", end: "15:30", salle: 2, cuisine: 2, bar: 1 },
+  soir: { start: "18:30", end: "23:00", salle: 3, cuisine: 2, bar: 1 },
   service_days: [1, 2, 3, 4, 5, 6],
 };
 
@@ -106,7 +111,6 @@ export default function PlanningPage() {
   const [planningWeek, setPlanningWeek] = useState<PlanningWeek | null | undefined>(undefined);
   const [planningShifts, setPlanningShifts] = useState<PlanningShift[]>([]);
   const [needs, setNeeds] = useState<ServiceNeeds>(DEFAULT_NEEDS);
-  const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -130,19 +134,24 @@ export default function PlanningPage() {
 
     const supabase = createClient();
 
-    const eid = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+    // Always resolve establishment from DB membership (fixes stale localStorage)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPlanningWeek(null); setLoading(false); return; }
 
-    // Always resolve the establishment from the user's membership (more reliable than localStorage)
     const { data: membershipData } = await supabase
       .from("establishment_members")
       .select("establishment_id, establishments(tip_settings)")
-      .eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .eq("profile_id", user.id)
       .eq("is_active", true)
+      .in("role", ["owner", "manager"])
       .limit(1)
       .maybeSingle();
 
-    const resolvedEid = eid || membershipData?.establishment_id || null;
+    const resolvedEid = membershipData?.establishment_id ?? null;
     if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
+
+    // Fix stale localStorage value
+    if (typeof window !== "undefined") localStorage.setItem("active_establishment_id", resolvedEid);
     setEstId(resolvedEid);
 
     const estTipSettings = (membershipData?.establishments as { tip_settings: unknown } | null)?.tip_settings;
@@ -153,7 +162,7 @@ export default function PlanningPage() {
     const { data: pw } = await supabase
       .from("planning_weeks")
       .select("*")
-      .eq("establishment_id", eid)
+      .eq("establishment_id", resolvedEid)
       .eq("week_start", weekStr)
       .maybeSingle();
 
@@ -416,7 +425,6 @@ export default function PlanningPage() {
           setNeeds={setNeeds}
           onGenerate={handleGenerate}
           generating={generating}
-          tipSettings={tipSettings}
         />
       )}
     </div>
@@ -425,15 +433,14 @@ export default function PlanningPage() {
 
 // ── Needs Form ────────────────────────────────────────────────────────────────
 
-function NeedsForm({ needs, setNeeds, onGenerate, generating, tipSettings }: {
+function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
   needs: ServiceNeeds;
   setNeeds: (n: ServiceNeeds) => void;
   onGenerate: () => void;
   generating: boolean;
-  tipSettings: TipSettings;
 }) {
-  function updateCount(period: "midi" | "soir", status: string, value: number) {
-    setNeeds({ ...needs, [period]: { ...needs[period], staff: { ...needs[period].staff, [status]: Math.max(0, value) } } });
+  function updateCount(period: "midi" | "soir", service: ServiceType, value: number) {
+    setNeeds({ ...needs, [period]: { ...needs[period], [service]: Math.max(0, value) } });
   }
 
   function updateTime(period: "midi" | "soir", field: "start" | "end", value: string) {
@@ -477,7 +484,6 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating, tipSettings }: {
       <ServicePeriodCard
         label="Midi"
         period={needs.midi}
-        tipSettings={tipSettings}
         onCountChange={(s, v) => updateCount("midi", s, v)}
         onTimeChange={(f, v) => updateTime("midi", f, v)}
       />
@@ -485,7 +491,6 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating, tipSettings }: {
       <ServicePeriodCard
         label="Soir"
         period={needs.soir}
-        tipSettings={tipSettings}
         onCountChange={(s, v) => updateCount("soir", s, v)}
         onTimeChange={(f, v) => updateTime("soir", f, v)}
       />
@@ -510,20 +515,15 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating, tipSettings }: {
   );
 }
 
-function ServicePeriodCard({ label, period, tipSettings, onCountChange, onTimeChange }: {
+function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
   label: string;
   period: ServicePeriod;
-  tipSettings: TipSettings;
-  onCountChange: (status: string, value: number) => void;
+  onCountChange: (service: ServiceType, value: number) => void;
   onTimeChange: (field: "start" | "end", value: string) => void;
 }) {
-  const visibleStatuses = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(
-    s => !tipSettings.hidden.includes(s)
-  );
-
   return (
     <div className="rounded-2xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Service du {label}</p>
         <div className="flex items-center gap-1.5">
           <Clock size={10} style={{ color: "var(--foreground-dim)" }} />
@@ -536,34 +536,27 @@ function ServicePeriodCard({ label, period, tipSettings, onCountChange, onTimeCh
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
         </div>
       </div>
-      <div className="space-y-2">
-        {visibleStatuses.map(status => {
-          const customLabel = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
-          const color = tipSettings.colors[status] ?? STAFF_STATUSES[status].color;
-          const count = period.staff[status] ?? 0;
-          return (
-            <div key={status} className="flex items-center gap-3 px-3 py-2 rounded-xl"
-              style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-              <span className="flex-1 text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{customLabel}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onCountChange(status, Math.max(0, count - 1))}
-                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
-                  style={{ background: count > 0 ? `${color}18` : "var(--background-soft)", border: `1px solid ${count > 0 ? color + "40" : "var(--border)"}`, color: count > 0 ? color : "var(--foreground-dim)" }}>
-                  −
-                </button>
-                <span className="w-5 text-center text-[15px] font-bold" style={{ color: count > 0 ? color : "var(--foreground-dim)" }}>
-                  {count}
-                </span>
-                <button onClick={() => onCountChange(status, count + 1)}
-                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
-                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
-                  +
-                </button>
-              </div>
+      <div className="grid grid-cols-3 gap-3">
+        {SERVICES_LIST.map(service => (
+          <div key={service}>
+            <p className="text-[10px] mb-1.5" style={{ color: "var(--foreground-dim)" }}>{SERVICE_LABELS[service]}</p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => onCountChange(service, period[service] - 1)}
+                className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center transition-colors"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
+              >−</button>
+              <span className="flex-1 text-center text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
+                {period[service]}
+              </span>
+              <button
+                onClick={() => onCountChange(service, period[service] + 1)}
+                className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center transition-colors"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
+              >+</button>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
