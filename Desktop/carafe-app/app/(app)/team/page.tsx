@@ -92,7 +92,7 @@ export default function TeamPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; email: string | null; role: string; created_at: string }>>([]);
+  const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; email: string | null; first_name: string | null; last_name: string | null; job_title: string | null; staff_status: string | null; role: string; created_at: string }>>([]);
   const [kudosTarget, setKudosTarget] = useState<TeamMember | null>(null);
   const [kudosType, setKudosType] = useState<"positive" | "negative">("positive");
   const [kudosMessage, setKudosMessage] = useState("");
@@ -618,21 +618,27 @@ export default function TeamPage() {
         <div className="mb-6">
           <MonoLabel size="xs" className="mb-3 block">En attente ({pendingInvites.length})</MonoLabel>
           <div className="space-y-2">
-            {pendingInvites.map(inv => (
-              <div key={inv.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-                <Clock size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>
-                    {inv.email ?? "Lien sans email"}
-                  </p>
+            {pendingInvites.map(inv => {
+              const name = [inv.first_name, inv.last_name].filter(Boolean).join(" ") || null;
+              return (
+                <div key={inv.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                  style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                  <Clock size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                  <div className="flex-1 min-w-0">
+                    {name && (
+                      <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{name}</p>
+                    )}
+                    <p className="text-[12px] truncate" style={{ color: "var(--foreground-dim)" }}>
+                      {inv.job_title ?? inv.email ?? "Lien sans email"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
+                    style={{ background: inv.role === "manager" ? "rgba(161,161,170,0.12)" : "rgba(161,161,170,0.08)", color: inv.role === "manager" ? "var(--foreground-muted)" : "var(--foreground-dim)" }}>
+                    {inv.role === "manager" ? "Manager" : "Employé"}
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded flex-shrink-0"
-                  style={{ background: inv.role === "manager" ? "rgba(161,161,170,0.12)" : "rgba(161,161,170,0.08)", color: inv.role === "manager" ? "var(--foreground-muted)" : "var(--foreground-dim)" }}>
-                  {inv.role === "manager" ? "Manager" : "Employé"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

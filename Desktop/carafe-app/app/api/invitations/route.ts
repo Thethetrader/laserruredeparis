@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
 
   const { data } = await admin
     .from("invitations")
-    .select("id, email, role, status, expires_at, created_at, profiles(first_name, last_name)")
+    .select("id, email, first_name, last_name, phone, job_title, staff_status, role, status, expires_at, created_at")
     .eq("establishment_id", establishment_id)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
