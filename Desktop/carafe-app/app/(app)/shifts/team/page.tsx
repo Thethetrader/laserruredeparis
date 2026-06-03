@@ -420,8 +420,10 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   const [caSaving, setCASaving] = useState(false);
   const [caSaved, setCASaved] = useState(false);
 
-  // Add shift
-  const [showAddShift, setShowAddShift] = useState(false);
+  // Add shift — auto-open si dispatch mode sans aucun shift éligible
+  const isDispatchMode = tipSettings.mode === "dispatch";
+  const hasEligible = shifts.filter(s => s.tips_enabled && ((s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0)) > 0).length > 0;
+  const [showAddShift, setShowAddShift] = useState(isDispatchMode && !hasEligible);
   const [members, setMembers] = useState<{ profile_id: string; first_name: string | null }[]>([]);
   const [addUserId, setAddUserId] = useState("");
   const [addStart, setAddStart] = useState("11:30");
@@ -566,7 +568,7 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
         )}
         {isDispatch && eligibleStaff.length === 0 && (
           <p className="text-[12px] px-3 py-2 rounded-xl mb-3 text-center" style={{ background: "rgba(245,158,11,0.06)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
-            Aucun shift éligible aux pourboires ce jour
+            Ajoutez d'abord les shifts du jour ci-dessous pour dispatcher les pourboires
           </p>
         )}
         {isDispatch ? (
