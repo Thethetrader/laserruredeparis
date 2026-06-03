@@ -87,7 +87,7 @@ export default function AccountPage() {
     const [profileRes, memberRes] = await Promise.all([
       supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", user.id).single(),
       supabase.from("establishment_members")
-        .select("id, establishment_id, contract_type, availability")
+        .select("id, establishment_id")
         .eq("profile_id", user.id).eq("is_active", true).single(),
     ]);
 
@@ -100,8 +100,6 @@ export default function AccountPage() {
     if (memberRes.data) {
       setEstablishmentId(memberRes.data.establishment_id);
       setMemberId(memberRes.data.id);
-      setContractType((memberRes.data as { contract_type?: string | null }).contract_type ?? null);
-      setAvailability(((memberRes.data as { availability?: AvailabilitySlot[] | null }).availability) ?? []);
     }
     setLoading(false);
   }
