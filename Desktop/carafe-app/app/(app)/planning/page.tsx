@@ -154,9 +154,6 @@ export default function PlanningPage() {
     if (typeof window !== "undefined") localStorage.setItem("active_establishment_id", resolvedEid);
     setEstId(resolvedEid);
 
-    const estTipSettings = (membershipData?.establishments as { tip_settings: unknown } | null)?.tip_settings;
-    if (estTipSettings) setTipSettings(parseTipSettings(estTipSettings));
-
     const weekStr = toDateStr(monday);
 
     const { data: pw } = await supabase
