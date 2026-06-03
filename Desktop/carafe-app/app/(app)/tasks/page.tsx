@@ -295,7 +295,7 @@ export default function TasksManagerPage() {
     const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).single();
     if (!member) { setSavingOneShot(false); return; }
 
-    await supabase.from("task_one_shots").insert({
+    const { error: insertError } = await supabase.from("task_one_shots").insert({
       establishment_id: member.establishment_id,
       created_by: userId!,
       title: newOneShotTitle,
@@ -306,6 +306,11 @@ export default function TasksManagerPage() {
       is_critical: newOneShotIsCritical,
       due_date: today,
     });
+    if (insertError) {
+      console.error("Erreur création tâche ponctuelle:", insertError.message);
+      setSavingOneShot(false);
+      return;
+    }
     await load();
     setShowOneShotModal(false);
     resetOneShotForm();
