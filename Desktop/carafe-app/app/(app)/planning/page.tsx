@@ -17,16 +17,24 @@ interface ServicePeriod {
   staff: Record<string, number>;
 }
 
+interface PlanningRules {
+  allow_overtime: boolean;
+  consecutive_rest_days: boolean;
+  allow_split_shifts: boolean;
+}
+
 interface ServiceNeeds {
   midi: ServicePeriod;
   soir: ServicePeriod;
   service_days: number[];
+  rules: PlanningRules;
 }
 
 const DEFAULT_NEEDS: ServiceNeeds = {
   midi: { start: "11:30", end: "15:30", staff: { chef_de_rang: 1, cuisinier: 1 } },
   soir: { start: "18:30", end: "23:00", staff: { serveur: 2, cuisinier: 1 } },
   service_days: [1, 2, 3, 4, 5, 6],
+  rules: { allow_overtime: false, consecutive_rest_days: true, allow_split_shifts: false },
 };
 
 
@@ -487,6 +495,28 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
         onCountChange={(s, v) => updateCount("soir", s, v)}
         onTimeChange={(f, v) => updateTime("soir", f, v)}
       />
+
+      {/* Planning rules */}
+      <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Règles IA</p>
+        {([
+          { key: "allow_overtime", label: "Heures supplémentaires autorisées" },
+          { key: "consecutive_rest_days", label: "Jours de repos consécutifs" },
+          { key: "allow_split_shifts", label: "Coupures autorisées" },
+        ] as { key: keyof PlanningRules; label: string }[]).map(({ key, label }) => (
+          <div key={key} className="flex items-center justify-between">
+            <span className="text-[13px]" style={{ color: "var(--foreground)" }}>{label}</span>
+            <button
+              onClick={() => setNeeds({ ...needs, rules: { ...needs.rules, [key]: !needs.rules?.[key] } })}
+              className="relative w-10 h-5 rounded-full transition-colors"
+              style={{ background: needs.rules?.[key] ? "#F59E0B" : "var(--border)" }}
+            >
+              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                style={{ transform: needs.rules?.[key] ? "translateX(22px)" : "translateX(2px)" }} />
+            </button>
+          </div>
+        ))}
+      </div>
 
       <button
         onClick={onGenerate}

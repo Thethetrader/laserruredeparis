@@ -10,10 +10,17 @@ interface ServicePeriod {
   staff: Record<string, number>;
 }
 
+interface PlanningRules {
+  allow_overtime?: boolean;
+  consecutive_rest_days?: boolean;
+  allow_split_shifts?: boolean;
+}
+
 interface ServiceNeeds {
   midi: ServicePeriod;
   soir: ServicePeriod;
   service_days: number[];
+  rules?: PlanningRules;
 }
 
 export async function POST(req: NextRequest) {
@@ -112,10 +119,12 @@ ${Object.entries(needs.soir.staff || {}).filter(([,n]) => n > 0).map(([role, n])
 
 RÈGLES :
 - Au moins 2 jours de repos par semaine par personne
+${needs.rules?.consecutive_rest_days !== false ? "- Les jours de repos doivent être consécutifs (2 jours de suite)" : "- Les jours de repos peuvent être non consécutifs"}
 - Respecte le rôle de chaque employé pour couvrir les besoins par poste
 - Répartis équitablement les jours entre les employés
-- Ne dépasse pas les heures contractuelles hebdomadaires
-- Pour les serveurs/chefs de rang/barmen : assigner soit midi soit soir ou les deux selon les besoins
+${needs.rules?.allow_overtime ? "- Les heures supplémentaires sont autorisées si nécessaire" : "- Ne dépasse PAS les heures contractuelles hebdomadaires (strict)"}
+${needs.rules?.allow_split_shifts ? "- Les coupures (midi ET soir le même jour) sont autorisées" : "- PAS de coupures : ne pas assigner midi ET soir le même jour à la même personne"}
+- Pour les serveurs/chefs de rang/barmen : assigner selon les besoins salle
 - Pour les cuisiniers/commis : assigner selon les besoins cuisine
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
