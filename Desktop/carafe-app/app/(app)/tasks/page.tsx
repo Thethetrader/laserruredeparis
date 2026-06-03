@@ -13,7 +13,7 @@ import {
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
 
@@ -151,7 +151,6 @@ export default function TasksManagerPage() {
   });
   const [validating, setValidating] = useState<string | null>(null);
   const [showOneShotModal, setShowOneShotModal] = useState(false);
-  const [newOneShotProtocolId, setNewOneShotProtocolId] = useState("");
   const [newOneShotTitle, setNewOneShotTitle] = useState("");
   const [newOneShotDesc, setNewOneShotDesc] = useState("");
   const [newOneShotRole, setNewOneShotRole] = useState<TaskTargetRole>("all");
@@ -194,7 +193,7 @@ export default function TasksManagerPage() {
 
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
-      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).gte("service_date", (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0]; })()),
+      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
       supabase.from("task_one_shots").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
@@ -266,7 +265,6 @@ export default function TasksManagerPage() {
     setNewOneShotAssignedTo("");
     setNewOneShotRequiresPhoto(false);
     setNewOneShotIsCritical(false);
-    setNewOneShotProtocolId("");
   }
 
   async function createOneShot() {
@@ -284,7 +282,7 @@ export default function TasksManagerPage() {
         assigned_to: newOneShotAssignedTo || null,
         is_validated: false,
         creator_name: "Dev Mode",
-        protocol_id: newOneShotProtocolId || null,
+        protocol_id: null,
       }]);
       setShowOneShotModal(false);
       resetOneShotForm();
@@ -307,36 +305,14 @@ export default function TasksManagerPage() {
       requires_photo: newOneShotRequiresPhoto,
       is_critical: newOneShotIsCritical,
       due_date: today,
-      protocol_id: newOneShotProtocolId || null,
     });
-
-    // Push notification to assigned person
-    if (newOneShotAssignedTo) {
-      fetch("/api/push/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          establishmentId: member.establishment_id,
-          userId: newOneShotAssignedTo,
-          title: newOneShotIsCritical ? "🚨 Tâche urgente" : "📋 Nouvelle tâche",
-          body: newOneShotTitle,
-          url: "/tasks",
-        }),
-      });
-    }
-
     await load();
     setShowOneShotModal(false);
     resetOneShotForm();
     setSavingOneShot(false);
   }
 
-  const todayCompletions = completions.filter(c => c.service_date === today);
-  const completionMap = new Map(todayCompletions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
-  const weeklyDoneIds = new Set(completions.filter(c => {
-    const tpl = templates.find(t => t.id === c.task_template_id);
-    return tpl?.frequency === "weekly";
-  }).map(c => c.task_template_id).filter(Boolean));
+  const completionMap = new Map(completions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
 
   const filteredTemplates = templates.filter(t =>
     filterRole === "all" || t.target_role === filterRole || t.target_role === "all"
@@ -463,8 +439,7 @@ export default function TasksManagerPage() {
                   <div className="divide-y" style={{ borderTop: "1px solid var(--border-soft)", borderColor: "var(--border-soft)" }}>
                     {tasks.map(task => {
                       const comp = completionMap.get(task.id);
-                      const isDone = task.frequency === "weekly" ? weeklyDoneIds.has(task.id) : !!comp;
-                      const isOverdue = task.frequency === "weekly" && !isDone;
+                      const isDone = !!comp;
                       const isValidatingThis = validating === task.id;
                       const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
 
@@ -472,7 +447,7 @@ export default function TasksManagerPage() {
                         <div
                           key={task.id}
                           className="flex items-start gap-3 px-4 py-3 transition-colors"
-                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : isOverdue ? "rgba(239,68,68,0.04)" : "var(--background)", borderLeft: isOverdue ? "3px solid var(--danger)" : undefined }}
+                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}
                         >
                           <div className="mt-0.5 flex-shrink-0">
                             {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
@@ -482,11 +457,6 @@ export default function TasksManagerPage() {
                               <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
                                 {task.title}
                               </span>
-                              {isOverdue && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                                  En retard
-                                </span>
-                              )}
                               {task.is_critical && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
                                   <AlertTriangle size={9} />HACCP
@@ -649,21 +619,6 @@ export default function TasksManagerPage() {
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
                 <textarea value={newOneShotDesc} onChange={e => setNewOneShotDesc(e.target.value)} placeholder="Détails ou instructions…" rows={2} className="w-full px-3 py-2 rounded-base text-[13px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
-
-              {/* Protocole lié */}
-              {protocols.length > 0 && (
-                <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Protocole lié <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
-                  <select value={newOneShotProtocolId} onChange={e => setNewOneShotProtocolId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-base text-[13px] outline-none"
-                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                    <option value="">— Aucun protocole —</option>
-                    {protocols.map(p => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Poste cible */}
               <div>

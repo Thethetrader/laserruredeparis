@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import Link from "next/link";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   Plus, Pencil, ToggleLeft, ToggleRight, AlertTriangle, Camera,
-  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp, BookOpen, ChevronLeft,
+  Sunrise, Sunset, Zap, X, GripVertical, ChevronDown, ChevronUp, BookOpen,
 } from "lucide-react";
 import type { TaskCategory, TaskTargetRole, TaskFrequency } from "@/lib/types/database";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
 
@@ -34,16 +33,10 @@ interface TaskTemplate {
   display_order: number;
   assigned_to: string | null;
   protocol_id: string | null;
-  section_id: string | null;
 }
 
 interface Member {
   profile_id: string;
-  name: string;
-}
-
-interface TaskSection {
-  id: string;
   name: string;
 }
 
@@ -87,15 +80,15 @@ const DEV_PROTOCOLS: Protocol[] = [
 ];
 
 const DEV_TASKS: TaskTemplate[] = [
-  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 1, assigned_to: null, protocol_id: "p1", section_id: "s1" },
-  { id: "t2", title: "Contrôle température frigos", description: "Vérifier entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 2, assigned_to: null, protocol_id: "p2", section_id: "s1" },
-  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 3, assigned_to: null, protocol_id: null, section_id: "s1" },
-  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 4, assigned_to: null, protocol_id: null, section_id: "s1" },
-  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 5, assigned_to: null, protocol_id: null, section_id: "s1" },
-  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 6, assigned_to: null, protocol_id: null, section_id: "s2" },
-  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 7, assigned_to: null, protocol_id: null, section_id: "s2" },
-  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 8, assigned_to: null, protocol_id: "p3", section_id: "s2" },
-  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 9, assigned_to: null, protocol_id: null, section_id: "s2" },
+  { id: "t1", title: "Ouverture caisse", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 1, assigned_to: null, protocol_id: "p1" },
+  { id: "t2", title: "Contrôle température frigos", description: "Vérifier entre 2°C et 4°C", category: "opening", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 2, assigned_to: null, protocol_id: "p2" },
+  { id: "t3", title: "Briefing équipe", description: null, category: "opening", target_role: "manager", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 3, assigned_to: null, protocol_id: null },
+  { id: "t4", title: "Mise en place de la salle", description: null, category: "opening", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 4, assigned_to: null, protocol_id: null },
+  { id: "t5", title: "Mise en place cuisine", description: null, category: "opening", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 5, assigned_to: null, protocol_id: null },
+  { id: "t6", title: "Fermeture caisse", description: null, category: "closing", target_role: "manager", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 6, assigned_to: null, protocol_id: null },
+  { id: "t7", title: "Nettoyage salle", description: null, category: "closing", target_role: "salle", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 7, assigned_to: null, protocol_id: null },
+  { id: "t8", title: "Nettoyage hotte", description: "Hotte dégraissée, filtres vérifiés", category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: true, is_critical: true, is_active: true, display_order: 8, assigned_to: null, protocol_id: "p3" },
+  { id: "t9", title: "Plonge terminée", description: null, category: "closing", target_role: "cuisine", frequency: "daily", requires_photo: false, is_critical: false, is_active: true, display_order: 9, assigned_to: null, protocol_id: null },
 ];
 
 const emptyForm = (): Omit<TaskTemplate, "id" | "display_order" | "is_active"> => ({
@@ -108,18 +101,12 @@ const emptyForm = (): Omit<TaskTemplate, "id" | "display_order" | "is_active"> =
   is_critical: false,
   assigned_to: null,
   protocol_id: null,
-  section_id: null,
 });
 
 const DEV_MEMBERS: Member[] = [
   { profile_id: "m1", name: "Yasmine Benali" },
   { profile_id: "m2", name: "Rayan Dupont" },
   { profile_id: "m3", name: "Léa Martin" },
-];
-
-const DEV_SECTIONS: TaskSection[] = [
-  { id: "s1", name: "Ouverture" },
-  { id: "s2", name: "Fermeture" },
 ];
 
 export default function EstablishmentTasksPage() {
@@ -137,37 +124,6 @@ export default function EstablishmentTasksPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [sections, setSections] = useState<TaskSection[]>([]);
-  const [sectionModal, setSectionModal] = useState<null | "create" | { id: string; name: string }>(null);
-  const [sectionName, setSectionName] = useState("");
-  const [view, setView] = useState<"sections" | "categories">("sections");
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchDragActive = useRef(false);
-
-  function handleGripTouchStart(e: React.TouchEvent, taskId: string, cat: TaskCategory) {
-    touchDragActive.current = false;
-    longPressTimer.current = setTimeout(() => {
-      touchDragActive.current = true;
-      setDragId(taskId);
-      try { navigator.vibrate?.(50); } catch (_) {}
-    }, 450);
-  }
-
-  function handleGripTouchMove(e: React.TouchEvent, cat: TaskCategory) {
-    if (!touchDragActive.current) { if (longPressTimer.current) clearTimeout(longPressTimer.current); return; }
-    e.preventDefault();
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const row = el?.closest("[data-task-id]");
-    if (row) setDragOverId(row.getAttribute("data-task-id"));
-  }
-
-  function handleGripTouchEnd(cat: TaskCategory) {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    if (touchDragActive.current && dragOverId) handleDrop(dragOverId, cat);
-    touchDragActive.current = false;
-    setDragId(null); setDragOverId(null);
-  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -175,7 +131,6 @@ export default function EstablishmentTasksPage() {
       setTasks(DEV_TASKS);
       setMembers(DEV_MEMBERS);
       setProtocols(DEV_PROTOCOLS);
-      setSections(DEV_SECTIONS);
       setLoading(false);
       return;
     }
@@ -215,7 +170,6 @@ export default function EstablishmentTasksPage() {
     setForm({
       title: task.title,
       description: task.description ?? "",
-      section_id: task.section_id ?? null,
       category: task.category,
       target_role: task.target_role,
       frequency: task.frequency,
@@ -318,7 +272,6 @@ export default function EstablishmentTasksPage() {
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <Link href="/tasks" className="flex items-center gap-1 text-[11px] mb-2" style={{ color: "var(--foreground-dim)" }}><ChevronLeft size={12} />Retour aux tâches</Link>
           <MonoLabel size="xs" className="mb-1 block">Paramètres</MonoLabel>
           <h1 className="text-[18px] font-semibold" style={{ color: "var(--foreground)" }}>Tâches récurrentes</h1>
           <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
@@ -335,109 +288,21 @@ export default function EstablishmentTasksPage() {
         </button>
       </div>
 
-
-      {/* View toggle */}
-      <div className="flex items-center gap-1.5 mb-5">
-        {(["sections", "categories"] as const).map(v => (
-          <button key={v} onClick={() => setView(v)}
-            className="px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-            style={{
-              background: view === v ? "rgba(6,182,212,0.1)" : "var(--background-elev)",
-              color: view === v ? "var(--accent)" : "var(--foreground-dim)",
-              border: view === v ? "1px solid rgba(6,182,212,0.25)" : "1px solid var(--border)",
-            }}>
-            {v === "sections" ? "Sections" : "Catégories"}
-          </button>
-        ))}
-      </div>
-
-      {view === "sections" && (
-        <div className="space-y-3 mb-5">
-          {sections.map(section => {
-            const sectionTasks = tasks.filter(t => t.section_id === section.id);
-            return (
-              <div key={section.id} className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-                <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--background-elev)" }}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>{section.name}</span>
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background)", color: "var(--foreground-dim)" }}>
-                      {sectionTasks.filter(t => t.is_active).length} tâche{sectionTasks.filter(t => t.is_active).length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => { setSectionName(section.name); setSectionModal({ id: section.id, name: section.name }); }}
-                      className="p-1.5 rounded-base text-[11px] font-medium transition-colors flex items-center gap-1"
-                      style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-                      <Pencil size={11} />Modifier
-                    </button>
-                    <button onClick={() => { if (DEV_MODE) { setSections(prev => prev.filter(s => s.id !== section.id)); setTasks(prev => prev.map(t => t.section_id === section.id ? { ...t, section_id: null } : t)); } }}
-                      className="p-1.5 rounded-base text-[11px] font-medium transition-colors flex items-center gap-1"
-                      style={{ color: "var(--danger)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                      <X size={11} />Supprimer
-                    </button>
-                  </div>
-                </div>
-                <div style={{ background: "var(--background-elev)" }}>
-                  {sectionTasks.length === 0 ? (
-                    <p className="px-4 py-3 text-[12px]" style={{ color: "var(--foreground-dim)" }}>Aucune tâche dans cette section</p>
-                  ) : sectionTasks.map((task, idx) => (
-                    <div key={task.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--border-soft)" }}>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[13px]" style={{ color: task.is_active ? "var(--foreground)" : "var(--foreground-dim)", textDecoration: task.is_active ? "none" : "line-through" }}>{task.title}</span>
-                        {task.is_critical && <span className="ml-1.5 text-[10px] px-1 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>HACCP</span>}
-                      </div>
-                      <button onClick={() => openEdit(task)} className="p-1 rounded" style={{ color: "var(--foreground-dim)" }}><Pencil size={12} /></button>
-                    </div>
-                  ))}
-                  <div className="px-4 py-2" style={{ borderTop: "1px solid var(--border-soft)" }}>
-                    <button onClick={() => { setForm({ ...emptyForm(), section_id: section.id, category: (sectionTasks[0]?.category ?? "opening") }); setModal({ mode: "create" }); }}
-                      className="flex items-center gap-1.5 text-[12px] font-medium transition-opacity hover:opacity-70"
-                      style={{ color: "var(--accent)" }}>
-                      <Plus size={12} />Ajouter une tâche
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {tasks.filter(t => !t.section_id).length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)", opacity: 0.7 }}>
-              <div className="flex items-center gap-2 px-4 py-3" style={{ background: "var(--background-elev)" }}>
-                <span className="text-[12px] font-medium" style={{ color: "var(--foreground-dim)" }}>Non assignées</span>
-                <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background)", color: "var(--foreground-dim)" }}>{tasks.filter(t => !t.section_id).length}</span>
-              </div>
-              {tasks.filter(t => !t.section_id).map(task => (
-                <div key={task.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
-                  <span className="flex-1 text-[13px]" style={{ color: "var(--foreground-dim)" }}>{task.title}</span>
-                  <button onClick={() => openEdit(task)} className="p-1 rounded" style={{ color: "var(--foreground-dim)" }}><Pencil size={12} /></button>
-                </div>
-              ))}
-            </div>
-          )}
-          <button onClick={() => { setSectionName(""); setSectionModal("create"); }}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-medium transition-colors"
-            style={{ border: "2px dashed var(--border)", color: "var(--foreground-dim)" }}>
-            <Plus size={14} />Nouvelle section
-          </button>
-        </div>
-      )}
-
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--background-elev)" }} />)}
         </div>
-      ) : view === "categories" ? (
-        tasks.length === 0 ? (
-          <EmptyState
-            message="Aucune tâche configurée"
-            sub="Créez votre première tâche récurrente"
-            action={
-              <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "#09090B" }}>
-                Créer une tâche
-              </button>
-            }
-          />
-        ) : (
+      ) : tasks.length === 0 ? (
+        <EmptyState
+          message="Aucune tâche configurée"
+          sub="Créez votre première tâche récurrente"
+          action={
+            <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "#09090B" }}>
+              Créer une tâche
+            </button>
+          }
+        />
+      ) : (
         <div className="space-y-4">
           {(["opening", "continuous", "closing"] as TaskCategory[]).map(cat => {
             const catTasks = byCategory(cat);
@@ -474,7 +339,6 @@ export default function EstablishmentTasksPage() {
                           key={task.id}
                           className="flex items-start gap-3 px-4 py-3 group transition-all"
                           draggable
-                          data-task-id={task.id}
                           onDragStart={() => setDragId(task.id)}
                           onDragOver={e => { e.preventDefault(); setDragOverId(task.id); }}
                           onDrop={e => { e.preventDefault(); handleDrop(task.id, cat); setDragId(null); setDragOverId(null); }}
@@ -485,11 +349,7 @@ export default function EstablishmentTasksPage() {
                             borderTop: isDragOver ? "2px solid var(--accent)" : undefined,
                           }}
                         >
-                          <GripVertical size={14} className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing touch-none select-none" style={{ color: "var(--foreground-dim)" }}
-                            onTouchStart={e => handleGripTouchStart(e, task.id, cat)}
-                            onTouchMove={e => handleGripTouchMove(e, cat)}
-                            onTouchEnd={() => handleGripTouchEnd(cat)}
-                          />
+                          <GripVertical size={14} className="mt-0.5 flex-shrink-0 cursor-grab active:cursor-grabbing" style={{ color: "var(--foreground-dim)" }} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{task.title}</span>
@@ -540,8 +400,7 @@ export default function EstablishmentTasksPage() {
             );
           })}
         </div>
-        )
-      ) : null}
+      )}
 
       {/* Modal créer/modifier */}
       {modal && (
@@ -734,55 +593,6 @@ export default function EstablishmentTasksPage() {
           </div>
         </div>
       )}
-      {/* Section create/edit modal */}
-      {sectionModal !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}
-          onClick={e => { if (e.target === e.currentTarget) setSectionModal(null); }}>
-          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                {sectionModal === "create" ? "Nouvelle section" : "Modifier la section"}
-              </h2>
-              <button onClick={() => setSectionModal(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
-            </div>
-            <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Nom de la section *</label>
-            <input
-              type="text"
-              value={sectionName}
-              onChange={e => setSectionName(e.target.value)}
-              placeholder="Ex: Ouverture, Service du midi…"
-              autoFocus
-              className="w-full px-3 py-2.5 rounded-base text-[13px] outline-none mb-4"
-              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-            />
-            <div className="flex gap-2">
-              <button onClick={() => setSectionModal(null)}
-                className="flex-1 py-2.5 rounded-base text-[13px] font-medium"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-                Annuler
-              </button>
-              <button
-                disabled={!sectionName.trim()}
-                onClick={() => {
-                  if (!sectionName.trim()) return;
-                  if (sectionModal === "create") {
-                    const newSection: TaskSection = { id: `s-${Date.now()}`, name: sectionName.trim() };
-                    setSections(prev => [...prev, newSection]);
-                  } else {
-                    setSections(prev => prev.map(s => s.id === sectionModal.id ? { ...s, name: sectionName.trim() } : s));
-                  }
-                  setSectionModal(null);
-                  setSectionName("");
-                }}
-                className="flex-1 py-2.5 rounded-base text-[13px] font-semibold"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: sectionName.trim() ? 1 : 0.5 }}>
-                {sectionModal === "create" ? "Créer" : "Enregistrer"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, Che
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_PROFILE_ID = "dev-user";
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 

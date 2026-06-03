@@ -1,8 +1,7 @@
 "use client";
 import { useDevRole } from "@/hooks/useDevRole";
 
-// v2 production-safe
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 export function DevRoleSwitcher() {
   const [devRole, setDevRole] = useDevRole();

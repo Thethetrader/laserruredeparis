@@ -4,13 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopBar } from "@/components/layout/TopBar";
-// production auth enabled
 import { DevRoleSwitcher } from "@/components/DevRoleSwitcher";
 import type { Establishment, EstablishmentWithRole, Profile, UserRole } from "@/lib/types/database";
 
 type MemberRow = { role: UserRole; establishments: Establishment };
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 const DEV_PROFILE: Profile = {
   id: "dev-user",

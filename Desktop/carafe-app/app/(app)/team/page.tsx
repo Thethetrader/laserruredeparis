@@ -9,7 +9,7 @@ import Link from "next/link";
 import type { UserRole } from "@/lib/types/database";
 import { useDevRole } from "@/hooks/useDevRole";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
 

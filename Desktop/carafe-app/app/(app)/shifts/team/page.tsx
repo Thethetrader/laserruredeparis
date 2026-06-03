@@ -15,7 +15,7 @@ import {
 } from "@/lib/shifts";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 /* ── French overtime law ─────────────────────────────────────────────────── */
 // Loi française : heures sup +25% pour les 8 premières (36e-43e), +50% au-delà

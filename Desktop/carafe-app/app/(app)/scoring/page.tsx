@@ -7,7 +7,7 @@ import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { Trophy, BookOpen, MessageSquare, Zap, Plus, X, Award, Star } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 type ScoreSource = "protocol_view" | "review_received" | "challenge_won" | "kudo_from_peer" | "kudo_from_manager" | "manual_bonus";
 

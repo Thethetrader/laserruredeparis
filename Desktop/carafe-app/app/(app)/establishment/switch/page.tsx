@@ -7,7 +7,7 @@ import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { CheckCircle, Building2 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 interface EstablishmentOption {
   id: string;

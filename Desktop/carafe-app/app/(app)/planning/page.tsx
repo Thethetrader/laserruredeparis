@@ -7,7 +7,7 @@ import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock, BarChart2, TrendingUp } from "lucide-react";
 import { toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus } from "@/lib/shifts";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 

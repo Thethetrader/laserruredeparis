@@ -6,7 +6,7 @@ import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
 

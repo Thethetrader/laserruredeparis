@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const KEY = "carafe_dev_role";
 const EVENT = "carafe_dev_role_change";
 

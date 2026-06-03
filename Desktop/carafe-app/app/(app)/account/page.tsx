@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { PushNotificationSetup } from "@/components/PushNotificationSetup";
 import { useDevRole } from "@/hooks/useDevRole";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 const DAYS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const PERIODS_FR = ["Matin", "Après-midi", "Soir"];

@@ -15,7 +15,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 
 function LoginForm() {
   const router = useRouter();

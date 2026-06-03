@@ -8,12 +8,11 @@ import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
   Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
   Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
-  BarChart2, Euro,
+  BarChart2,
 } from "lucide-react";
-import { formatHours, formatTips } from "@/lib/shifts";
 import { useDevRole } from "@/hooks/useDevRole";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = false;
 const DEV_PROFILE_ID = "dev-user";
 
 interface Protocol {
@@ -74,8 +73,7 @@ interface TaskStat {
   label: string;
   done: number;
   total: number;
-  period: "today" | "week" | "section";
-  section_id?: string;
+  period: "today" | "week";
   tasks?: { title: string; done: boolean; category: string; id?: string; requires_photo?: boolean }[];
 }
 
@@ -147,30 +145,37 @@ const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
 
 const DEV_TASK_STATS: TaskStat[] = [
   {
-    label: "Ouverture",
+    label: "Aujourd'hui",
     done: 5,
-    total: 5,
-    period: "section",
-    section_id: "s1",
+    total: 9,
+    period: "today",
     tasks: [
       { id: "t1", title: "Ouverture caisse", done: true, category: "Ouverture", requires_photo: true },
       { id: "t2", title: "Contrôle frigos", done: true, category: "Ouverture", requires_photo: true },
       { id: "t3", title: "Briefing équipe", done: true, category: "Ouverture", requires_photo: false },
       { id: "t4", title: "Mise en place salle", done: true, category: "Ouverture", requires_photo: false },
       { id: "t5", title: "Mise en place cuisine", done: true, category: "Ouverture", requires_photo: false },
-    ],
-  },
-  {
-    label: "Fermeture",
-    done: 0,
-    total: 4,
-    period: "section",
-    section_id: "s2",
-    tasks: [
       { id: "t6", title: "Fermeture caisse", done: false, category: "Fermeture", requires_photo: true },
       { id: "t7", title: "Nettoyage salle", done: false, category: "Fermeture", requires_photo: false },
       { id: "t8", title: "Nettoyage hotte", done: false, category: "Fermeture", requires_photo: true },
       { id: "t9", title: "Plonge terminée", done: false, category: "Fermeture", requires_photo: false },
+    ],
+  },
+  {
+    label: "Cette semaine",
+    done: 31,
+    total: 63,
+    period: "week",
+    tasks: [
+      { title: "Ouverture caisse", done: true, category: "Récurrent" },
+      { title: "Contrôle frigos", done: true, category: "Récurrent" },
+      { title: "Briefing équipe", done: true, category: "Récurrent" },
+      { title: "Mise en place salle", done: true, category: "Récurrent" },
+      { title: "Mise en place cuisine", done: false, category: "Récurrent" },
+      { title: "Fermeture caisse", done: false, category: "Récurrent" },
+      { title: "Nettoyage salle", done: false, category: "Récurrent" },
+      { title: "Nettoyage hotte", done: false, category: "Récurrent" },
+      { title: "Plonge terminée", done: false, category: "Récurrent" },
     ],
   },
 ];
@@ -218,28 +223,25 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   ],
   task_stats: [
     {
-      label: "Ouverture",
+      label: "Aujourd'hui",
       done: 3,
-      total: 3,
-      period: "section",
-      section_id: "s1",
+      total: 5,
+      period: "today",
       tasks: [
-        { id: "e1", title: "Briefing équipe", done: true, category: "Ouverture", requires_photo: false },
-        { id: "e2", title: "Mise en place salle", done: true, category: "Ouverture", requires_photo: false },
-        { id: "e3", title: "Mise en place cuisine", done: true, category: "Ouverture", requires_photo: false },
+        { title: "Briefing équipe", done: true, category: "Ouverture" },
+        { title: "Mise en place salle", done: true, category: "Ouverture" },
+        { title: "Mise en place cuisine", done: true, category: "Ouverture" },
+        { title: "Nettoyage salle", done: false, category: "Fermeture" },
+        { title: "Plonge terminée", done: false, category: "Fermeture" },
       ],
     },
-    {
-      label: "Fermeture",
-      done: 0,
-      total: 2,
-      period: "section",
-      section_id: "s2",
-      tasks: [
-        { id: "e4", title: "Nettoyage salle", done: false, category: "Fermeture", requires_photo: false },
-        { id: "e5", title: "Plonge terminée", done: false, category: "Fermeture", requires_photo: false },
-      ],
-    },
+    { label: "Cette semaine", done: 18, total: 35, period: "week", tasks: [
+      { title: "Briefing équipe", done: true, category: "Récurrent" },
+      { title: "Mise en place salle", done: true, category: "Récurrent" },
+      { title: "Mise en place cuisine", done: true, category: "Récurrent" },
+      { title: "Nettoyage salle", done: false, category: "Récurrent" },
+      { title: "Plonge terminée", done: false, category: "Récurrent" },
+    ]},
   ],
 };
 
@@ -692,8 +694,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
-  const [viewDate, setViewDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const isToday = viewDate === new Date().toISOString().split("T")[0];
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -738,23 +738,9 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Tâches par section</p>
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avancement des tâches</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d.toISOString().split("T")[0]); }}
-                  className="p-1 rounded-base transition-colors" style={{ color: "var(--foreground-dim)", background: "var(--background-soft)" }}>
-                  <ArrowLeft size={12} />
-                </button>
-                <span className="text-[11px] font-mono" style={{ color: isToday ? "var(--accent)" : "var(--warning)" }}>
-                  {isToday ? "Aujourd'hui" : new Date(viewDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
-                </span>
-                <button onClick={() => { if (!isToday) { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d.toISOString().split("T")[0]); } }}
-                  disabled={isToday}
-                  className="p-1 rounded-base transition-colors" style={{ color: isToday ? "var(--border)" : "var(--foreground-dim)", background: "var(--background-soft)" }}>
-                  <ChevronRight size={12} />
-                </button>
-                <a href="/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-              </div>
+              <a href="/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
             </div>
             <div className="p-5 space-y-4" style={{ background: "var(--background-elev)" }}>
               {data.task_stats.map(stat => {
@@ -762,7 +748,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.section_id ?? stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
@@ -1200,24 +1186,6 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
-  const [monthHours, setMonthHours] = useState<number | null>(null);
-  const [monthTips, setMonthTips] = useState<number | null>(null);
-  useEffect(() => {
-    const sup = createClient();
-    sup.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      const now = new Date();
-      const from = now.toISOString().slice(0, 7) + "-01";
-      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const to = now.toISOString().slice(0, 7) + "-" + String(last).padStart(2, "0");
-      sup.from("shifts").select("hours_worked,tips").eq("user_id", user.id).gte("shift_date", from).lte("shift_date", to)
-        .then(({ data }) => {
-          if (!data) return;
-          setMonthHours((data as {hours_worked:number}[]).reduce((s,r) => s + (r.hours_worked ?? 0), 0));
-          setMonthTips((data as {tips:number}[]).reduce((s,r) => s + (r.tips ?? 0), 0));
-        });
-    });
-  }, []);
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
@@ -1278,11 +1246,9 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     showSuccess("Avis client enregistré ✓");
   };
 
-  const todayStat = data.task_stats.find(s => s.period === "section" || s.period === "today");
+  const todayStat = data.task_stats.find(s => s.period === "today");
   const todayPct = todayStat && todayStat.total > 0 ? Math.round((todayStat.done / todayStat.total) * 100) : 0;
-  const todayAllDone = data.task_stats.length > 0 && data.task_stats.every(s => s.done >= s.total && s.total > 0);
-  const [viewDate, setViewDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const isToday = viewDate === new Date().toISOString().split("T")[0];
+  const todayAllDone = todayStat ? todayStat.done >= todayStat.total && todayStat.total > 0 : false;
 
   const toggleConfirm = async (feedbackId: string) => {
     const isConfirmed = confirmedIds.has(feedbackId);
@@ -1333,29 +1299,6 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         </button>
       </div>
 
-      {(monthHours !== null || monthTips !== null) && (
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <a href="/shifts" className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)" }}>
-              <Clock size={15} style={{ color: "var(--accent)" }} />
-            </div>
-            <div>
-              <p className="text-[16px] font-bold" style={{ color: "var(--foreground)" }}>{monthHours !== null ? formatHours(monthHours) : "—"}</p>
-              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Heures ce mois</p>
-            </div>
-          </a>
-          <a href="/shifts/recap" className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 active:scale-[0.97]" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.15)" }}>
-              <Euro size={15} style={{ color: "var(--accent)" }} />
-            </div>
-            <div>
-              <p className="text-[16px] font-bold" style={{ color: "var(--accent)" }}>{monthTips !== null ? formatTips(monthTips) : "—"}</p>
-              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Tips ce mois</p>
-            </div>
-          </a>
-        </div>
-      )}
-
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
           {successMsg}
@@ -1403,20 +1346,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <CheckCircle2 size={14} style={{ color: todayAllDone ? "var(--success)" : "var(--accent)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Mes tâches</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d.toISOString().split("T")[0]); }}
-                  className="p-1 rounded-base" style={{ color: "var(--foreground-dim)", background: "var(--background-soft)" }}>
-                  <ArrowLeft size={12} />
-                </button>
-                <span className="text-[11px] font-mono" style={{ color: isToday ? "var(--accent)" : "var(--warning)" }}>
-                  {isToday ? "Auj." : new Date(viewDate + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                </span>
-                <button onClick={() => { if (!isToday) { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d.toISOString().split("T")[0]); } }}
-                  disabled={isToday} className="p-1 rounded-base" style={{ color: isToday ? "var(--border)" : "var(--foreground-dim)", background: "var(--background-soft)" }}>
-                  <ChevronRight size={12} />
-                </button>
-                <a href="/me/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-              </div>
+              <a href="/me/tasks" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
             </div>
             <div className="p-5 space-y-4" style={{ background: "var(--background-elev)" }}>
               {data.task_stats.map(stat => {
@@ -1424,7 +1354,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.section_id ?? stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
@@ -1828,5 +1758,3 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     </div>
   );
 }
-
-
