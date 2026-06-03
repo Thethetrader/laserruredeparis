@@ -197,7 +197,7 @@ export default function MyTasksPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id, role, job_title").eq("profile_id", userId ?? "").eq("is_active", true).single();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id, role, job_title").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member) { setLoading(false); return; }
 
     const estId = member.establishment_id;
@@ -306,7 +306,7 @@ export default function MyTasksPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).single();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member) { setSubmitting(false); return; }
 
     if (modalPhoto && isOnline) {

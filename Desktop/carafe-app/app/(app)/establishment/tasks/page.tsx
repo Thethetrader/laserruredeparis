@@ -137,7 +137,7 @@ export default function EstablishmentTasksPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", userId ?? "").eq("is_active", true).single();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member || member.role !== "owner") { setLoading(false); return; }
 
     setEstId(member.establishment_id);

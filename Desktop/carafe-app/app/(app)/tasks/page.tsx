@@ -244,7 +244,7 @@ export default function TasksManagerPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).single();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member) { setValidating(null); return; }
 
     await supabase.from("task_completions").insert({
@@ -292,7 +292,7 @@ export default function TasksManagerPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).single();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member) { setSavingOneShot(false); return; }
 
     const { error: insertError } = await supabase.from("task_one_shots").insert({
