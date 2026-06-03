@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
       supabase.from("customer_feedback")
         .select("id, reported_by, category, content, table_number, created_at")
         .eq("establishment_id", establishment_id)
-        .neq("reported_by", user.id)
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: false })
         .limit(30),
