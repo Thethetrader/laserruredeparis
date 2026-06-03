@@ -2,17 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, CalendarDays, ClipboardList } from "lucide-react";
-import { useDevRole } from "@/hooks/useDevRole";
-
-const DEV_MODE = false;
+import { LayoutDashboard, BookOpen, Users, MessageSquare, Trophy, Zap, ClipboardList, CalendarDays, Clock } from "lucide-react";
+import type { UserRole } from "@/lib/types/database";
 
 const managerNav = [
   { href: "/dashboard",         icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tasks",             icon: ClipboardList,   label: "Tâches" },
-  { href: "/customer-feedback", icon: MessageSquare,   label: "Clients" },
-  { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/team",              icon: Users,           label: "Équipe" },
+  { href: "/shifts",            icon: CalendarDays,    label: "Shifts" },
+  { href: "/delays",            icon: Clock,           label: "Retards" },
 ];
 
 const employeeNav = [
@@ -24,11 +22,14 @@ const employeeNav = [
   { href: "/challenges",        icon: Trophy,          label: "Défis" },
 ];
 
-export function BottomNav() {
-  const pathname = usePathname();
-  const [devRole] = useDevRole();
+interface BottomNavProps {
+  role: UserRole;
+}
 
-  const isEmployee = DEV_MODE ? devRole === "employee" : false;
+export function BottomNav({ role }: BottomNavProps) {
+  const pathname = usePathname();
+
+  const isEmployee = role === "employee";
   const nav = isEmployee ? employeeNav : managerNav;
 
   return (

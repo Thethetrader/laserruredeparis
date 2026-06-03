@@ -121,7 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav role={establishment.role} />
       <DevRoleSwitcher />
     </div>
   );
