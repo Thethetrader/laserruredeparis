@@ -413,6 +413,7 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   const [totalTips, setTotalTips] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dispatchError, setDispatchError] = useState<string | null>(null);
   const [caMidi, setCaMidi] = useState("");
   const [caSoir, setCaSoir] = useState("");
   const [caDay, setCaDay] = useState("");
@@ -468,18 +469,25 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   const totalHoursEligible = eligibleStaff.reduce((s, x) => s + x.hours, 0);
 
   async function handleDispatch() {
-    if (!isDispatch || totalTipsNum <= 0) return;
+    if (!isDispatch || totalTipsNum <= 0 || eligibleStaff.length === 0) return;
     setSaving(true);
-    if (!DEV_MODE) {
-      for (const shift of shifts) {
-        if (!shift.tips_enabled) continue;
-        const hours = (shift.hours_worked ?? 0) + (shift.hours_worked_2 ?? 0);
-        if (hours <= 0) continue;
-        await supabase.from("shifts").update({ tips: distribution[shift.user_id] ?? 0, tips_2: 0 }).eq("id", shift.id);
+    setDispatchError(null);
+    try {
+      if (!DEV_MODE) {
+        for (const shift of shifts) {
+          if (!shift.tips_enabled) continue;
+          const hours = (shift.hours_worked ?? 0) + (shift.hours_worked_2 ?? 0);
+          if (hours <= 0) continue;
+          const { error } = await supabase.from("shifts").update({ tips: distribution[shift.user_id] ?? 0, tips_2: 0 }).eq("id", shift.id);
+          if (error) throw new Error(error.message);
+        }
       }
+      setSaving(false); setSaved(true);
+      setTimeout(() => { setSaved(false); onSaved(); onClose(); }, 1200);
+    } catch (e: unknown) {
+      setSaving(false);
+      setDispatchError(e instanceof Error ? e.message : "Erreur lors de la distribution. Réessayez.");
     }
-    setSaving(false); setSaved(true);
-    setTimeout(() => { setSaved(false); onSaved(); onClose(); }, 1200);
   }
 
   async function handleSaveCA() {
@@ -551,11 +559,21 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
             </div>
           </div>
         )}
+        {dispatchError && (
+          <p className="text-[12px] px-3 py-2 rounded-xl mb-3" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            {dispatchError}
+          </p>
+        )}
+        {isDispatch && eligibleStaff.length === 0 && (
+          <p className="text-[12px] px-3 py-2 rounded-xl mb-3 text-center" style={{ background: "rgba(245,158,11,0.06)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
+            Aucun shift éligible aux pourboires ce jour
+          </p>
+        )}
         {isDispatch ? (
-          <button onClick={handleDispatch} disabled={saving || totalTipsNum <= 0}
+          <button onClick={handleDispatch} disabled={saving || totalTipsNum <= 0 || eligibleStaff.length === 0}
             className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-            style={{ background: saved ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.15)", color: saved ? "var(--success)" : "#F59E0B", border: `1px solid ${saved ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`, opacity: (saving || totalTipsNum <= 0) ? 0.5 : 1 }}>
-            {saved ? <><Check size={14} />Distribué !</> : saving ? "Distribution…" : `Dispatcher aux ${eligibleStaff.length} éligibles`}
+            style={{ background: saved ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.15)", color: saved ? "var(--success)" : "#F59E0B", border: `1px solid ${saved ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`, opacity: (saving || totalTipsNum <= 0 || eligibleStaff.length === 0) ? 0.5 : 1 }}>
+            {saved ? <><Check size={14} />Distribué !</> : saving ? "Distribution…" : `Dispatcher aux ${eligibleStaff.length} éligible${eligibleStaff.length > 1 ? "s" : ""}`}
           </button>
         ) : (
           <button onClick={onClose} className="w-full py-3 rounded-xl text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Fermer</button>
