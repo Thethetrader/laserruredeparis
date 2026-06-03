@@ -191,7 +191,7 @@ export default function PlanningPage() {
       const { data: prevPw } = await supabase
         .from("planning_weeks")
         .select("service_needs")
-        .eq("establishment_id", eid)
+        .eq("establishment_id", resolvedEid)
         .eq("week_start", toDateStr(prevMonday))
         .maybeSingle();
 
