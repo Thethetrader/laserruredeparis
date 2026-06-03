@@ -7,9 +7,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 interface ServicePeriod {
   start: string;
   end: string;
-  salle: number;
-  cuisine: number;
-  bar: number;
+  staff: Record<string, number>;
 }
 
 interface ServiceNeeds {
@@ -96,18 +94,14 @@ BESOINS DE LA SEMAINE :
 Jours de service : ${serviceDayLabels}
 
 Service du midi (${needs.midi.start}–${needs.midi.end}) :
-- Salle : ${needs.midi.salle} personnes
-- Cuisine : ${needs.midi.cuisine} personnes
-- Bar : ${needs.midi.bar} personnes
+${Object.entries(needs.midi.staff || {}).filter(([,n]) => n > 0).map(([role, n]) => `- ${role} : ${n} personne${n > 1 ? 's' : ''}`).join('\n') || '- Aucun besoin défini'}
 
 Service du soir (${needs.soir.start}–${needs.soir.end}) :
-- Salle : ${needs.soir.salle} personnes
-- Cuisine : ${needs.soir.cuisine} personnes
-- Bar : ${needs.soir.bar} personnes
+${Object.entries(needs.soir.staff || {}).filter(([,n]) => n > 0).map(([role, n]) => `- ${role} : ${n} personne${n > 1 ? 's' : ''}`).join('\n') || '- Aucun besoin défini'}
 
 RÈGLES :
 - Au moins 2 jours de repos par semaine par personne
-- Respecte le rôle de chaque employé (salle→serveur/chef_de_rang/responsable, cuisine→cuisinier/commis/plongeur, bar→barman/responsable)
+- Respecte le rôle de chaque employé pour couvrir les besoins par poste
 - Répartis équitablement les jours entre les employés
 - Ne dépasse pas les heures contractuelles hebdomadaires
 - Pour les serveurs/chefs de rang/barmen : assigner soit midi soit soir ou les deux selon les besoins

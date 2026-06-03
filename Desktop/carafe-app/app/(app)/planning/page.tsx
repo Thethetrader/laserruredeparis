@@ -11,16 +11,11 @@ const DEV_MODE = false;
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-const SERVICES_LIST = ["salle", "cuisine", "bar"] as const;
-type ServiceType = typeof SERVICES_LIST[number];
-const SERVICE_LABELS: Record<ServiceType, string> = { salle: "Salle", cuisine: "Cuisine", bar: "Bar" };
-
+// staff: Record<staff_status_key, count_needed>
 interface ServicePeriod {
   start: string;
   end: string;
-  salle: number;
-  cuisine: number;
-  bar: number;
+  staff: Record<string, number>;
 }
 
 interface ServiceNeeds {
@@ -30,8 +25,8 @@ interface ServiceNeeds {
 }
 
 const DEFAULT_NEEDS: ServiceNeeds = {
-  midi: { start: "11:30", end: "15:30", salle: 2, cuisine: 2, bar: 1 },
-  soir: { start: "18:30", end: "23:00", salle: 3, cuisine: 2, bar: 1 },
+  midi: { start: "11:30", end: "15:30", staff: { chef_de_rang: 1, cuisinier: 1 } },
+  soir: { start: "18:30", end: "23:00", staff: { serveur: 2, cuisinier: 1 } },
   service_days: [1, 2, 3, 4, 5, 6],
 };
 
@@ -111,6 +106,7 @@ export default function PlanningPage() {
   const [planningWeek, setPlanningWeek] = useState<PlanningWeek | null | undefined>(undefined);
   const [planningShifts, setPlanningShifts] = useState<PlanningShift[]>([]);
   const [needs, setNeeds] = useState<ServiceNeeds>(DEFAULT_NEEDS);
+  const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -135,8 +131,22 @@ export default function PlanningPage() {
     const supabase = createClient();
 
     const eid = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
-    if (!eid) { setPlanningWeek(null); setLoading(false); return; }
-    setEstId(eid);
+
+    // Always resolve the establishment from the user's membership (more reliable than localStorage)
+    const { data: membershipData } = await supabase
+      .from("establishment_members")
+      .select("establishment_id, establishments(tip_settings)")
+      .eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+
+    const resolvedEid = eid || membershipData?.establishment_id || null;
+    if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
+    setEstId(resolvedEid);
+
+    const estTipSettings = (membershipData?.establishments as { tip_settings: unknown } | null)?.tip_settings;
+    if (estTipSettings) setTipSettings(parseTipSettings(estTipSettings));
 
     const weekStr = toDateStr(monday);
 
@@ -496,15 +506,20 @@ function NeedsForm({ needs, setNeeds, onGenerate, generating }: {
   );
 }
 
-function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
+function ServicePeriodCard({ label, period, tipSettings, onCountChange, onTimeChange }: {
   label: string;
   period: ServicePeriod;
-  onCountChange: (service: ServiceType, value: number) => void;
+  tipSettings: TipSettings;
+  onCountChange: (status: string, value: number) => void;
   onTimeChange: (field: "start" | "end", value: string) => void;
 }) {
+  const visibleStatuses = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(
+    s => !tipSettings.hidden.includes(s)
+  );
+
   return (
     <div className="rounded-2xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Service du {label}</p>
         <div className="flex items-center gap-1.5">
           <Clock size={10} style={{ color: "var(--foreground-dim)" }} />
@@ -517,27 +532,34 @@ function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {SERVICES_LIST.map(service => (
-          <div key={service}>
-            <p className="text-[10px] mb-1.5" style={{ color: "var(--foreground-dim)" }}>{SERVICE_LABELS[service]}</p>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => onCountChange(service, period[service] - 1)}
-                className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center transition-colors"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
-              >−</button>
-              <span className="flex-1 text-center text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                {period[service]}
-              </span>
-              <button
-                onClick={() => onCountChange(service, period[service] + 1)}
-                className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center transition-colors"
-                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
-              >+</button>
+      <div className="space-y-2">
+        {visibleStatuses.map(status => {
+          const customLabel = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
+          const color = tipSettings.colors[status] ?? STAFF_STATUSES[status].color;
+          const count = period.staff[status] ?? 0;
+          return (
+            <div key={status} className="flex items-center gap-3 px-3 py-2 rounded-xl"
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+              <span className="flex-1 text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{customLabel}</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => onCountChange(status, Math.max(0, count - 1))}
+                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
+                  style={{ background: count > 0 ? `${color}18` : "var(--background-soft)", border: `1px solid ${count > 0 ? color + "40" : "var(--border)"}`, color: count > 0 ? color : "var(--foreground-dim)" }}>
+                  −
+                </button>
+                <span className="w-5 text-center text-[15px] font-bold" style={{ color: count > 0 ? color : "var(--foreground-dim)" }}>
+                  {count}
+                </span>
+                <button onClick={() => onCountChange(status, count + 1)}
+                  className="w-7 h-7 rounded-lg text-[14px] font-bold flex items-center justify-center"
+                  style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
+                  +
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
