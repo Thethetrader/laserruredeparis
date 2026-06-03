@@ -40,18 +40,29 @@ function SignupInner() {
 
   const onSubmitDirector = async (data: DirectorData) => {
     setServerError(null);
-    const { data: authData, error } = await supabase.auth.signUp({
+
+    // Create account + establishment via server-side API (no email confirmation needed)
+    const res = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        establishment_name: data.establishment_name,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setServerError(json.error ?? "Erreur. Réessayez."); return; }
+
+    // Sign in after account creation
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
-      options: { data: { first_name: data.first_name, last_name: data.last_name } },
     });
-    if (error || !authData.user) { setServerError(error?.message ?? "Erreur. Réessayez."); return; }
+    if (signInError) { setServerError("Compte créé. Connectez-vous."); router.push("/login"); return; }
 
-    const { data: estab, error: estabError } = await supabase
-      .from("establishments").insert({ name: data.establishment_name, owner_id: authData.user.id }).select().single();
-    if (estabError || !estab) { setServerError("Compte créé, mais erreur établissement."); return; }
-
-    await supabase.from("establishment_members").insert({ establishment_id: estab.id, profile_id: authData.user.id, role: "owner" });
     router.push("/dashboard");
     router.refresh();
   };
