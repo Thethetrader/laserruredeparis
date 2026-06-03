@@ -169,7 +169,7 @@ export default function PlanningPage() {
 
       const { data: ps, error: psError } = await supabase
         .from("planning_shifts")
-        .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name, staff_status)")
+        .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name)")
         .eq("planning_week_id", pw.id)
         .order("shift_date")
         .order("start_time");
