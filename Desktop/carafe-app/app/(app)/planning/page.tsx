@@ -611,18 +611,35 @@ function ServicePeriodCard({ label, period, onCountChange, onTimeChange }: {
 
 const DAYS_FR_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-function ShiftChip({ shift }: { shift: PlanningShift }) {
+const CONFIRMATION_ICON: Record<string, string> = {
+  confirmed: "✓",
+  modified: "✗",
+  pending: "·",
+};
+const CONFIRMATION_COLOR: Record<string, string> = {
+  confirmed: "#10B981",
+  modified: "#EF4444",
+  pending: "#F59E0B",
+};
+
+function ShiftChip({ shift, showStatus }: { shift: PlanningShift; showStatus?: boolean }) {
   const color = STAFF_STATUSES[shift.staff_status as StaffStatus]?.color ?? "#A1A1AA";
+  const statusColor = CONFIRMATION_COLOR[shift.confirmation_status] ?? CONFIRMATION_COLOR.pending;
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold"
       style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="truncate">{shift.first_name ?? "?"}</span>
+      <span className="truncate flex-1">{shift.first_name ?? "?"}</span>
+      {showStatus && (
+        <span className="text-[10px] font-bold" style={{ color: statusColor }}>
+          {CONFIRMATION_ICON[shift.confirmation_status] ?? "·"}
+        </span>
+      )}
     </div>
   );
 }
 
-function WeekGrid({ shifts, weekDates }: { shifts: PlanningShift[]; weekDates: Date[] }) {
+function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; weekDates: Date[]; showStatus?: boolean }) {
   const activeDates = weekDates.filter(d => shifts.some(s => s.shift_date === toDateStr(d)));
   if (activeDates.length === 0) return null;
 
@@ -682,7 +699,7 @@ function WeekGrid({ shifts, weekDates }: { shifts: PlanningShift[]; weekDates: D
               return (
                 <div key={i} className="flex-1 flex flex-col gap-1 p-2"
                   style={{ minWidth: MIN_COL, minHeight: 72, borderLeft: "1px solid var(--border-soft)", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
-                  {cell.map(s => <ShiftChip key={s.id} shift={s} />)}
+                  {cell.map(s => <ShiftChip key={s.id} shift={s} showStatus={showStatus} />)}
                 </div>
               );
             })}
@@ -864,6 +881,18 @@ function PublishedView({ shifts, weekDates, rates }: {
   rates: Record<string, EmployeeRate>;
 }) {
   const confirmed = shifts.filter(s => s.confirmation_status === "confirmed").length;
+  const pending = shifts.filter(s => s.confirmation_status === "pending").length;
+  const modified = shifts.filter(s => s.confirmation_status === "modified").length;
+
+  // Group by employee
+  const byEmployee = Object.values(
+    shifts.reduce((acc, s) => {
+      if (!acc[s.user_id]) acc[s.user_id] = { name: s.first_name ?? "?", shifts: [] };
+      acc[s.user_id].shifts.push(s);
+      return acc;
+    }, {} as Record<string, { name: string; shifts: PlanningShift[] }>)
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
@@ -871,11 +900,42 @@ function PublishedView({ shifts, weekDates, rates }: {
           <div className="w-2 h-2 rounded-full" style={{ background: "#10B981" }} />
           <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Planning publié</p>
         </div>
-        <MonoLabel size="xs">{confirmed}/{shifts.length} confirmés</MonoLabel>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold" style={{ color: "#10B981" }}>✓ {confirmed}</span>
+          <span className="text-[11px] font-bold" style={{ color: "#F59E0B" }}>· {pending}</span>
+          {modified > 0 && <span className="text-[11px] font-bold" style={{ color: "#EF4444" }}>✗ {modified}</span>}
+        </div>
       </div>
+
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-        <WeekGrid shifts={shifts} weekDates={weekDates} />
+        <WeekGrid shifts={shifts} weekDates={weekDates} showStatus />
       </div>
+
+      {/* Confirmation status per employee */}
+      <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--foreground-dim)" }}>Confirmations</p>
+        {byEmployee.map(({ name, shifts: emp }) => {
+          const allConfirmed = emp.every(s => s.confirmation_status === "confirmed");
+          const anyModified = emp.some(s => s.confirmation_status === "modified");
+          const statusColor = anyModified ? "#EF4444" : allConfirmed ? "#10B981" : "#F59E0B";
+          const statusLabel = anyModified ? "Modifié" : allConfirmed ? "Confirmé" : "En attente";
+          const statusIcon = anyModified ? "✗" : allConfirmed ? "✓" : "·";
+          return (
+            <div key={name} className="flex items-center justify-between px-3 py-2 rounded-xl"
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
+              <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{emp.length} shift{emp.length > 1 ? "s" : ""}</span>
+                <span className="text-[12px] font-bold px-2 py-0.5 rounded-lg"
+                  style={{ color: statusColor, background: `${statusColor}15`, border: `1px solid ${statusColor}30` }}>
+                  {statusIcon} {statusLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <WeekSummary shifts={shifts} rates={rates} />
     </div>
   );
