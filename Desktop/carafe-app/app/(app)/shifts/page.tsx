@@ -276,8 +276,13 @@ export default function ShiftsPage() {
 
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
-    if (ex) await supabase.from("shifts").update(data).eq("id", ex.id);
-    else await supabase.from("shifts").insert({...data, user_id: userId, establishment_id: estId || undefined});
+    if (ex) {
+      await supabase.from("shifts").update(data).eq("id", ex.id);
+    } else {
+      const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
+      if (!eid) return; // ne pas sauvegarder sans establishment_id
+      await supabase.from("shifts").insert({ ...data, user_id: userId, establishment_id: eid });
+    }
     setSelected(null);
     await load(year, month);
   }

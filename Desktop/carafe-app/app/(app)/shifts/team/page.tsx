@@ -720,10 +720,15 @@ export default function ShiftsTeamPage() {
     const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
     const last = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${String(m + 1).padStart(2, "0")}-${last}`;
-    const { data: rawShifts } = await supabase.from("shifts").select("*, profiles(first_name), establishment_members!inner(staff_status, tips_enabled)").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date");
+    // Charger shifts + membres séparément pour éviter le !inner qui filtre les shifts sans membre actif
+    const [{ data: rawShifts }, { data: memberMap }] = await Promise.all([
+      supabase.from("shifts").select("*, profiles(first_name)").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date"),
+      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled").eq("establishment_id", eid).eq("is_active", true),
+    ]);
+    const memberByUser = Object.fromEntries((memberMap ?? []).map(m => [m.profile_id, m]));
     const mapped: TeamShift[] = (rawShifts ?? []).map((s: Record<string, unknown>) => {
-      const em = s.establishment_members as Array<{ staff_status: string | null; tips_enabled: boolean }> | null;
-      return { ...(s as unknown as TeamShift), first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null, staff_status: (em?.[0]?.staff_status ?? null) as StaffStatus | null, tips_enabled: em?.[0]?.tips_enabled ?? true };
+      const mem = memberByUser[s.user_id as string];
+      return { ...(s as unknown as TeamShift), first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null, staff_status: (mem?.staff_status ?? null) as StaffStatus | null, tips_enabled: mem?.tips_enabled ?? true };
     });
     setShifts(mapped);
 
