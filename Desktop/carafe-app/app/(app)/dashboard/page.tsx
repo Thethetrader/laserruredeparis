@@ -266,8 +266,9 @@ export default function DashboardPage() {
   }, [devRole]);
 
   async function loadDashboard() {
+    try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
 
     const { data: memberData } = await supabase
       .from("establishment_members").select("role, establishment_id")
@@ -373,7 +374,11 @@ export default function DashboardPage() {
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
       task_stats,
     });
-    setLoading(false);
+    } catch {
+      // silence errors
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (loading || !data) {
