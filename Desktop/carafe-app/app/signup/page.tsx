@@ -64,14 +64,30 @@ function SignupInner() {
 
   const onSubmitMember = async (data: MemberData) => {
     setServerError(null);
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: { data: { first_name: data.first_name, last_name: data.last_name } },
-    });
-    if (error) { setServerError(error.message ?? "Erreur. Réessayez."); return; }
-    router.push(`/invite/${inviteToken}`);
-    router.refresh();
+    try {
+      // 1. Créer le compte
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: { data: { first_name: data.first_name, last_name: data.last_name } },
+      });
+      if (signUpError) { setServerError(signUpError.message ?? "Erreur. Réessayez."); return; }
+
+      // 2. Accepter l'invitation automatiquement
+      const res = await fetch(`/api/invitations/${inviteToken}/accept`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        // Si l'accept échoue, on redirige quand même vers la page invite pour réessayer
+        router.push(`/invite/${inviteToken}`);
+        return;
+      }
+
+      // 3. Aller directement au dashboard
+      setDone(true);
+      setTimeout(() => router.push("/dashboard"), 1500);
+    } catch {
+      setServerError("Erreur réseau. Vérifiez votre connexion et réessayez.");
+    }
   };
 
   const inputStyle = {
@@ -83,8 +99,10 @@ function SignupInner() {
   if (done) {
     return (
       <div className="text-center py-8">
-        <p className="text-[16px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>Compte créé ✓</p>
-        <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Redirection vers la connexion…</p>
+        <p className="text-[16px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>
+          {isInvite ? "Bienvenue dans l'équipe ✓" : "Compte créé ✓"}
+        </p>
+        <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Redirection…</p>
       </div>
     );
   }
