@@ -15,7 +15,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
 
   const { data: inv, error } = await admin
     .from("invitations")
-    .select("id, establishment_id, role, status, expires_at")
+    .select("id, establishment_id, role, status, expires_at, job_title, staff_status, hourly_rate, contract_type, weekly_hours")
     .eq("token", token)
     .single();
 
@@ -35,11 +35,29 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ to
     return NextResponse.json({ ok: true, already_member: true });
   }
 
+  // Create member with all pre-filled info from invitation
   const { error: memberError } = await admin
     .from("establishment_members")
-    .insert({ establishment_id: inv.establishment_id, profile_id: user.id, role: inv.role });
+    .insert({
+      establishment_id: inv.establishment_id,
+      profile_id: user.id,
+      role: inv.role,
+      job_title: inv.job_title || null,
+      staff_status: inv.staff_status || null,
+      hired_at: new Date().toISOString().split("T")[0],
+    });
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 });
+
+  // Update profile with contract info if provided
+  const profileUpdates: Record<string, unknown> = {};
+  if (inv.hourly_rate) profileUpdates.hourly_rate = inv.hourly_rate;
+  if (inv.contract_type) profileUpdates.contract_type = inv.contract_type;
+  if (inv.weekly_hours) profileUpdates.weekly_hours = inv.weekly_hours;
+
+  if (Object.keys(profileUpdates).length > 0) {
+    await admin.from("profiles").update(profileUpdates).eq("id", user.id);
+  }
 
   await admin.from("invitations").update({ status: "accepted" }).eq("id", inv.id);
 

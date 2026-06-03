@@ -114,6 +114,10 @@ export default function TeamPage() {
   const [inviteLastName, setInviteLastName] = useState("");
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteContract, setInviteContract] = useState<ContractType>(null);
+  const [inviteJobTitle, setInviteJobTitle] = useState("");
+  const [inviteStaffStatus, setInviteStaffStatus] = useState("");
+  const [inviteHourlyRate, setInviteHourlyRate] = useState("");
+  const [inviteWeeklyHours, setInviteWeeklyHours] = useState("");
   const [inviteAvailDays, setInviteAvailDays] = useState<string[]>([]);
   const [inviteAvailPeriods, setInviteAvailPeriods] = useState<string[]>([]);
   const [inviteAvailHourStart, setInviteAvailHourStart] = useState("9h");
@@ -235,7 +239,16 @@ export default function TeamPage() {
     const res = await fetch("/api/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ establishment_id: establishmentId, role: inviteRole, email: inviteEmail || null }),
+      body: JSON.stringify({
+        establishment_id: establishmentId,
+        role: inviteRole,
+        email: inviteEmail || null,
+        job_title: inviteJobTitle || null,
+        staff_status: inviteStaffStatus || null,
+        hourly_rate: inviteHourlyRate ? parseFloat(inviteHourlyRate) : null,
+        contract_type: inviteContract || null,
+        weekly_hours: inviteWeeklyHours ? parseInt(inviteWeeklyHours) : null,
+      }),
     });
     const data = await res.json();
     setInviting(false);
@@ -417,6 +430,34 @@ export default function TeamPage() {
                   onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
 
+              {/* Poste + Statut */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste</label>
+                  <input type="text" value={inviteJobTitle} onChange={e => setInviteJobTitle(e.target.value)} placeholder="Ex: Serveur, Chef..."
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Statut</label>
+                  <select value={inviteStaffStatus} onChange={e => setInviteStaffStatus(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="">Non précisé</option>
+                    <option value="chef_de_rang">Chef de rang</option>
+                    <option value="serveur">Serveur</option>
+                    <option value="cuisinier">Cuisinier</option>
+                    <option value="commis">Commis</option>
+                    <option value="barman">Barman</option>
+                    <option value="plongeur">Plongeur</option>
+                    <option value="responsable">Responsable</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Contrat + Rôle */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -438,6 +479,26 @@ export default function TeamPage() {
                     <option value="employee">Employé</option>
                     {role === "owner" && <option value="manager">Manager</option>}
                   </select>
+                </div>
+              </div>
+
+              {/* Taux horaire + Heures/sem */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Taux horaire (€)</label>
+                  <input type="number" min="0" step="0.01" value={inviteHourlyRate} onChange={e => setInviteHourlyRate(e.target.value)} placeholder="Ex: 12.50"
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Heures / sem</label>
+                  <input type="number" min="0" max="60" value={inviteWeeklyHours} onChange={e => setInviteWeeklyHours(e.target.value)} placeholder="Ex: 35"
+                    className="w-full px-3 py-2 text-sm rounded-md outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                    onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
                 </div>
               </div>
 
