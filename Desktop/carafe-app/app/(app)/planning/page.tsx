@@ -167,7 +167,16 @@ export default function PlanningPage() {
 
     if (pw) {
       setPlanningWeek(pw as PlanningWeek);
-      if (pw.service_needs) setNeeds(pw.service_needs as ServiceNeeds);
+      if (pw.service_needs) {
+        const sn = pw.service_needs as any;
+        setNeeds({
+          ...DEFAULT_NEEDS,
+          ...sn,
+          midi: { ...DEFAULT_NEEDS.midi, ...sn.midi, staff: sn.midi?.staff ?? DEFAULT_NEEDS.midi.staff },
+          soir: { ...DEFAULT_NEEDS.soir, ...sn.soir, staff: sn.soir?.staff ?? DEFAULT_NEEDS.soir.staff },
+          rules: { ...DEFAULT_NEEDS.rules, ...sn.rules },
+        });
+      }
 
       const { data: ps, error: psError } = await supabase
         .from("planning_shifts")
@@ -200,7 +209,14 @@ export default function PlanningPage() {
         .maybeSingle();
 
       if (prevPw?.service_needs) {
-        setNeeds(prevPw.service_needs as ServiceNeeds);
+        const sn = prevPw.service_needs as any;
+        setNeeds({
+          ...DEFAULT_NEEDS,
+          ...sn,
+          midi: { ...DEFAULT_NEEDS.midi, ...sn.midi, staff: sn.midi?.staff ?? DEFAULT_NEEDS.midi.staff },
+          soir: { ...DEFAULT_NEEDS.soir, ...sn.soir, staff: sn.soir?.staff ?? DEFAULT_NEEDS.soir.staff },
+          rules: { ...DEFAULT_NEEDS.rules, ...sn.rules },
+        });
       } else {
         setNeeds(DEFAULT_NEEDS);
       }
