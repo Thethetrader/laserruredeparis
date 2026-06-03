@@ -61,16 +61,16 @@ export async function POST(req: NextRequest) {
 
     const { data: members } = await supabase
       .from("establishment_members")
-      .select("profile_id, staff_status, profiles(first_name, weekly_hours)")
+      .select("profile_id, role, staff_status, profiles(first_name, weekly_hours)")
       .eq("establishment_id", establishment_id)
       .eq("is_active", true);
 
-    // Exclude owner from planning if they have no staff_status (optional)
-    const staff = (members ?? []).filter((m: any) => m.staff_status);
+    // Include members with staff_status OR owner/manager (default to "responsable")
+    const staff = (members ?? []).filter((m: any) => m.staff_status || m.role === "owner" || m.role === "manager");
 
     if (!staff.length) {
       return NextResponse.json({
-        error: "Aucun employé actif avec un statut défini. Définissez le statut (Serveur, Cuisinier…) de vos employés dans la page Équipe."
+        error: "Aucun employé actif trouvé pour cet établissement."
       }, { status: 400 });
     }
 
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     const staffMapped = staff.map((m: any) => ({
       id: m.profile_id,
       name: (m.profiles as any)?.first_name ?? "Employé",
-      role: m.staff_status ?? "serveur",
+      role: m.staff_status ?? (m.role === "owner" || m.role === "manager" ? "responsable" : "serveur"),
       weekly_hours: (m.profiles as any)?.weekly_hours ?? 35,
     }));
 
