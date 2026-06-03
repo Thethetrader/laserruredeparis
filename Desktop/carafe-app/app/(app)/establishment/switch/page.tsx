@@ -93,7 +93,7 @@ function SwitchEstablishmentInner() {
     localStorage.setItem("active_establishment_id", id);
     document.cookie = `active_establishment_id=${id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     setActiveId(id);
-    router.push("/dashboard");
+    window.location.href = "/dashboard";
   };
 
   if (loading) {
