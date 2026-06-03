@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { BookOpen, Clock, Trophy, MessageSquare, ListChecks, Check, Plus, Euro } from "lucide-react";
+import { BookOpen, Clock, Trophy, MessageSquare, ListChecks, Check, Plus, TrendingUp } from "lucide-react";
 
 // ── Previews ─────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ function ProtocolsPreview() {
         </div>
       ))}
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
-        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA : PDF uploadé → étapes extraites automatiquement</span>
+        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — PDF uploadé → étapes extraites automatiquement</span>
       </div>
     </div>
   );
@@ -73,7 +73,7 @@ function ClientFeedbackPreview() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
-        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA : patterns détectés automatiquement</span>
+        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — patterns détectés automatiquement</span>
       </div>
       {feedbacks.map(({ dish, comment, count, color }, i) => (
         <motion.div
@@ -165,32 +165,86 @@ function ChallengesPreview() {
   );
 }
 
-function TipsPreview() {
-  const tips = [32, 0, 18, 45, 27, 0, 38, 22, 0, 51, 19, 0, 43, 35, 28];
-  const max = Math.max(...tips);
-  const total = tips.reduce((s, t) => s + t, 0);
+function PlanningPreview() {
+  const [phase, setPhase] = useState<"raw" | "optimized">("raw");
+  const [margin, setMargin] = useState(23);
+  useEffect(() => {
+    let t1: ReturnType<typeof setTimeout>, t2: ReturnType<typeof setTimeout>, t3: ReturnType<typeof setTimeout>;
+    const cycle = () => {
+      setPhase("raw");
+      setMargin(23);
+      t1 = setTimeout(() => setPhase("optimized"), 1800);
+      t2 = setTimeout(() => setMargin(38), 2100);
+      t3 = setTimeout(cycle, 5000);
+    };
+    const init = setTimeout(cycle, 600);
+    return () => { clearTimeout(init); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+
+  const shifts = [
+    { day: "L", raw: 3, opt: 3 },
+    { day: "M", raw: 5, opt: 3 },
+    { day: "M", raw: 2, opt: 3 },
+    { day: "J", raw: 5, opt: 4 },
+    { day: "V", raw: 3, opt: 5 },
+    { day: "S", raw: 6, opt: 6 },
+    { day: "D", raw: 4, opt: 3 },
+  ];
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-end gap-1" style={{ height: 48 }}>
-        {tips.map((t, i) => (
-          <div key={i} className="flex-1 flex items-end">
-            <div
-              className="w-full rounded-sm transition-all"
-              style={{
-                height: t > 0 ? `${Math.max((t / max) * 100, 8)}%` : "4px",
-                background: t > 0 ? (t > 40 ? "var(--accent)" : "rgba(6,182,212,0.4)") : "var(--background-elev)",
-              }}
-            />
-          </div>
-        ))}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
+        <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — planning optimisé selon ton chiffre d'affaires</span>
       </div>
-      <div className="flex items-center justify-between px-1">
-        <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>15 jours</span>
-        <span className="text-[9px] font-mono font-semibold" style={{ color: "var(--accent)" }}>Total : {total}€</span>
+      <div className="flex gap-1.5 justify-between px-1">
+        {shifts.map(({ day, raw, opt }, i) => {
+          const val = phase === "optimized" ? opt : raw;
+          const isOver = raw > opt;
+          return (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <span className="text-[8px] font-mono" style={{ color: "var(--foreground-dim)" }}>{day}</span>
+              <div style={{ height: 48, width: 22, display: "flex", alignItems: "flex-end", position: "relative" }}>
+                <motion.div
+                  className="w-full rounded-sm"
+                  animate={{
+                    height: val * 8,
+                    background: phase === "optimized" ? "rgba(16,185,129,0.22)" : isOver ? "rgba(239,68,68,0.2)" : "rgba(251,191,36,0.18)",
+                    borderColor: phase === "optimized" ? "rgba(16,185,129,0.35)" : isOver ? "rgba(239,68,68,0.3)" : "rgba(251,191,36,0.3)",
+                  }}
+                  transition={{ duration: 0.4, delay: i * 0.045, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ border: "1px solid" }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-        <Euro size={10} style={{ color: "var(--accent)" }} />
-        <p className="text-[10px] flex-1" style={{ color: "var(--foreground-muted)" }}>Meilleur soir : 51€, lundi 11</p>
+      <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <div className="flex-1">
+          <p className="text-[9px] font-mono mb-0.5" style={{ color: "var(--foreground-dim)" }}>Marge brute / service</p>
+          <motion.p
+            key={margin}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-[15px] font-semibold font-mono"
+            style={{ color: margin > 30 ? "#10b981" : "var(--foreground)" }}
+          >
+            {margin}%
+          </motion.p>
+        </div>
+        <AnimatePresence>
+          {phase === "optimized" && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-[9px] font-mono px-2 py-1 rounded"
+              style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981" }}
+            >
+              +15 pts
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -219,20 +273,12 @@ const features = [
     num: "03",
     icon: MessageSquare,
     name: "Avis clients",
-    desc: "Chacun note ce qu'il entend. L'IA regroupe et alerte le responsable.",
+    desc: "L'IA regroupe ce qui revient. Tu agis sur les vrais problèmes.",
     ai: true,
     Preview: ClientFeedbackPreview,
   },
   {
     num: "04",
-    icon: Euro,
-    name: "Pourboires",
-    desc: "Vos tips, soir après soir. Votre total mensuel, toujours sous la main.",
-    ai: false,
-    Preview: TipsPreview,
-  },
-  {
-    num: "05",
     icon: Clock,
     name: "Retards",
     desc: "Un tap. Le manager est notifié en privé. La trace est faite.",
@@ -240,12 +286,20 @@ const features = [
     Preview: LatePreview,
   },
   {
-    num: "06",
+    num: "05",
     icon: Trophy,
     name: "Défis & points",
     desc: "Lance un défi. Le classement motive. Tu n'as plus à pousser.",
     ai: false,
     Preview: ChallengesPreview,
+  },
+  {
+    num: "06",
+    icon: TrendingUp,
+    name: "Planning",
+    desc: "L'IA analyse ton CA et propose le planning optimal. Ta marge s'optimise sans que tu fasses les calculs.",
+    ai: true,
+    Preview: PlanningPreview,
   },
 ];
 
@@ -442,4 +496,3 @@ export default function PillarsSection() {
     </section>
   );
 }
-
