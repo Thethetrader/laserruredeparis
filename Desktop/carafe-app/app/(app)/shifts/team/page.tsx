@@ -712,7 +712,15 @@ export default function ShiftsTeamPage() {
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
     let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings, ca_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
-    const { data: member } = await memberQ.limit(1).maybeSingle();
+    let member = (await memberQ.limit(1).maybeSingle()).data;
+    // Fallback si validActiveId appartient à un autre utilisateur (localStorage partagé entre comptes)
+    if (!member && validActiveId) {
+      const { data: fb } = await supabase.from("establishment_members")
+        .select("establishment_id, role, establishments(name, tip_settings, ca_settings)")
+        .eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"])
+        .limit(1).maybeSingle();
+      member = fb;
+    }
     if (!member) { router.replace("/shifts"); return; }
     const eid = member.establishment_id; setEstId(eid);
     const est = member.establishments as { name: string; tip_settings: unknown; ca_settings: unknown } | null;
