@@ -721,14 +721,16 @@ export default function ShiftsTeamPage() {
     const from = `${y}-${String(m + 1).padStart(2, "0")}-01`;
     const last = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${String(m + 1).padStart(2, "0")}-${last}`;
+    // Pas de FK shifts→profiles donc pas de JOIN direct — on utilise establishment_members qui a la FK
     const [{ data: rawShifts }, { data: memberMap }] = await Promise.all([
-      supabase.from("shifts").select("*, profiles(first_name)").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date"),
-      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled").eq("establishment_id", eid).eq("is_active", true),
+      supabase.from("shifts").select("*").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date"),
+      supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name)").eq("establishment_id", eid).eq("is_active", true),
     ]);
     const memberByUser = Object.fromEntries((memberMap ?? []).map(m => [m.profile_id, m]));
     const mapped: TeamShift[] = (rawShifts ?? []).map((s: Record<string, unknown>) => {
       const mem = memberByUser[s.user_id as string];
-      return { ...(s as unknown as TeamShift), first_name: (s.profiles as { first_name: string | null } | null)?.first_name ?? null, staff_status: (mem?.staff_status ?? null) as StaffStatus | null, tips_enabled: mem?.tips_enabled ?? true };
+      const firstName = (mem as unknown as { profiles?: { first_name: string | null } | null })?.profiles?.first_name ?? null;
+      return { ...(s as unknown as TeamShift), first_name: firstName, staff_status: (mem?.staff_status ?? null) as StaffStatus | null, tips_enabled: mem?.tips_enabled ?? true };
     });
     setShifts(mapped);
 
