@@ -172,7 +172,7 @@ export default function PlanningPage() {
     const resolvedEid = membershipData?.establishment_id ?? null;
     if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
 
-    if (typeof window !== "undefined") localStorage.setItem("active_establishment_id", resolvedEid);
+    if (typeof document !== "undefined") document.cookie = `active_establishment_id=${resolvedEid}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     setEstId(resolvedEid);
 
     const weekStr = toDateStr(monday);

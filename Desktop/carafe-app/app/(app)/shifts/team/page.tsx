@@ -708,12 +708,12 @@ export default function ShiftsTeamPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace("/shifts"); return; }
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
-    const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
+    const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
+    const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
     let memberQ = supabase.from("establishment_members").select("establishment_id, role, establishments(name, tip_settings, ca_settings)").eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     let member = (await memberQ.limit(1).maybeSingle()).data;
-    // Fallback si validActiveId appartient à un autre utilisateur (localStorage partagé entre comptes)
+    // Fallback si le cookie pointe vers un établissement d'un autre compte
     if (!member && validActiveId) {
       const { data: fb } = await supabase.from("establishment_members")
         .select("establishment_id, role, establishments(name, tip_settings, ca_settings)")

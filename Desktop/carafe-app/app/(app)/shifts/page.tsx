@@ -226,8 +226,8 @@ export default function ShiftsPage() {
     setUserId(user.id);
 
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
-    const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
+    const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
+    const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
 
     let memberQuery = supabase
       .from("establishment_members")
@@ -286,7 +286,7 @@ export default function ShiftsPage() {
 
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
-    const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
+    const eid = estId || (typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null);
     if (ex) {
       await supabase.from("shifts").update(data).eq("id", ex.id);
     } else {

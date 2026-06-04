@@ -242,7 +242,7 @@ export default function ProtocolsPage() {
     if (!user) return;
     setProfileId(user.id);
 
-    const activeEstId = typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null;
+    const activeEstId = typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null;
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
     let memberQ = supabase.from("establishment_members").select("role, establishment_id")

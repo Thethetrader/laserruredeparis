@@ -79,7 +79,8 @@ function SwitchEstablishmentInner() {
 
     setEstablishments(mapped);
 
-    const stored = localStorage.getItem("active_establishment_id");
+    const cookieMatch = document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/);
+    const stored = cookieMatch ? cookieMatch[1] : null;
     const validId = (stored && mapped.find(e => e.id === stored)) ? stored : mapped[0]?.id;
     if (validId) {
       setActiveId(validId);
@@ -90,7 +91,6 @@ function SwitchEstablishmentInner() {
   }
 
   const selectEstablishment = (id: string) => {
-    localStorage.setItem("active_establishment_id", id);
     document.cookie = `active_establishment_id=${id}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     setActiveId(id);
     window.location.href = "/dashboard";
