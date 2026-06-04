@@ -8,6 +8,7 @@ import {
   Shift, ShiftProfile, toDateStr, getDaysInMonth, isoWeekday, monthLabel,
   calcTotalHours, calcTotalTips, formatHours, formatTips, shiftsToMap, calcNetHours,
   changePercent, monthlyContractHours, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings,
+  STAFF_STATUSES, type StaffStatus,
 } from "@/lib/shifts";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -195,6 +196,7 @@ export default function ShiftsPage() {
   const [selected, setSelected]   = useState<string | null>(null);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [tipsEnabled, setTipsEnabled] = useState(true);
+  const [staffStatus, setStaffStatus] = useState<StaffStatus | null>(null);
   const [estId, setEstId]         = useState("");
   const [userId, setUserId]       = useState("");
   const [estName, setEstName]     = useState("");
@@ -231,7 +233,7 @@ export default function ShiftsPage() {
 
     let memberQuery = supabase
       .from("establishment_members")
-      .select("establishment_id, tips_enabled, establishments(name, tip_settings), profiles(first_name)")
+      .select("establishment_id, tips_enabled, staff_status, establishments(name, tip_settings), profiles(first_name)")
       .eq("profile_id", user.id).eq("is_active", true);
     if (validActiveId) memberQuery = memberQuery.eq("establishment_id", validActiveId);
 
@@ -244,6 +246,8 @@ export default function ShiftsPage() {
       const prof = member.profiles as { first_name: string | null } | null;
       if (est) { setEstName(est.name); setTipSettings(parseTipSettings(est.tip_settings)); }
       if (prof?.first_name) setFirstName(prof.first_name);
+      const ss = (member as unknown as { staff_status: string | null }).staff_status;
+      if (ss) setStaffStatus(ss as StaffStatus);
     } else if (validActiveId) {
       setEstId(validActiveId);
     }
@@ -386,22 +390,34 @@ export default function ShiftsPage() {
                   </span>
                   {shift && (
                     <div className="w-full space-y-0.5">
-                      {/* Service 1 */}
-                      <div className="flex items-center gap-0.5">
-                        <Sunrise size={8} style={{ color: "#F59E0B", flexShrink: 0 }} />
-                        <p className="text-[9px] font-mono leading-tight" style={{ color: "var(--accent)" }}>{formatHours(shift.hours_worked)}</p>
-                      </div>
-                      {/* Service 2 */}
-                      {hasCoupure && (
-                        <div className="flex items-center gap-0.5">
-                          <Sunset size={8} style={{ color: "var(--accent)", flexShrink: 0 }} />
-                          <p className="text-[9px] font-mono leading-tight" style={{ color: "rgba(6,182,212,0.8)" }}>{formatHours(shift.hours_worked_2)}</p>
-                        </div>
-                      )}
-                      {/* Tips */}
-                      {totalTips > 0 && (
-                        <p className="text-[9px] font-mono font-semibold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
-                      )}
+                      {(() => {
+                        const color = staffStatus
+                          ? (tipSettings.colors[staffStatus] ?? STAFF_STATUSES[staffStatus]?.color ?? "var(--accent)")
+                          : "var(--accent)";
+                        const time1 = shift.start_time && shift.end_time
+                          ? `${shift.start_time.slice(0, 5)}–${shift.end_time.slice(0, 5)}`
+                          : null;
+                        const time2 = hasCoupure && shift.start_time_2 && shift.end_time_2
+                          ? `${shift.start_time_2.slice(0, 5)}–${shift.end_time_2.slice(0, 5)}`
+                          : null;
+                        return (
+                          <>
+                            {time1 && (
+                              <div className="w-full rounded overflow-hidden px-1 py-0.5" style={{ background: `${color}18`, border: `1px solid ${color}35` }}>
+                                <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.9 }}>{time1}</p>
+                              </div>
+                            )}
+                            {time2 && (
+                              <div className="w-full rounded overflow-hidden px-1 py-0.5" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
+                                <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.7 }}>{time2}</p>
+                              </div>
+                            )}
+                            {totalTips > 0 && (
+                              <p className="text-[8px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </button>
