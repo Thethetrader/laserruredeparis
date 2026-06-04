@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, TrendingUp, TrendingDown, Sunrise, Sunset, CheckCircle2, Circle } from "lucide-react";
@@ -203,6 +203,16 @@ export default function ShiftsPage() {
   const [validating, setValidating] = useState(false);
   const [validatedAt, setValidatedAt] = useState<string | null>(null);
   const supabase = createClient();
+  const broadcastRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Maintenir un channel souscrit pour pouvoir broadcaster vers le manager
+  useEffect(() => {
+    if (!estId) return;
+    const ch = supabase.channel(`shifts-team-${estId}`);
+    ch.subscribe();
+    broadcastRef.current = ch;
+    return () => { supabase.removeChannel(ch); broadcastRef.current = null; };
+  }, [estId, supabase]);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -283,10 +293,8 @@ export default function ShiftsPage() {
       if (!eid) return; // ne pas sauvegarder sans establishment_id
       await supabase.from("shifts").insert({ ...data, user_id: userId, establishment_id: eid });
     }
-    // Notifier le manager en temps réel via broadcast (fiable même sans postgres_changes)
-    if (eid) {
-      supabase.channel(`shifts-team-${eid}`).send({ type: "broadcast", event: "shift_saved", payload: {} });
-    }
+    // Notifier le manager en temps réel via broadcast
+    broadcastRef.current?.send({ type: "broadcast", event: "shift_saved", payload: {} });
     setSelected(null);
     await load(year, month);
   }
@@ -295,8 +303,7 @@ export default function ShiftsPage() {
     const ex = shiftMap.get(selected!);
     if (ex) {
       await supabase.from("shifts").delete().eq("id", ex.id);
-      const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
-      if (eid) supabase.channel(`shifts-team-${eid}`).send({ type: "broadcast", event: "shift_saved", payload: {} });
+      broadcastRef.current?.send({ type: "broadcast", event: "shift_saved", payload: {} });
     }
     setSelected(null);
     await load(year, month);
