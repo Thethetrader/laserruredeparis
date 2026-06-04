@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw } from "lucide-react";
+import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw, LogOut } from "lucide-react";
 import {
   STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS,
   parseCASettings, DEFAULT_CA_SETTINGS,
@@ -266,6 +266,15 @@ export default function EstablishmentSettingsPage() {
           opacity: saving ? 0.7 : 1,
         }}>
         {saved ? <><Check size={14} />Enregistré</> : saving ? "Enregistrement…" : "Enregistrer"}
+      </button>
+
+      {/* Déconnexion */}
+      <button
+        onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }}
+        className="w-full py-3 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-75 mt-2"
+        style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+        <LogOut size={14} />
+        Se déconnecter
       </button>
     </div>
   );
