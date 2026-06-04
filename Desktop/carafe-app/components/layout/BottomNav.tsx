@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BookOpen, Users, Clock, Trophy,
-  MessageSquare, Settings, CalendarDays, CalendarCheck2, ClipboardList, Zap
+  MessageSquare, Settings, CalendarDays, CalendarCheck2, ClipboardList, Zap,
+  type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
-const managerNav = [
+type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
+
+const managerNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
@@ -17,13 +20,13 @@ const managerNav = [
   { href: "/team",               icon: Users,           label: "Équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
-  { href: "/shifts",             icon: CalendarDays,    label: "Shifts" },
+  { href: "/shifts",             icon: CalendarDays,    label: "Mes shifts", exact: true },
   { href: "/planning",           icon: LayoutDashboard, label: "Planning IA" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
   { href: "/establishment/settings", icon: Settings,    label: "Paramètres" },
 ];
 
-const employeeNav = [
+const employeeNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
   { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
   { href: "/scoring",            icon: Zap,             label: "Mon Score" },
@@ -55,8 +58,8 @@ export function BottomNav({ role }: BottomNavProps) {
         WebkitOverflowScrolling: "touch",
       }}
     >
-      {nav.map(({ href, icon: Icon, label }) => {
-        const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+      {nav.map(({ href, icon: Icon, label, exact }) => {
+        const active = pathname === href || (!exact && href !== "/dashboard" && pathname.startsWith(href));
         return (
           <Link
             key={href}
