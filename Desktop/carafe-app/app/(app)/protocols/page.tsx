@@ -287,20 +287,27 @@ export default function ProtocolsPage() {
     const allowed = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) return;
     setFormFile(file);
+    // Auto-analyse dès qu'un fichier est sélectionné
+    setTimeout(() => extractStepsFromFile(file), 0);
   };
 
-  const extractSteps = async () => {
-    if (!formFile || formFile.type !== "application/pdf") return;
+  const extractStepsFromFile = async (file: File) => {
     setExtracting(true);
+    setFormSteps([]);
     try {
       const fd = new FormData();
-      fd.append("file", formFile);
+      fd.append("file", file);
       const res = await fetch("/api/protocols/extract-steps", { method: "POST", body: fd });
       const data = await res.json();
       if (data.steps) setFormSteps(data.steps);
     } finally {
       setExtracting(false);
     }
+  };
+
+  const extractSteps = async () => {
+    if (!formFile) return;
+    await extractStepsFromFile(formFile);
   };
 
   const getAttachmentType = (file: File): AttachmentType => {
@@ -949,17 +956,17 @@ function ProtocolForm({
                 <button onClick={() => { setFormFile(null); setFormSteps([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                   className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>✕</button>
               </div>
-              {formFile.type === "application/pdf" && formSteps.length === 0 && (
+              {formSteps.length === 0 && (
                 <button onClick={onExtractSteps} disabled={extracting}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
                   style={{
-                    background: "rgba(139,92,246,0.1)",
+                    background: extracting ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.1)",
                     border: "1px solid rgba(139,92,246,0.25)",
                     color: "#A78BFA",
-                    opacity: extracting ? 0.6 : 1,
+                    opacity: extracting ? 0.7 : 1,
                   }}>
-                  <Wand2 size={14} />
-                  {extracting ? "Analyse en cours…" : "Analyser avec l'IA"}
+                  <Wand2 size={14} className={extracting ? "animate-spin" : ""} />
+                  {extracting ? "Analyse IA en cours…" : "Analyser avec l'IA"}
                 </button>
               )}
             </div>
@@ -980,13 +987,11 @@ function ProtocolForm({
               <label className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
                 Étapes extraites
               </label>
-              {formFile?.type === "application/pdf" && (
                 <button onClick={onExtractSteps} disabled={extracting}
                   className="flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded transition-opacity"
                   style={{ color: "#A78BFA", opacity: extracting ? 0.5 : 1 }}>
                   <Wand2 size={10} /> {extracting ? "…" : "Ré-analyser"}
                 </button>
-              )}
             </div>
             <div className="space-y-1.5 rounded-xl p-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(139,92,246,0.2)" }}>
               {formSteps.map((step, i) => (
