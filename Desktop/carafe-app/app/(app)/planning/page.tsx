@@ -160,19 +160,28 @@ export default function PlanningPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setPlanningWeek(null); setLoading(false); return; }
 
-    const { data: membershipData } = await supabase
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
+    const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
+
+    let memberQ = supabase
       .from("establishment_members")
       .select("establishment_id, establishments(tip_settings)")
       .eq("profile_id", user.id)
       .eq("is_active", true)
-      .in("role", ["owner", "manager"])
-      .limit(1)
-      .maybeSingle();
+      .in("role", ["owner", "manager"]);
+    if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
+    let membershipData = (await memberQ.limit(1).maybeSingle()).data;
+    // Fallback si le cookie appartient à un autre compte (pas de membership manager ici)
+    if (!membershipData && validActiveId) {
+      membershipData = (await supabase.from("establishment_members")
+        .select("establishment_id, establishments(tip_settings)")
+        .eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"])
+        .limit(1).maybeSingle()).data;
+    }
 
     const resolvedEid = membershipData?.establishment_id ?? null;
     if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
-
-    if (typeof document !== "undefined") document.cookie = `active_establishment_id=${resolvedEid}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     setEstId(resolvedEid);
 
     const weekStr = toDateStr(monday);
