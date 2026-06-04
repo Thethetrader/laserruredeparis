@@ -378,11 +378,12 @@ export default function SchedulePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setProfileId(user.id);
-      const { data: member } = await supabase
-        .from("establishment_members")
-        .select("role, establishment_id")
-        .eq("profile_id", user.id)
-        .single();
+      const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
+      const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let _mq = supabase.from("establishment_members").select("role, establishment_id").eq("profile_id", user.id).eq("is_active", true);
+      if (_ceid && _re.test(_ceid)) _mq = _mq.eq("establishment_id", _ceid);
+      let { data: member } = await _mq.limit(1).maybeSingle();
+      if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("role, establishment_id").eq("profile_id", user.id).eq("is_active", true).limit(1).maybeSingle());
       if (!member) return;
       setRole(member.role);
       setEstablishmentId(member.establishment_id);

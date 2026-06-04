@@ -180,12 +180,13 @@ export default function TasksManagerPage() {
     }
 
     const supabase = createClient();
-    const { data: member } = await supabase
-      .from("establishment_members")
-      .select("establishment_id, role")
-      .eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "")
-      .eq("is_active", true)
-      .single();
+    const _uid = (await supabase.auth.getUser()).data.user?.id ?? "";
+    const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
+    const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let _mq = supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", _uid).eq("is_active", true);
+    if (_ceid && _re.test(_ceid)) _mq = _mq.eq("establishment_id", _ceid);
+    let { data: member } = await _mq.limit(1).maybeSingle();
+    if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", _uid).eq("is_active", true).limit(1).maybeSingle());
 
     if (!member) { setLoading(false); return; }
     setUserRole(member.role);

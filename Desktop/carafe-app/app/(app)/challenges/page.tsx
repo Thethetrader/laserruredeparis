@@ -127,12 +127,12 @@ export default function ChallengesPage() {
     if (!user) return;
     setProfileId(user.id);
 
-    const { data: memberData } = await supabase
-      .from("establishment_members")
-      .select("role, establishment_id")
-      .eq("profile_id", user.id)
-      .eq("is_active", true)
-      .single();
+    const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
+    const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let _mq = supabase.from("establishment_members").select("role, establishment_id").eq("profile_id", user.id).eq("is_active", true);
+    if (_ceid && _re.test(_ceid)) _mq = _mq.eq("establishment_id", _ceid);
+    let { data: memberData } = await _mq.limit(1).maybeSingle();
+    if (!memberData && _ceid && _re.test(_ceid)) ({ data: memberData } = await supabase.from("establishment_members").select("role, establishment_id").eq("profile_id", user.id).eq("is_active", true).limit(1).maybeSingle());
 
     if (!memberData) { setLoading(false); return; }
 

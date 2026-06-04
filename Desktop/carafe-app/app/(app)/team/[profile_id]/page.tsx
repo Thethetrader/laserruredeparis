@@ -124,12 +124,12 @@ export default function MemberProfilePage() {
       establishments: { name: string } | null;
     };
 
-    const { data: memberDataRaw } = await supabase
-      .from("establishment_members")
-      .select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)")
-      .eq("profile_id", profileId)
-      .eq("is_active", true)
-      .single();
+    const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
+    const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let _pmq = supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true);
+    if (_ceid && _re.test(_ceid)) _pmq = _pmq.eq("establishment_id", _ceid);
+    let { data: memberDataRaw } = await _pmq.limit(1).maybeSingle();
+    if (!memberDataRaw && _ceid && _re.test(_ceid)) ({ data: memberDataRaw } = await supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true).limit(1).maybeSingle());
 
     if (!memberDataRaw) { setLoading(false); return; }
     const memberData = memberDataRaw as unknown as MemberRow;
