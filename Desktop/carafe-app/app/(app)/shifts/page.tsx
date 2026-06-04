@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, Sunrise, Sunset, CheckCircle2, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, Sunrise, Sunset } from "lucide-react";
 import {
   Shift, ShiftProfile, toDateStr, getDaysInMonth, isoWeekday, monthLabel,
   calcTotalHours, calcTotalTips, formatHours, formatTips, shiftsToMap, calcNetHours,
@@ -202,8 +202,6 @@ export default function ShiftsPage() {
   const [estName, setEstName]     = useState("");
   const [firstName, setFirstName] = useState("");
   const [greeting, setGreeting]   = useState("Bonjour");
-  const [validating, setValidating] = useState(false);
-  const [validatedAt, setValidatedAt] = useState<string | null>(null);
   const supabase = createClient();
   const broadcastRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -272,14 +270,6 @@ export default function ShiftsPage() {
     setPrev((prev.data ?? []) as Shift[]);
     setYtd(((ytd.data ?? []) as {tips:number;tips_2:number}[]).reduce((s,r) => s+(r.tips??0)+(r.tips_2??0), 0));
     if (prof2.data) setProfile(prof2.data as ShiftProfile);
-    // Check if all shifts this month are validated
-    const allValidated = curShifts.length > 0 && curShifts.every(s => (s as Shift & { validated_at?: string }).validated_at);
-    const latestValidation = curShifts.reduce((latest: string | null, s) => {
-      const v = (s as Shift & { validated_at?: string }).validated_at;
-      if (!v) return latest;
-      return !latest || v > latest ? v : latest;
-    }, null);
-    setValidatedAt(allValidated ? latestValidation : null);
     setLoading(false);
   }, [supabase]);
 
@@ -313,23 +303,7 @@ export default function ShiftsPage() {
     await load(year, month);
   }
 
-  async function handleValidate() {
-    if (!userId || shifts.length === 0) return;
-    setValidating(true);
-    const now = new Date().toISOString();
-    const from = `${year}-${String(month+1).padStart(2,"0")}-01`;
-    const last = new Date(year, month+1, 0).getDate();
-    const to = `${year}-${String(month+1).padStart(2,"0")}-${last}`;
-    await supabase.from("shifts")
-      .update({ validated_at: now })
-      .eq("user_id", userId)
-      .gte("shift_date", from)
-      .lte("shift_date", to);
-    setValidatedAt(now);
-    setValidating(false);
-  }
-
-  const days     = getDaysInMonth(year, month);
+const days     = getDaysInMonth(year, month);
   const shiftMap = shiftsToMap(shifts);
   const todayStr = toDateStr(today);
   const tHours   = calcTotalHours(shifts);
@@ -457,38 +431,6 @@ export default function ShiftsPage() {
             </div>
           )}
 
-          {/* Validation du planning */}
-          {shifts.length > 0 && (
-            <div className="rounded-xl px-4 py-4"
-              style={{ background: validatedAt ? "rgba(16,185,129,0.06)" : "rgba(245,158,11,0.06)", border: `1px solid ${validatedAt ? "rgba(16,185,129,0.25)" : "rgba(245,158,11,0.25)"}` }}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {validatedAt
-                    ? <CheckCircle2 size={18} style={{ color: "var(--success)", flexShrink: 0 }} />
-                    : <Circle size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
-                  }
-                  <div>
-                    <p className="text-[13px] font-semibold" style={{ color: validatedAt ? "var(--success)" : "#F59E0B" }}>
-                      {validatedAt ? "Planning validé ✓" : "Planning à valider"}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                      {validatedAt
-                        ? `Le ${new Date(validatedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`
-                        : `${shifts.length} shift${shifts.length > 1 ? "s" : ""} ce mois — confirme ta présence`
-                      }
-                    </p>
-                  </div>
-                </div>
-                {!validatedAt && (
-                  <button onClick={handleValidate} disabled={validating}
-                    className="px-4 py-2 rounded-lg text-[12px] font-semibold flex-shrink-0"
-                    style={{ background: "rgba(245,158,11,0.2)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.4)", opacity: validating ? 0.6 : 1 }}>
-                    {validating ? "…" : "Valider"}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
 
           <div className="flex justify-end pt-1">
             <a href="/shifts/settings" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Réglages →</a>
