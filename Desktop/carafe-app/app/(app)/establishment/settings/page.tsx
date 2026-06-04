@@ -140,38 +140,6 @@ export default function EstablishmentSettingsPage() {
         </div>
       </div>
 
-      {/* Coefficients (dispatch mode only) */}
-      {tipSettings.mode === "dispatch" && (
-        <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Coefficients par statut</p>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips = heures × coefficient. Plus le coef est élevé, plus la part est grande.</p>
-          </div>
-          <div style={{ background: "var(--background-elev)" }}>
-            {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map((status, i, arr) => {
-              const cfg = STAFF_STATUSES[status];
-              return (
-                <div key={status} className="flex items-center gap-3 px-4 py-3"
-                  style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? cfg.color }} />
-                  <span className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{cfg.label}</span>
-                  <div className="flex items-center gap-2">
-                    <input type="number" min="0" max="5" step="0.1"
-                      value={tipSettings.coefficients[status]}
-                      onChange={e => setCoef(status, e.target.value)}
-                      className="w-16 px-2 py-1 rounded-base text-center text-[13px] outline-none"
-                      style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-                    <span className="text-[11px] w-10 text-right font-mono" style={{ color: "var(--foreground-dim)" }}>
-                      x{tipSettings.coefficients[status].toFixed(1)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* CA mode */}
       <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
         <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
@@ -211,7 +179,9 @@ export default function EstablishmentSettingsPage() {
       <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
         <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
           <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Renommer ou masquer un poste selon votre établissement</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+            {tipSettings.mode === "dispatch" ? "Renommer, coloriser et définir le coefficient de chaque poste" : "Renommer ou masquer un poste selon votre établissement"}
+          </p>
         </div>
         <div style={{ background: "var(--background-elev)" }}>
           {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
@@ -230,6 +200,13 @@ export default function EstablishmentSettingsPage() {
                   className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
                   style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
                 />
+                {tipSettings.mode === "dispatch" && (
+                  <input type="number" min="0" max="5" step="0.1"
+                    value={tipSettings.coefficients[status]}
+                    onChange={e => setCoef(status, e.target.value)}
+                    className="w-14 px-2 py-1 rounded-base text-center text-[12px] font-mono outline-none flex-shrink-0"
+                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
+                )}
                 <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
                   <Trash2 size={14} />
                 </button>
