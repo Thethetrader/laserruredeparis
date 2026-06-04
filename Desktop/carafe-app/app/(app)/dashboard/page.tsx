@@ -145,20 +145,28 @@ const DEV_FEEDBACK_ITEMS: FeedbackItem[] = [
 
 const DEV_TASK_STATS: TaskStat[] = [
   {
-    label: "Aujourd'hui",
+    label: "Ouverture",
     done: 5,
-    total: 9,
+    total: 5,
     period: "today",
     tasks: [
-      { id: "t1", title: "Ouverture caisse", done: true, category: "Ouverture", requires_photo: true },
-      { id: "t2", title: "Contrôle frigos", done: true, category: "Ouverture", requires_photo: true },
-      { id: "t3", title: "Briefing équipe", done: true, category: "Ouverture", requires_photo: false },
-      { id: "t4", title: "Mise en place salle", done: true, category: "Ouverture", requires_photo: false },
-      { id: "t5", title: "Mise en place cuisine", done: true, category: "Ouverture", requires_photo: false },
-      { id: "t6", title: "Fermeture caisse", done: false, category: "Fermeture", requires_photo: true },
-      { id: "t7", title: "Nettoyage salle", done: false, category: "Fermeture", requires_photo: false },
-      { id: "t8", title: "Nettoyage hotte", done: false, category: "Fermeture", requires_photo: true },
-      { id: "t9", title: "Plonge terminée", done: false, category: "Fermeture", requires_photo: false },
+      { id: "t1", title: "Ouverture caisse", done: true, category: "opening", requires_photo: true },
+      { id: "t2", title: "Contrôle frigos", done: true, category: "opening", requires_photo: true },
+      { id: "t3", title: "Briefing équipe", done: true, category: "opening", requires_photo: false },
+      { id: "t4", title: "Mise en place salle", done: true, category: "opening", requires_photo: false },
+      { id: "t5", title: "Mise en place cuisine", done: true, category: "opening", requires_photo: false },
+    ],
+  },
+  {
+    label: "Fermeture",
+    done: 0,
+    total: 4,
+    period: "today",
+    tasks: [
+      { id: "t6", title: "Fermeture caisse", done: false, category: "closing", requires_photo: true },
+      { id: "t7", title: "Nettoyage salle", done: false, category: "closing", requires_photo: false },
+      { id: "t8", title: "Nettoyage hotte", done: false, category: "closing", requires_photo: true },
+      { id: "t9", title: "Plonge terminée", done: false, category: "closing", requires_photo: false },
     ],
   },
   {
@@ -349,16 +357,21 @@ export default function DashboardPage() {
 
     const feedbackItems: FeedbackItem[] = rawFeedback.map(f => ({ ...f, category: f.category as FeedbackCategory, confirmation_count: 0 }));
 
-    const todayDone = rawTasks.filter(t => completedTodayIds.has(t.id)).length;
-    const task_stats: TaskStat[] = [
-      {
-        label: "Aujourd'hui",
-        done: todayDone,
-        total: rawTasks.length,
-        period: "today",
-        tasks: rawTasks.map(t => ({ id: t.id, title: t.title, done: completedTodayIds.has(t.id), category: t.category, requires_photo: t.requires_photo })),
-      },
-    ];
+    const CATEGORY_LABELS: Record<string, string> = { opening: "Ouverture", continuous: "En continu", closing: "Fermeture", custom: "Ponctuel" };
+    const CATEGORY_ORDER = ["opening", "continuous", "closing", "custom"];
+    const tasksByCategory = CATEGORY_ORDER.map(cat => ({
+      cat,
+      label: CATEGORY_LABELS[cat] ?? cat,
+      tasks: rawTasks.filter(t => t.category === cat),
+    })).filter(g => g.tasks.length > 0);
+
+    const task_stats: TaskStat[] = tasksByCategory.map(g => ({
+      label: g.label,
+      done: g.tasks.filter(t => completedTodayIds.has(t.id)).length,
+      total: g.tasks.length,
+      period: "today",
+      tasks: g.tasks.map(t => ({ id: t.id, title: t.title, done: completedTodayIds.has(t.id), category: t.category, requires_photo: t.requires_photo })),
+    }));
 
     const todayStart = now.toISOString().split("T")[0];
     const todayDelays = delays.filter(d => {
