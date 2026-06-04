@@ -10,15 +10,15 @@ import type { EstablishmentWithRole } from "@/lib/types/database";
 
 const managerNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
-  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours clients" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/team",               icon: Users,           label: "Équipe" },
-  { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/planning",           icon: Sparkles,        label: "Planning IA" },
   { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
+  { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/shifts",             icon: CalendarRange,   label: "Mes shifts", exact: true },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
 ];
 

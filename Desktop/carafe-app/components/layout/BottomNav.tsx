@@ -13,15 +13,15 @@ type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean 
 
 const managerNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
-  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Clients" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/team",               icon: Users,           label: "Équipe" },
-  { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
-  { href: "/shifts",             icon: CalendarDays,    label: "Mes shifts", exact: true },
   { href: "/planning",           icon: LayoutDashboard, label: "Planning IA" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
+  { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/shifts",             icon: CalendarDays,    label: "Mes shifts", exact: true },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
   { href: "/establishment/settings", icon: Settings,    label: "Paramètres" },
 ];
