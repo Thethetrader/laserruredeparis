@@ -276,12 +276,16 @@ export default function ShiftsPage() {
 
   async function handleSave(data: Partial<Shift>) {
     const ex = shiftMap.get(data.shift_date!);
+    const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
     if (ex) {
       await supabase.from("shifts").update(data).eq("id", ex.id);
     } else {
-      const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
       if (!eid) return; // ne pas sauvegarder sans establishment_id
       await supabase.from("shifts").insert({ ...data, user_id: userId, establishment_id: eid });
+    }
+    // Notifier le manager en temps réel via broadcast (fiable même sans postgres_changes)
+    if (eid) {
+      supabase.channel(`shifts-team-${eid}`).send({ type: "broadcast", event: "shift_saved", payload: {} });
     }
     setSelected(null);
     await load(year, month);
@@ -289,7 +293,11 @@ export default function ShiftsPage() {
 
   async function handleDelete() {
     const ex = shiftMap.get(selected!);
-    if (ex) await supabase.from("shifts").delete().eq("id", ex.id);
+    if (ex) {
+      await supabase.from("shifts").delete().eq("id", ex.id);
+      const eid = estId || (typeof window !== "undefined" ? localStorage.getItem("active_establishment_id") : null);
+      if (eid) supabase.channel(`shifts-team-${eid}`).send({ type: "broadcast", event: "shift_saved", payload: {} });
+    }
     setSelected(null);
     await load(year, month);
   }

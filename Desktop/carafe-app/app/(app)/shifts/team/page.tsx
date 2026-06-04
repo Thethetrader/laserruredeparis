@@ -794,7 +794,10 @@ export default function ShiftsTeamPage() {
     if (!estId) return;
     const channel = supabase
       .channel(`shifts-team-${estId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "shifts", filter: `establishment_id=eq.${estId}` },
+      .on("postgres_changes", { event: "*", schema: "public", table: "shifts" },
+        () => { load(year, month); }
+      )
+      .on("broadcast", { event: "shift_saved" },
         () => { load(year, month); }
       )
       .subscribe();
