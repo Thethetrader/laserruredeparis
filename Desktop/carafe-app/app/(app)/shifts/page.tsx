@@ -356,38 +356,35 @@ const days     = getDaysInMonth(year, month);
               const hasCoupure = shift && shift.start_time_2;
               return (
                 <button key={dateStr} onClick={() => !isFuture && setSelected(dateStr)}
-                  className="flex flex-col items-start justify-start p-1.5 transition-colors hover:bg-white/[0.02]"
-                  style={{ minHeight: 80, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
-                  <span className="text-[12px] font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1"
+                  className="flex flex-col items-start justify-start overflow-hidden transition-colors hover:bg-white/[0.02]"
+                  style={{ minHeight: 72, padding: "4px 3px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
+                  <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
                   {shift && (
-                    <div className="w-full space-y-0.5">
+                    <div className="w-full min-w-0 space-y-0.5">
                       {(() => {
                         const color = staffStatus
                           ? (tipSettings.colors[staffStatus] ?? STAFF_STATUSES[staffStatus]?.color ?? "var(--accent)")
                           : "var(--accent)";
-                        const time1 = shift.start_time && shift.end_time
-                          ? `${shift.start_time.slice(0, 5)}–${shift.end_time.slice(0, 5)}`
-                          : null;
-                        const time2 = hasCoupure && shift.start_time_2 && shift.end_time_2
-                          ? `${shift.start_time_2.slice(0, 5)}–${shift.end_time_2.slice(0, 5)}`
-                          : null;
+                        const fmt = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
+                        const time1 = shift.start_time ? fmt(shift.start_time) : null;
+                        const time2 = hasCoupure && shift.start_time_2 ? fmt(shift.start_time_2) : null;
                         return (
                           <>
                             {time1 && (
-                              <div className="w-full rounded overflow-hidden px-1 py-0.5" style={{ background: `${color}18`, border: `1px solid ${color}35` }}>
-                                <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.9 }}>{time1}</p>
+                              <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}20`, borderLeft: `2px solid ${color}` }}>
+                                <p className="text-[7px] font-mono leading-tight px-0.5 py-px" style={{ color }}>{time1}</p>
                               </div>
                             )}
                             {time2 && (
-                              <div className="w-full rounded overflow-hidden px-1 py-0.5" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
-                                <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.7 }}>{time2}</p>
+                              <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}10`, borderLeft: `2px solid ${color}60` }}>
+                                <p className="text-[7px] font-mono leading-tight px-0.5 py-px" style={{ color, opacity: 0.7 }}>{time2}</p>
                               </div>
                             )}
                             {totalTips > 0 && (
-                              <p className="text-[8px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
+                              <p className="text-[7px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>€</p>
                             )}
                           </>
                         );
