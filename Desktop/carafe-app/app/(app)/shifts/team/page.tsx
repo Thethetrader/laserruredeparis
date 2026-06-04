@@ -247,18 +247,12 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
                 {emp.hourlyRateNet && emp.hourlyRateNet > 0 && emp.totalHours > 0 && (
                   <div className="mx-4 mb-3 rounded-lg px-3 py-2.5" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
                     <p className="text-[9px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Salaire estimé sur la période</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="text-center">
                         <p className="text-[13px] font-bold font-mono" style={{ color: "var(--foreground)" }}>
                           {(emp.hourlyRateNet * emp.totalHours).toFixed(0)} €
                         </p>
                         <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>NET</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[13px] font-bold font-mono" style={{ color: "var(--foreground)" }}>
-                          {(netToGross(emp.hourlyRateNet) * emp.totalHours).toFixed(0)} €
-                        </p>
-                        <p className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>BRUT</p>
                       </div>
                       <div className="text-center">
                         <p className="text-[13px] font-bold font-mono" style={{ color: "#F59E0B" }}>
@@ -307,14 +301,10 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
             return (
               <div className="rounded-2xl px-4 py-4 mt-2" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
                 <p className="text-[11px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--danger)" }}>Masse salariale</p>
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="text-center rounded-lg py-2" style={{ background: "var(--background)" }}>
                     <p className="text-[15px] font-bold font-mono" style={{ color: "var(--foreground)" }}>{totalNet.toFixed(0)} €</p>
                     <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Net total</p>
-                  </div>
-                  <div className="text-center rounded-lg py-2" style={{ background: "var(--background)" }}>
-                    <p className="text-[15px] font-bold font-mono" style={{ color: "var(--foreground)" }}>{totalBrut.toFixed(0)} €</p>
-                    <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Brut total</p>
                   </div>
                   <div className="text-center rounded-lg py-2" style={{ background: "rgba(239,68,68,0.08)" }}>
                     <p className="text-[15px] font-bold font-mono" style={{ color: "var(--danger)" }}>{totalCout.toFixed(0)} €</p>
