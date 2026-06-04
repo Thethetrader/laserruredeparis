@@ -678,7 +678,6 @@ export default function ShiftsTeamPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [showPayroll, setShowPayroll] = useState(false);
-  const [validations, setValidations] = useState<ValidationStatus[]>([]);
   const [estId, setEstId] = useState("");
   const [estName, setEstName] = useState("");
   const supabase = createClient();
@@ -731,45 +730,6 @@ export default function ShiftsTeamPage() {
       .eq("establishment_id", eid)
       .eq("is_active", true);
 
-    if (membersData) {
-      const { data: validShifts } = await supabase
-        .from("shifts")
-        .select("user_id, validated_at")
-        .eq("establishment_id", eid)
-        .gte("shift_date", from)
-        .lte("shift_date", to);
-
-      const shiftsByUser = new Map<string, { total: number; validated: number; latestValidation: string | null }>();
-      for (const s of (validShifts ?? [])) {
-        if (!shiftsByUser.has(s.user_id)) shiftsByUser.set(s.user_id, { total: 0, validated: 0, latestValidation: null });
-        const entry = shiftsByUser.get(s.user_id)!;
-        entry.total++;
-        if (s.validated_at) {
-          entry.validated++;
-          if (!entry.latestValidation || s.validated_at > entry.latestValidation) entry.latestValidation = s.validated_at;
-        }
-      }
-
-      const vs: ValidationStatus[] = membersData
-        .filter(m => shiftsByUser.has(m.profile_id))
-        .map(m => {
-          const entry = shiftsByUser.get(m.profile_id)!;
-          return {
-            profile_id: m.profile_id,
-            first_name: (m.profiles as { first_name: string | null } | null)?.first_name ?? "—",
-            staff_status: m.staff_status ?? null,
-            total_shifts: entry.total,
-            validated_shifts: entry.validated,
-            validated_at: entry.latestValidation,
-          };
-        })
-        .sort((a, b) => {
-          if (a.validated_shifts === a.total_shifts && b.validated_shifts !== b.total_shifts) return 1;
-          if (a.validated_shifts !== a.total_shifts && b.validated_shifts === b.total_shifts) return -1;
-          return a.first_name.localeCompare(b.first_name);
-        });
-      setValidations(vs);
-    }
 
     // Load monthly CA if mode is per_month
     const firstOfMonth = `${y}-${String(m + 1).padStart(2, "0")}-01`;
@@ -936,62 +896,6 @@ export default function ShiftsTeamPage() {
           </div>
         )}
       </div>
-
-      {/* Validation status */}
-      {!loading && validations.length > 0 && (
-        <div className="mb-5 rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-          <div className="px-4 py-3 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Validation du planning</p>
-            <div className="flex items-center gap-3 text-[10px]">
-              <span className="flex items-center gap-1" style={{ color: "var(--success)" }}>
-                <CheckCircle2 size={10} />
-                {validations.filter(v => v.validated_shifts === v.total_shifts).length} validé{validations.filter(v => v.validated_shifts === v.total_shifts).length > 1 ? "s" : ""}
-              </span>
-              <span className="flex items-center gap-1" style={{ color: "#F59E0B" }}>
-                <Clock size={10} />
-                {validations.filter(v => v.validated_shifts < v.total_shifts).length} en attente
-              </span>
-            </div>
-          </div>
-          <div className="divide-y" style={{ background: "var(--background)" }}>
-            {validations.map(v => {
-              const isFullyValidated = v.validated_shifts === v.total_shifts;
-              const isPartial = v.validated_shifts > 0 && v.validated_shifts < v.total_shifts;
-              const color = isFullyValidated ? "var(--success)" : isPartial ? "#F59E0B" : "var(--foreground-dim)";
-              return (
-                <div key={v.profile_id} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: "var(--border-soft)" }}>
-                  {isFullyValidated
-                    ? <CheckCircle2 size={15} style={{ color: "var(--success)", flexShrink: 0 }} />
-                    : isPartial
-                      ? <AlertCircle size={15} style={{ color: "#F59E0B", flexShrink: 0 }} />
-                      : <Clock size={15} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{v.first_name}</p>
-                    <p className="text-[10px]" style={{ color }}>
-                      {isFullyValidated
-                        ? `Validé le ${new Date(v.validated_at!).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`
-                        : isPartial
-                          ? `${v.validated_shifts}/${v.total_shifts} shifts validés`
-                          : `${v.total_shifts} shift${v.total_shifts > 1 ? "s" : ""} — pas encore validé`
-                      }
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>{v.total_shifts} shift{v.total_shifts > 1 ? "s" : ""}</p>
-                    <div className="flex items-center gap-0.5 justify-end mt-0.5">
-                      {Array.from({ length: Math.min(v.total_shifts, 8) }).map((_, i) => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: i < v.validated_shifts ? "var(--success)" : "var(--border-strong)" }} />
-                      ))}
-                      {v.total_shifts > 8 && <span className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>+{v.total_shifts - 8}</span>}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Stats */}
       {!loading && (
