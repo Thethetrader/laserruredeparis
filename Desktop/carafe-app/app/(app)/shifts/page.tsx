@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, TrendingUp, TrendingDown, Sunrise, Sunset, CheckCircle2, Circle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, Sunrise, Sunset, CheckCircle2, Circle } from "lucide-react";
 import {
   Shift, ShiftProfile, toDateStr, getDaysInMonth, isoWeekday, monthLabel,
   calcTotalHours, calcTotalTips, formatHours, formatTips, shiftsToMap, calcNetHours,
@@ -430,23 +430,18 @@ export default function ShiftsPage() {
       {/* Récap */}
       {!loading && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Heures", value: formatHours(tHours), change: cHrs, accent: false },
-              { label: "Pourboires", value: formatTips(tTips), change: cTps, accent: true },
-              { label: "Services", value: String(shifts.length), change: changePercent(shifts.length, prevShifts.length), accent: false },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl px-3 py-3" style={{ background: s.accent ? "rgba(6,182,212,0.08)" : "var(--background-elev)", border: `1px solid ${s.accent ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
-                <p className="text-[18px] font-bold leading-tight" style={{ color: s.accent ? "var(--accent)" : "var(--foreground)" }}>{s.value}</p>
-                <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
-                {s.change !== null && s.change !== undefined && (
-                  <div className="flex items-center gap-0.5 mt-1">
-                    {s.change >= 0 ? <TrendingUp size={9} color="#10b981" /> : <TrendingDown size={9} color="#ef4444" />}
-                    <span className="text-[9px]" style={{ color: s.change >= 0 ? "var(--success)" : "var(--danger)" }}>{s.change >= 0 ? "+" : ""}{s.change}%</span>
-                  </div>
-                )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl px-4 py-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+              <p className="text-[20px] font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(tTips)}</p>
+              <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips ce mois</p>
+            </div>
+            <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <Trophy size={14} style={{ color: "#F59E0B", flexShrink: 0 }} />
+              <div>
+                <p className="text-[20px] font-bold leading-tight" style={{ color: "var(--foreground)" }}>{formatTips(ytdTips)}</p>
+                <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips {year}</p>
               </div>
-            ))}
+            </div>
           </div>
 
           {profile && cntHrs > 0 && (
@@ -461,20 +456,6 @@ export default function ShiftsPage() {
               <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{pctW}% du mensuel légal</p>
             </div>
           )}
-
-          {shifts.length > 0 && (
-            <div className="rounded-xl px-4 py-3.5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <TipsChart shifts={shifts} year={year} month={month} />
-            </div>
-          )}
-
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <Trophy size={16} style={{ color: "#F59E0B", flexShrink: 0 }} />
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Total tips {year}</p>
-              <p className="text-[16px] font-bold" style={{ color: "var(--foreground)" }}>{formatTips(ytdTips)}</p>
-            </div>
-          </div>
 
           {/* Validation du planning */}
           {shifts.length > 0 && (
