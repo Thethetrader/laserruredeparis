@@ -171,14 +171,7 @@ export default function PlanningPage() {
       .eq("is_active", true)
       .in("role", ["owner", "manager"]);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
-    let membershipData = (await memberQ.limit(1).maybeSingle()).data;
-    // Fallback si le cookie appartient à un autre compte (pas de membership manager ici)
-    if (!membershipData && validActiveId) {
-      membershipData = (await supabase.from("establishment_members")
-        .select("establishment_id, establishments(tip_settings)")
-        .eq("profile_id", user.id).eq("is_active", true).in("role", ["owner", "manager"])
-        .limit(1).maybeSingle()).data;
-    }
+    const membershipData = (await memberQ.limit(1).maybeSingle()).data;
 
     const resolvedEid = membershipData?.establishment_id ?? null;
     if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
