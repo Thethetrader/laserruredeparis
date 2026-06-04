@@ -867,19 +867,27 @@ export default function ShiftsTeamPage() {
         <button onClick={nextMonth} className="p-1.5 rounded-base" style={{ color: "var(--foreground-dim)" }}><ChevronRight size={18} /></button>
       </div>
 
-      {/* Legend — collapsible */}
+      {/* Rules — collapsible */}
       <details className="mb-3 px-1 group">
         <summary className="text-[10px] font-mono uppercase tracking-widest cursor-pointer select-none list-none flex items-center gap-1.5" style={{ color: "var(--foreground-dim)" }}>
-          <span>Légende</span>
+          <span>Règles tips</span>
           <span className="text-[8px] group-open:rotate-180 transition-transform inline-block">▼</span>
         </summary>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
-          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).map(s => (
-            <div key={s} className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: tipSettings.colors[s] ?? STAFF_STATUSES[s].color }} />
-              <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{STAFF_STATUSES[s].label}</span>
-            </div>
-          ))}
+          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden?.includes(s)).map(s => {
+            const color = tipSettings.colors[s] ?? STAFF_STATUSES[s].color;
+            const label = tipSettings.labels?.[s] ?? STAFF_STATUSES[s].label;
+            const coef = tipSettings.mode === "dispatch" ? tipSettings.coefficients[s] : null;
+            return (
+              <div key={s} className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{label}</span>
+                {coef != null && (
+                  <span className="text-[8px] font-mono px-1 py-0.5 rounded" style={{ background: `${color}18`, color }}>x{coef.toFixed(1)}</span>
+                )}
+              </div>
+            );
+          })}
           <div className="flex items-center gap-1.5">
             <Ban size={7} style={{ color: "var(--danger)" }} />
             <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>Sans pourboire</span>
