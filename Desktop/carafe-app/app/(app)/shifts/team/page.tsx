@@ -476,13 +476,13 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
     setDispatchError(null);
     try {
       if (!DEV_MODE) {
-        for (const shift of shifts) {
-          if (!shift.tips_enabled) continue;
-          const hours = (shift.hours_worked ?? 0) + (shift.hours_worked_2 ?? 0);
-          if (hours <= 0) continue;
-          const { error } = await supabase.from("shifts").update({ tips: distribution[shift.user_id] ?? 0, tips_2: 0 }).eq("id", shift.id);
-          if (error) throw new Error(error.message);
-        }
+        const resp = await fetch("/api/shifts/dispatch-tips", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ establishment_id: estId, date, tips: distribution }),
+        });
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.error ?? "Erreur distribution");
       }
       setSaving(false); setSaved(true);
       setTimeout(() => { setSaved(false); onSaved(); onClose(); }, 1200);
