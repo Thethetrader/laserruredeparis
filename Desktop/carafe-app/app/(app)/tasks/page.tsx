@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
+import { parseTipSettings, DEFAULT_TIP_SETTINGS, STAFF_STATUSES, type StaffStatus, type TipSettings } from "@/lib/shifts";
 
 const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
@@ -162,6 +163,7 @@ export default function TasksManagerPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("employee");
   const [estId, setEstId] = useState(DEV_ESTABLISHMENT_ID);
+  const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
 
   const today = new Date().toISOString().split("T")[0];
   const currentHour = new Date().getHours();
@@ -183,14 +185,16 @@ export default function TasksManagerPage() {
     const _uid = (await supabase.auth.getUser()).data.user?.id ?? "";
     const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
     const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let _mq = supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", _uid).eq("is_active", true);
+    let _mq = supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings)").eq("profile_id", _uid).eq("is_active", true);
     if (_ceid && _re.test(_ceid)) _mq = _mq.eq("establishment_id", _ceid);
     let { data: member } = await _mq.limit(1).maybeSingle();
-    if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", _uid).eq("is_active", true).limit(1).maybeSingle());
+    if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings)").eq("profile_id", _uid).eq("is_active", true).limit(1).maybeSingle());
 
     if (!member) { setLoading(false); return; }
     setUserRole(member.role);
     setEstId(member.establishment_id);
+    const est = (member as unknown as { establishments?: { tip_settings: unknown } | null }).establishments;
+    if (est) setTipSettings(parseTipSettings(est.tip_settings));
 
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
@@ -332,7 +336,14 @@ export default function TasksManagerPage() {
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const allDone = totalTasks > 0 && doneTasks >= totalTasks;
 
-  const filterButtons: FilterRole[] = ["all", "manager", "salle", "cuisine", "bar"];
+  const activeStatuses = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden?.includes(s));
+  const roleLabel = (r: string) => {
+    if (r === "all") return "Tous";
+    if (r === "manager") return "Manager";
+    const s = r as StaffStatus;
+    return tipSettings.labels?.[s] ?? STAFF_STATUSES[s]?.label ?? r;
+  };
+  const filterButtons = ["all", "manager", ...activeStatuses] as string[];
 
   return (
     <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
@@ -389,20 +400,20 @@ export default function TasksManagerPage() {
       {/* Filters */}
       <div className="flex gap-1.5 mb-5 flex-wrap">
         {filterButtons.map(r => {
-          const Icon = ROLE_ICON[r === "all" ? "all" : r];
+          const color = r !== "all" && r !== "manager" ? (tipSettings.colors[r as StaffStatus] ?? STAFF_STATUSES[r as StaffStatus]?.color) : undefined;
           return (
             <button
               key={r}
-              onClick={() => setFilterRole(r)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-base text-[11px] font-medium transition-colors"
+              onClick={() => setFilterRole(r as FilterRole)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-base text-[11px] font-medium transition-colors"
               style={{
                 background: filterRole === r ? "rgba(6,182,212,0.1)" : "var(--background-elev)",
                 color: filterRole === r ? "var(--accent)" : "var(--foreground-dim)",
                 border: filterRole === r ? "1px solid rgba(6,182,212,0.25)" : "1px solid var(--border)",
               }}
             >
-              <Icon size={10} />
-              {r === "all" ? "Tous" : ROLE_LABEL[r]}
+              {color && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />}
+              {roleLabel(r)}
             </button>
           );
         })}
@@ -504,7 +515,7 @@ export default function TasksManagerPage() {
 
                             <div className="flex items-center gap-1 mt-1">
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
-                                {ROLE_LABEL[task.target_role]}
+                                {roleLabel(task.target_role)}
                               </span>
                             </div>
                           </div>
@@ -569,7 +580,7 @@ export default function TasksManagerPage() {
                             </span>
                           ) : (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
-                              {ROLE_LABEL[shot.target_role]}
+                              {roleLabel(shot.target_role)}
                             </span>
                           )}
                         </div>
@@ -630,8 +641,8 @@ export default function TasksManagerPage() {
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Poste cible</label>
                 <select value={newOneShotRole} onChange={e => setNewOneShotRole(e.target.value as TaskTargetRole)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                  {(["all", "manager", "salle", "cuisine", "bar"] as TaskTargetRole[]).map(r => (
-                    <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                  {filterButtons.map(r => (
+                    <option key={r} value={r}>{roleLabel(r)}</option>
                   ))}
                 </select>
               </div>
