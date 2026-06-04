@@ -24,15 +24,15 @@ const managerNav: NavItem[] = [
 
 const employeeNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
-  { href: "/scoring",            icon: Zap,             label: "Mon Score" },
-  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours clients" },
-  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
-  { href: "/team",               icon: Users,           label: "Équipe" },
+  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
-  { href: "/shifts/team",        icon: CalendarDays,    label: "Planning" },
-  { href: "/shifts",             icon: CalendarRange,   label: "Shifts", exact: true },
+  { href: "/planning",           icon: Sparkles,        label: "Planning" },
+  { href: "/shifts",             icon: CalendarRange,   label: "Mes shifts", exact: true },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/scoring",            icon: Zap,             label: "Mon Score" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
 ];
 
