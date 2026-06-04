@@ -913,11 +913,19 @@ export default function ShiftsTeamPage() {
                   <div className="w-full space-y-0.5">
                     {dayShifts.slice(0, 3).map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
+                      const timeLabel = s.start_time && s.end_time
+                        ? `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`
+                        : null;
                       return (
-                        <div key={s.id} className="flex items-center gap-0.5 w-full overflow-hidden">
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.tips_enabled ? color : "var(--foreground-dim)", opacity: s.tips_enabled ? 1 : 0.4 }} />
-                          <span className="text-[8px] truncate leading-tight" style={{ color: s.tips_enabled ? color : "var(--foreground-dim)" }}>{s.first_name ?? "?"}</span>
-                          {!s.tips_enabled && <Ban size={6} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />}
+                        <div key={s.id} className="w-full rounded overflow-hidden px-1 py-0.5"
+                          style={{ background: `${color}18`, border: `1px solid ${color}35`, opacity: s.tips_enabled ? 1 : 0.5 }}>
+                          <div className="flex items-center gap-0.5 w-full overflow-hidden">
+                            <span className="text-[8px] font-semibold truncate leading-tight flex-1 min-w-0" style={{ color }}>{s.first_name ?? "?"}</span>
+                            {!s.tips_enabled && <Ban size={6} style={{ color, flexShrink: 0 }} />}
+                          </div>
+                          {timeLabel && (
+                            <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.8 }}>{timeLabel}</p>
+                          )}
                         </div>
                       );
                     })}
