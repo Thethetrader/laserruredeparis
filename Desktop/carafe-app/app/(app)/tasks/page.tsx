@@ -166,6 +166,10 @@ export default function TasksManagerPage() {
   const [userRole, setUserRole] = useState<string>("employee");
   const [estId, setEstId] = useState(DEV_ESTABLISHMENT_ID);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
+  const [claims, setClaims] = useState<{ id: string; task_template_id: string | null; task_one_shot_id: string | null; profile_id: string; first_name: string | null }[]>([]);
+  const [userId, setUserId] = useState("");
+  const [myFirstName, setMyFirstName] = useState("");
+  const [claiming, setClaiming] = useState<string | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
   const currentHour = new Date().getHours();
@@ -198,13 +202,20 @@ export default function TasksManagerPage() {
     const est = (member as unknown as { establishments?: { tip_settings: unknown } | null }).establishments;
     if (est) setTipSettings(parseTipSettings(est.tip_settings));
 
-    const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }] = await Promise.all([
+    const uid = (await supabase.auth.getUser()).data.user?.id ?? "";
+    setUserId(uid);
+    const { data: myProfile } = await supabase.from("profiles").select("first_name").eq("id", uid).single();
+    setMyFirstName((myProfile as { first_name: string | null } | null)?.first_name ?? "");
+
+    const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }, { data: claimsData }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
       supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
       supabase.from("task_one_shots").select("*, profiles!task_one_shots_created_by_fkey(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category, steps").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
+      supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name, service_date").eq("establishment_id", member.establishment_id).eq("service_date", today),
     ]);
+    setClaims((claimsData ?? []) as typeof claims);
 
     setTemplates((tmpl ?? []) as TaskTemplate[]);
     setCompletions(
@@ -261,8 +272,37 @@ export default function TasksManagerPage() {
       validated_by: userId!,
       service_date: today,
     });
+    // Supprimer le claim si existant
+    if (templateId) await supabase.from("task_claims").delete().eq("task_template_id", templateId).eq("service_date", today);
+    if (oneShotId) await supabase.from("task_claims").delete().eq("task_one_shot_id", oneShotId).eq("service_date", today);
     await load();
     setValidating(null);
+  }
+
+  async function claimTask(taskTemplateId?: string, taskOneShotId?: string) {
+    const key = taskTemplateId ?? taskOneShotId ?? "";
+    setClaiming(key);
+    const supabase = createClient();
+    const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId).eq("is_active", true).limit(1).maybeSingle();
+    if (!member) { setClaiming(null); return; }
+    await supabase.from("task_claims").insert({
+      establishment_id: member.establishment_id,
+      task_template_id: taskTemplateId ?? null,
+      task_one_shot_id: taskOneShotId ?? null,
+      profile_id: userId,
+      first_name: myFirstName,
+      service_date: today,
+    });
+    await load();
+    setClaiming(null);
+  }
+
+  async function unclaimTask(claimId: string) {
+    setClaiming(claimId);
+    const supabase = createClient();
+    await supabase.from("task_claims").delete().eq("id", claimId);
+    await load();
+    setClaiming(null);
   }
 
   function resetOneShotForm() {
@@ -483,75 +523,69 @@ export default function TasksManagerPage() {
                       const isDone = !!comp;
                       const isValidatingThis = validating === task.id;
                       const linkedProtocol = task.protocol_id ? protocols.find(p => p.id === task.protocol_id) : null;
+                      const claim = claims.find(c => c.task_template_id === task.id);
+                      const claimedByMe = claim?.profile_id === userId;
+                      const isClaimingThis = claiming === task.id || claiming === claim?.id;
 
                       return (
-                        <div
-                          key={task.id}
-                          className="flex items-start gap-3 px-4 py-3 transition-colors"
-                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}
-                        >
+                        <div key={task.id} className="flex items-start gap-3 px-4 py-3 transition-colors"
+                          style={{ background: isDone ? "rgba(16,185,129,0.04)" : claim && !claimedByMe ? "rgba(245,158,11,0.02)" : "var(--background)" }}>
                           <div className="mt-0.5 flex-shrink-0">
-                            {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
+                            {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: claim && !claimedByMe ? "#F59E0B" : "var(--foreground-dim)" }} />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
+                              <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : claim && !claimedByMe ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
                                 {task.title}
                               </span>
-                              {task.is_critical && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
-                                  <AlertTriangle size={9} />HACCP
-                                </span>
-                              )}
+                              {task.is_critical && <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}><AlertTriangle size={9} />HACCP</span>}
                               {task.requires_photo && !isDone && <Camera size={12} style={{ color: "var(--foreground-dim)" }} />}
                             </div>
 
                             {isDone && comp ? (
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-                                  {comp.validator_name} · {relTime(comp.validated_at)}
-                                  {comp.is_catchup && " · rattrapage"}
-                                </p>
+                                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{comp.validator_name} · {relTime(comp.validated_at)}{comp.is_catchup && " · rattrapage"}</p>
                                 {comp.photo_url && (
-                                  <button
-                                    onClick={() => setLightboxUrl(comp.photo_url)}
-                                    className="flex-shrink-0 relative rounded-md overflow-hidden transition-opacity hover:opacity-80"
-                                    style={{ width: 32, height: 32 }}
-                                  >
+                                  <button onClick={() => setLightboxUrl(comp.photo_url)} className="flex-shrink-0 relative rounded-md overflow-hidden transition-opacity hover:opacity-80" style={{ width: 32, height: 32 }}>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src={comp.photo_url} alt="" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.25)" }}>
-                                      <ZoomIn size={11} color="white" />
-                                    </div>
+                                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.25)" }}><ZoomIn size={11} color="white" /></div>
                                   </button>
                                 )}
                               </div>
                             ) : (
                               <>
-                                {task.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>}
-                                {linkedProtocol && (
-                                  <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-1 text-[11px] font-medium transition-opacity hover:opacity-80" style={{ color: "var(--accent)" }}>
-                                    <BookOpen size={10} />Voir le protocole
-                                  </button>
+                                {claim && (
+                                  <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: claimedByMe ? "var(--accent)" : "#F59E0B" }}>
+                                    <span style={{ textDecoration: "line-through", opacity: 0.7 }}>{claimedByMe ? `En cours · ${myFirstName || "moi"}` : `Pris par ${claim.first_name ?? "quelqu'un"}`}</span>
+                                    {claimedByMe && <button onClick={() => unclaimTask(claim.id)} className="text-[10px] ml-1 opacity-50 hover:opacity-100" style={{ color: "var(--foreground-dim)" }}>✕</button>}
+                                  </p>
                                 )}
+                                {!claim && task.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{task.description}</p>}
+                                {linkedProtocol && <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-1 text-[11px] font-medium transition-opacity hover:opacity-80" style={{ color: "var(--accent)" }}><BookOpen size={10} />Voir le protocole</button>}
                               </>
                             )}
-
                             <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
-                                {roleLabel(task.target_role)}
-                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>{roleLabel(task.target_role)}</span>
                             </div>
                           </div>
                           {!isDone && (
-                            <button
-                              onClick={() => validateTask(task.id)}
-                              disabled={isValidatingThis}
-                              className="flex-shrink-0 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
-                              style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}
-                            >
-                              {isValidatingThis ? <RefreshCw size={12} className="animate-spin" /> : "Valider"}
-                            </button>
+                            <div className="flex flex-col gap-1.5 flex-shrink-0">
+                              {!claim && (
+                                <button onClick={() => claimTask(task.id)} disabled={isClaimingThis}
+                                  className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                                  style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>
+                                  Je prends
+                                </button>
+                              )}
+                              {(!claim || claimedByMe) && (
+                                <button onClick={() => validateTask(task.id)} disabled={isValidatingThis}
+                                  className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                                  style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}>
+                                  {isValidatingThis ? <RefreshCw size={11} className="animate-spin" /> : "Valider"}
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       );
@@ -575,15 +609,18 @@ export default function TasksManagerPage() {
                   const isDone = shot.is_validated || !!comp;
                   const linkedProtocol = shot.protocol_id ? protocols.find(p => p.id === shot.protocol_id) : null;
                   const assignedMember = shot.assigned_to ? members.find(m => m.profile_id === shot.assigned_to) : null;
+                  const shotClaim = claims.find(c => c.task_one_shot_id === shot.id);
+                  const shotClaimedByMe = shotClaim?.profile_id === userId;
+                  const isShotClaiming = claiming === shot.id || claiming === shotClaim?.id;
 
                   return (
-                    <div key={shot.id} className="flex items-start gap-3 px-4 py-3" style={{ background: isDone ? "rgba(16,185,129,0.04)" : "var(--background)" }}>
+                    <div key={shot.id} className="flex items-start gap-3 px-4 py-3" style={{ background: isDone ? "rgba(16,185,129,0.04)" : shotClaim && !shotClaimedByMe ? "rgba(245,158,11,0.02)" : "var(--background)" }}>
                       <div className="mt-0.5">
-                        {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: "var(--foreground-dim)" }} />}
+                        {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: shotClaim && !shotClaimedByMe ? "#F59E0B" : "var(--foreground-dim)" }} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
+                          <p className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : shotClaim && !shotClaimedByMe ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>
                             {shot.title}
                           </p>
                           {shot.is_critical && (
@@ -608,21 +645,31 @@ export default function TasksManagerPage() {
                             </span>
                           )}
                         </div>
-                        {!isDone && linkedProtocol && (
-                          <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-0.5 text-[11px] font-medium" style={{ color: "var(--accent)" }}>
-                            <BookOpen size={10} />Voir le protocole
-                          </button>
+                        {!isDone && linkedProtocol && <button onClick={() => setProtocolModal(linkedProtocol)} className="inline-flex items-center gap-1 mt-0.5 text-[11px] font-medium" style={{ color: "var(--accent)" }}><BookOpen size={10} />Voir le protocole</button>}
+                        {!isDone && shotClaim && (
+                          <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: shotClaimedByMe ? "var(--accent)" : "#F59E0B" }}>
+                            <span style={{ textDecoration: "line-through", opacity: 0.7 }}>{shotClaimedByMe ? `En cours · ${myFirstName || "moi"}` : `Pris par ${shotClaim.first_name ?? "quelqu'un"}`}</span>
+                            {shotClaimedByMe && <button onClick={() => unclaimTask(shotClaim.id)} className="text-[10px] ml-1 opacity-50 hover:opacity-100" style={{ color: "var(--foreground-dim)" }}>✕</button>}
+                          </p>
                         )}
                       </div>
                       {!isDone && (
-                        <button
-                          onClick={() => validateTask("", shot.id)}
-                          disabled={validating === shot.id}
-                          className="flex-shrink-0 px-3 py-1.5 rounded-base text-[12px] font-medium"
-                          style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
-                        >
-                          Valider
-                        </button>
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          {!shotClaim && (
+                            <button onClick={() => claimTask(undefined, shot.id)} disabled={isShotClaiming}
+                              className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                              style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)", opacity: isShotClaiming ? 0.5 : 1 }}>
+                              Je prends
+                            </button>
+                          )}
+                          {(!shotClaim || shotClaimedByMe) && (
+                            <button onClick={() => validateTask("", shot.id)} disabled={validating === shot.id}
+                              className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                              style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                              Valider
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
