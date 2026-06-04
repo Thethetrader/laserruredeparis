@@ -23,6 +23,7 @@ interface Protocol {
   title: string;
   content: string;
   category: string;
+  steps?: string[] | null;
 }
 
 interface TaskTemplate {
@@ -158,6 +159,7 @@ export default function TasksManagerPage() {
   const [newOneShotAssignedTo, setNewOneShotAssignedTo] = useState("");
   const [newOneShotRequiresPhoto, setNewOneShotRequiresPhoto] = useState(false);
   const [newOneShotIsCritical, setNewOneShotIsCritical] = useState(false);
+  const [selectedProtocolId, setSelectedProtocolId] = useState("");
   const [savingOneShot, setSavingOneShot] = useState(false);
   const [protocolModal, setProtocolModal] = useState<Protocol | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -200,7 +202,7 @@ export default function TasksManagerPage() {
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
       supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
       supabase.from("task_one_shots").select("*, profiles!task_one_shots_created_by_fkey(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
-      supabase.from("protocols").select("id, title, content, category").eq("establishment_id", member.establishment_id),
+      supabase.from("protocols").select("id, title, content, category, steps").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
     ]);
 
@@ -270,25 +272,32 @@ export default function TasksManagerPage() {
     setNewOneShotAssignedTo("");
     setNewOneShotRequiresPhoto(false);
     setNewOneShotIsCritical(false);
+    setSelectedProtocolId("");
   }
 
   async function createOneShot() {
-    if (!newOneShotTitle.trim()) return;
+    const selectedProtocol = protocols.find(p => p.id === selectedProtocolId);
+    const steps = selectedProtocol?.steps ?? [];
+    const hasSteps = steps.length > 0;
+    if (!hasSteps && !newOneShotTitle.trim()) return;
     setSavingOneShot(true);
     if (DEV_MODE) {
-      setOneShots(prev => [...prev, {
-        id: `os-${Date.now()}`,
-        title: newOneShotTitle,
-        description: newOneShotDesc || null,
-        target_role: newOneShotRole,
-        due_date: today,
-        requires_photo: newOneShotRequiresPhoto,
-        is_critical: newOneShotIsCritical,
-        assigned_to: newOneShotAssignedTo || null,
-        is_validated: false,
-        creator_name: "Dev Mode",
-        protocol_id: null,
-      }]);
+      const newTasks = hasSteps
+        ? steps.map((step, i) => ({
+            id: `os-${Date.now()}-${i}`,
+            title: step,
+            description: null,
+            target_role: newOneShotRole,
+            due_date: today,
+            requires_photo: newOneShotRequiresPhoto,
+            is_critical: newOneShotIsCritical,
+            assigned_to: newOneShotAssignedTo || null,
+            is_validated: false,
+            creator_name: "Dev Mode",
+            protocol_id: selectedProtocolId || null,
+          }))
+        : [{ id: `os-${Date.now()}`, title: newOneShotTitle, description: newOneShotDesc || null, target_role: newOneShotRole, due_date: today, requires_photo: newOneShotRequiresPhoto, is_critical: newOneShotIsCritical, assigned_to: newOneShotAssignedTo || null, is_validated: false, creator_name: "Dev Mode", protocol_id: null }];
+      setOneShots(prev => [...prev, ...newTasks]);
       setShowOneShotModal(false);
       resetOneShotForm();
       setSavingOneShot(false);
@@ -300,17 +309,32 @@ export default function TasksManagerPage() {
     const { data: member } = await supabase.from("establishment_members").select("establishment_id").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
     if (!member) { setSavingOneShot(false); return; }
 
-    const { error: insertError } = await supabase.from("task_one_shots").insert({
-      establishment_id: member.establishment_id,
-      created_by: userId!,
-      title: newOneShotTitle,
-      description: newOneShotDesc || null,
-      target_role: newOneShotRole,
-      assigned_to: newOneShotAssignedTo || null,
-      requires_photo: newOneShotRequiresPhoto,
-      is_critical: newOneShotIsCritical,
-      due_date: today,
-    });
+    const rows = hasSteps
+      ? steps.map(step => ({
+          establishment_id: member.establishment_id,
+          created_by: userId!,
+          title: step,
+          description: null,
+          target_role: newOneShotRole,
+          assigned_to: newOneShotAssignedTo || null,
+          requires_photo: newOneShotRequiresPhoto,
+          is_critical: newOneShotIsCritical,
+          due_date: today,
+          protocol_id: selectedProtocolId || null,
+        }))
+      : [{
+          establishment_id: member.establishment_id,
+          created_by: userId!,
+          title: newOneShotTitle,
+          description: newOneShotDesc || null,
+          target_role: newOneShotRole,
+          assigned_to: newOneShotAssignedTo || null,
+          requires_photo: newOneShotRequiresPhoto,
+          is_critical: newOneShotIsCritical,
+          due_date: today,
+        }];
+
+    const { error: insertError } = await supabase.from("task_one_shots").insert(rows);
     if (insertError) {
       console.error("Erreur création tâche ponctuelle:", insertError.message);
       setSavingOneShot(false);
@@ -625,17 +649,51 @@ export default function TasksManagerPage() {
               <button onClick={() => { setShowOneShotModal(false); resetOneShotForm(); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
+              {/* Protocole (optionnel) */}
+              {protocols.filter(p => p.steps && p.steps.length > 0).length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                    <div className="flex items-center gap-1.5"><BookOpen size={10} />Depuis un protocole <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></div>
+                  </label>
+                  <select value={selectedProtocolId} onChange={e => setSelectedProtocolId(e.target.value)} className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: `1px solid ${selectedProtocolId ? "rgba(139,92,246,0.5)" : "var(--border)"}`, color: "var(--foreground)" }}>
+                    <option value="">— Aucun —</option>
+                    {protocols.filter(p => p.steps && p.steps.length > 0).map(p => (
+                      <option key={p.id} value={p.id}>{p.title} ({p.steps!.length} étapes)</option>
+                    ))}
+                  </select>
+                  {selectedProtocolId && (() => {
+                    const proto = protocols.find(p => p.id === selectedProtocolId);
+                    if (!proto?.steps?.length) return null;
+                    return (
+                      <div className="mt-2 rounded-xl p-3 space-y-1.5" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                        <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "#A78BFA" }}>{proto.steps.length} tâches seront créées</p>
+                        {proto.steps.map((step, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <span className="text-[10px] font-mono font-bold rounded px-1.5 py-0.5 flex-shrink-0" style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{i + 1}</span>
+                            <p className="text-[12px] leading-tight" style={{ color: "var(--foreground)" }}>{step}</p>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Titre */}
+              {!selectedProtocolId && (
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre *</label>
                 <input type="text" placeholder="Ex: Vérifier livraison vin" value={newOneShotTitle} onChange={e => setNewOneShotTitle(e.target.value)} autoFocus className="w-full px-3 py-2 rounded-base text-[13px] outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
+              )}
 
               {/* Description */}
+              {!selectedProtocolId && (
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span></label>
                 <textarea value={newOneShotDesc} onChange={e => setNewOneShotDesc(e.target.value)} placeholder="Détails ou instructions…" rows={2} className="w-full px-3 py-2 rounded-base text-[13px] outline-none resize-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
               </div>
+              )}
 
               {/* Poste cible */}
               <div>
@@ -689,9 +747,17 @@ export default function TasksManagerPage() {
 
             <div className="flex gap-2 px-5 pb-5">
               <button onClick={() => { setShowOneShotModal(false); resetOneShotForm(); }} className="flex-1 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Annuler</button>
-              <button onClick={createOneShot} disabled={!newOneShotTitle.trim() || savingOneShot} className="flex-1 py-2.5 rounded-base text-[13px] font-semibold" style={{ background: newOneShotTitle.trim() ? "var(--accent)" : "var(--background-elev)", color: newOneShotTitle.trim() ? "#09090B" : "var(--foreground-dim)", opacity: savingOneShot ? 0.7 : 1 }}>
-                {savingOneShot ? "Création…" : "Créer la tâche"}
-              </button>
+              {(() => {
+                const proto = protocols.find(p => p.id === selectedProtocolId);
+                const steps = proto?.steps ?? [];
+                const canCreate = selectedProtocolId ? steps.length > 0 : newOneShotTitle.trim().length > 0;
+                const btnLabel = savingOneShot ? "Création…" : selectedProtocolId ? `Créer ${steps.length} tâche${steps.length > 1 ? "s" : ""}` : "Créer la tâche";
+                return (
+                  <button onClick={createOneShot} disabled={!canCreate || savingOneShot} className="flex-1 py-2.5 rounded-base text-[13px] font-semibold" style={{ background: canCreate ? (selectedProtocolId ? "#A78BFA" : "var(--accent)") : "var(--background-elev)", color: canCreate ? "#09090B" : "var(--foreground-dim)", opacity: savingOneShot ? 0.7 : 1 }}>
+                    {btnLabel}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
