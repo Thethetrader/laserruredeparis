@@ -736,7 +736,7 @@ function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; 
         <div className="flex items-stretch" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0 }} />
           {activeDates.map((date, i) => {
-            const today = new Date().toISOString().split("T")[0] === toDateStr(date);
+            const today = toDateStr(new Date()) === toDateStr(date);
             const dayIdx = weekDates.indexOf(date);
             return (
               <div key={i} className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5"
