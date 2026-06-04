@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles, Zap } from "lucide-react";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import type { EstablishmentWithRole } from "@/lib/types/database";
 
-const adminNav = [
+const managerNav = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
   { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
@@ -20,6 +20,20 @@ const adminNav = [
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
 ];
 
+const employeeNav = [
+  { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
+  { href: "/scoring",            icon: Zap,             label: "Mon Score" },
+  { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
+  { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours clients" },
+  { href: "/challenges",         icon: Trophy,          label: "Challenges" },
+  { href: "/team",               icon: Users,           label: "Équipe" },
+  { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/shifts/team",        icon: CalendarDays,    label: "Planning" },
+  { href: "/shifts",             icon: CalendarRange,   label: "Shifts" },
+  { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
+];
+
 interface SidebarProps {
   establishment: EstablishmentWithRole;
   establishments: EstablishmentWithRole[];
@@ -27,6 +41,7 @@ interface SidebarProps {
 
 export function Sidebar({ establishment, establishments }: SidebarProps) {
   const pathname = usePathname();
+  const nav = establishment.role === "employee" ? employeeNav : managerNav;
 
   return (
     <aside
@@ -62,7 +77,7 @@ export function Sidebar({ establishment, establishments }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {adminNav.map(({ href, icon: Icon, label }) => {
+        {nav.map(({ href, icon: Icon, label }) => {
           const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
           return (
             <Link
