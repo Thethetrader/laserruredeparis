@@ -557,6 +557,7 @@ export default function ProtocolsPage() {
             fileInputRef={fileInputRef} handleFileChange={handleFileChange}
             isEditing={!!editingProtocol} submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
             error={formError}
+            establishmentId={establishmentId}
           />
         )}
 
@@ -1023,6 +1024,7 @@ interface ProtocolFormProps {
   isEditing?: boolean;
   submitting: boolean; onSubmit: () => void; onCancel: () => void;
   error?: string | null;
+  establishmentId: string;
 }
 
 function ProtocolForm({
@@ -1030,12 +1032,26 @@ function ProtocolForm({
   formCategory, setFormCategory, formMandatory, setFormMandatory,
   formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
   fileInputRef, handleFileChange,
-  isEditing, submitting, onSubmit, onCancel, error,
+  isEditing, submitting, onSubmit, onCancel, error, establishmentId,
 }: ProtocolFormProps) {
+  const [uploadingStepPhoto, setUploadingStepPhoto] = useState<Set<number>>(new Set());
+
   const updateStep = (index: number, field: keyof StepItem, value: string) => {
     const next = [...formSteps];
     next[index] = { ...next[index], [field]: value };
     setFormSteps(next);
+  };
+
+  const uploadStepPhoto = async (index: number, file: File) => {
+    setUploadingStepPhoto(prev => new Set([...prev, index]));
+    const sb = createClient();
+    const path = `${establishmentId}/steps/${Date.now()}_${file.name}`;
+    const { data } = await sb.storage.from("protocols").upload(path, file);
+    if (data) {
+      const { data: { publicUrl } } = sb.storage.from("protocols").getPublicUrl(path);
+      updateStep(index, "photo_url", publicUrl);
+    }
+    setUploadingStepPhoto(prev => { const s = new Set(prev); s.delete(index); return s; });
   };
 
   const removeStep = (index: number) => {
@@ -1150,10 +1166,29 @@ function ProtocolForm({
                       <option value="closing">Fermeture</option>
                       <option value="continuous">Continu</option>
                     </select>
-                    <input type="text" value={step.photo_url ?? ""} onChange={e => updateStep(i, "photo_url", e.target.value)}
-                      placeholder="URL photo (optionnel)"
-                      className="flex-1 text-[11px] px-2 py-1 rounded-base outline-none"
-                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
+                    {step.photo_url ? (
+                      <div className="flex items-center gap-1.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={step.photo_url} alt="" className="rounded object-cover flex-shrink-0" style={{ width: 36, height: 36 }} />
+                        <button onClick={() => updateStep(i, "photo_url", "")}
+                          className="text-[10px] px-1.5 py-0.5 rounded opacity-60 hover:opacity-100"
+                          style={{ color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-base cursor-pointer"
+                        style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: uploadingStepPhoto.has(i) ? "var(--accent)" : "var(--foreground-dim)" }}>
+                        {uploadingStepPhoto.has(i) ? (
+                          <span className="animate-pulse">Envoi…</span>
+                        ) : (
+                          <><Upload size={11} /> Photo</>
+                        )}
+                        <input type="file" accept="image/*" className="hidden"
+                          disabled={uploadingStepPhoto.has(i)}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadStepPhoto(i, f); e.target.value = ""; }} />
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}
