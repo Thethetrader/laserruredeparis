@@ -15,7 +15,7 @@ type AttachmentType = "pdf" | "image" | null;
 
 interface StepItem {
   text: string;
-  frequency?: "daily" | "opening" | "closing" | "continuous";
+  frequency?: "daily" | "weekly" | "monthly";
   photo_url?: string;
 }
 
@@ -25,7 +25,7 @@ function parseSteps(raw: unknown): StepItem[] {
 }
 
 const STEP_FREQ_LABELS: Record<string, string> = {
-  daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu",
+  daily: "Quotidien", weekly: "Hebdomadaire", monthly: "Mensuel",
 };
 
 interface Protocol {
@@ -1249,9 +1249,8 @@ function ProtocolForm({
                       style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: step.frequency ? "#A78BFA" : "var(--foreground-dim)" }}>
                       <option value="">Fréquence (optionnel)</option>
                       <option value="daily">Quotidien</option>
-                      <option value="opening">Ouverture</option>
-                      <option value="closing">Fermeture</option>
-                      <option value="continuous">Continu</option>
+                      <option value="weekly">Hebdomadaire</option>
+                      <option value="monthly">Mensuel</option>
                     </select>
                     {step.photo_url ? (
                       <div className="flex items-center gap-1.5">
