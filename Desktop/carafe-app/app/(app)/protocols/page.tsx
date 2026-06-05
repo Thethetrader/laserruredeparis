@@ -17,6 +17,7 @@ interface StepItem {
   text: string;
   frequency?: "daily" | "weekly" | "monthly";
   photo_url?: string;
+  photo_required?: boolean;
 }
 
 function parseSteps(raw: unknown): StepItem[] {
@@ -1063,6 +1064,11 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
                           {STEP_FREQ_LABELS[step.frequency] ?? step.frequency}
                         </span>
                       )}
+                      {step.photo_required && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
+                          📷 Photo obligatoire
+                        </span>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -1123,7 +1129,7 @@ function ProtocolForm({
 }: ProtocolFormProps) {
   const [uploadingStepPhoto, setUploadingStepPhoto] = useState<Set<number>>(new Set());
 
-  const updateStep = (index: number, field: keyof StepItem, value: string) => {
+  const updateStep = (index: number, field: keyof StepItem, value: string | boolean) => {
     const next = [...formSteps];
     next[index] = { ...next[index], [field]: value };
     setFormSteps(next);
@@ -1260,6 +1266,13 @@ function ProtocolForm({
                           className="text-[10px] px-1.5 py-0.5 rounded opacity-60 hover:opacity-100"
                           style={{ color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }}>
                           <X size={10} />
+                        </button>
+                        <button onClick={() => updateStep(i, "photo_required", !step.photo_required)}
+                          className="text-[10px] px-2 py-1 rounded-base font-medium transition-all"
+                          style={step.photo_required
+                            ? { background: "rgba(239,68,68,0.12)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }
+                            : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                          {step.photo_required ? "📷 Obligatoire" : "Optionnelle"}
                         </button>
                       </div>
                     ) : (
