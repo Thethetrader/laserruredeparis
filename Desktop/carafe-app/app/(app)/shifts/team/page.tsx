@@ -877,11 +877,11 @@ export default function ShiftsTeamPage() {
                       return (
                         <div key={s.id} className="w-full overflow-hidden min-w-0"
                           style={{ borderLeft: `2px solid ${color}`, background: `${color}12`, opacity: s.tips_enabled ? 1 : 0.5, borderRadius: 2, paddingLeft: 2 }}>
-                          <p className="hidden lg:block text-[8px] font-semibold leading-tight truncate" style={{ color }}>{s.first_name}</p>
-                          {timeLabel && (
-                            <p className="text-[7px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
-                          )}
-                          {!s.tips_enabled && <Ban size={5} style={{ color, display: "inline" }} />}
+                          <div className="flex items-center gap-0.5 min-w-0">
+                            <p className="hidden lg:block text-[8px] font-semibold leading-tight truncate flex-1 min-w-0" style={{ color }}>{s.first_name}</p>
+                            {timeLabel && <p className="text-[7px] font-mono leading-tight flex-shrink-0" style={{ color }}>{timeLabel}</p>}
+                            {!s.tips_enabled && <Ban size={5} style={{ color, flexShrink: 0 }} />}
+                          </div>
                         </div>
                       );
                     })}
