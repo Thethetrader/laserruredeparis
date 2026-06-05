@@ -847,6 +847,13 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
     fetchStepClaims(protocolId);
   };
 
+  const unvalidateStepMgr = async (protocolId: string, stepIndex: number) => {
+    const existing = stepClaims.find(c => c.step_index === stepIndex);
+    if (!existing) return;
+    await supabaseMgr.from("protocol_step_claims").update({ is_done: false, done_at: null, done_by_name: null }).eq("id", existing.id);
+    fetchStepClaims(protocolId);
+  };
+
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
   const modalMeta = feedbackModal ? CATEGORY_META[feedbackModal] : null;
@@ -1427,6 +1434,15 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                               </button>
                             </div>
                           )}
+                          {done && (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                              <button onClick={() => unvalidateStepMgr(protocolPopup.id, idx)}
+                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                                style={{ background: "rgba(239,68,68,0.10)", color: "#F87171" }}>
+                                Annuler
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1527,6 +1543,14 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     }
     fetchStepClaimsEmp(protocolId);
   };
+
+  const unvalidateStepEmp = async (protocolId: string, stepIndex: number) => {
+    const existing = stepClaims.find(c => c.step_index === stepIndex);
+    if (!existing) return;
+    await supabase.from("protocol_step_claims").update({ is_done: false, done_at: null, done_by_name: null }).eq("id", existing.id);
+    fetchStepClaimsEmp(protocolId);
+  };
+
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
   const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
   const SWIPE_THRESHOLD = 90;
@@ -2101,6 +2125,15 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                                 Valider ✓
                               </button>
                             )}
+                          </div>
+                        )}
+                        {done && (
+                          <div className="flex gap-1.5 mt-2.5 pl-7">
+                            <button onClick={() => unvalidateStepEmp(protocolPopup.id, idx)}
+                              className="text-[11px] px-2.5 py-1 rounded-lg"
+                              style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                              Annuler
+                            </button>
                           </div>
                         )}
                       </div>
