@@ -814,7 +814,12 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const validateStepMgr = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabaseMgr.auth.getUser();
     if (!user) return;
-    await supabaseMgr.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }, { onConflict: "protocol_id,step_index,establishment_id" });
+    const existing = stepClaims.find(c => c.step_index === stepIndex);
+    if (existing) {
+      await supabaseMgr.from("protocol_step_claims").update({ is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }).eq("id", existing.id);
+    } else {
+      await supabaseMgr.from("protocol_step_claims").insert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name });
+    }
     fetchStepClaims(protocolId);
   };
 
@@ -1482,7 +1487,12 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const validateStepEmp = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }, { onConflict: "protocol_id,step_index,establishment_id" });
+    const existing = stepClaims.find(c => c.step_index === stepIndex);
+    if (existing) {
+      await supabase.from("protocol_step_claims").update({ is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }).eq("id", existing.id);
+    } else {
+      await supabase.from("protocol_step_claims").insert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name });
+    }
     fetchStepClaimsEmp(protocolId);
   };
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
