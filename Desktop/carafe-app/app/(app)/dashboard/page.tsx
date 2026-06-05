@@ -207,6 +207,8 @@ const DEV_DATA_MANAGER: DashboardData = {
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
   task_stats: DEV_TASK_STATS,
+  tips_this_month: 0,
+  tip_mode: "self",
 };
 
 const DEV_PROTOCOLS_EMPLOYEE: Protocol[] = [
@@ -253,6 +255,8 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
       { title: "Plonge terminée", done: false, category: "Récurrent" },
     ]},
   ],
+  tips_this_month: 0,
+  tip_mode: "self",
 };
 
 const DEV_TODAY_FEEDBACK: FeedbackItem[] = [
@@ -319,6 +323,8 @@ export default function DashboardPage() {
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
     const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean }>;
     const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
+    const shiftsData = (shiftsRes.data ?? []) as Array<{ tips: number | null; tips_2: number | null }>;
+    const tipsThisMonth = shiftsData.reduce((s, sh) => s + (sh.tips ?? 0) + (sh.tips_2 ?? 0), 0);
 
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
@@ -394,6 +400,8 @@ export default function DashboardPage() {
       active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
       task_stats,
+      tips_this_month: tipsThisMonth,
+      tip_mode: tipMode,
     });
     } catch {
       // silence errors
@@ -990,6 +998,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             </div>
           )}
 
+        </div>
       </div>
 
       {/* Modals */}
