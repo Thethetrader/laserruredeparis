@@ -462,7 +462,7 @@ export default function TasksManagerPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-1.5 mb-5 flex-wrap">
+      {!loading && <div className="flex gap-1.5 mb-5 flex-wrap">
         {filterButtons.map(r => {
           const color = r !== "all" && r !== "manager" ? (tipSettings.colors[r as StaffStatus] ?? STAFF_STATUSES[r as StaffStatus]?.color) : undefined;
           return (
@@ -481,7 +481,7 @@ export default function TasksManagerPage() {
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {loading ? (
         <div className="space-y-2">

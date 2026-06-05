@@ -140,22 +140,22 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
     <div className="fixed inset-0 z-50 flex flex-col"
       style={{ background: "var(--background)" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
-        style={{ borderBottom: "1px solid var(--border)", background: "var(--background-elev)" }}>
-        <div>
+      <div className="flex items-center gap-3 px-4 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--background-elev)", paddingTop: "calc(env(safe-area-inset-top) + 12px)", paddingBottom: 12 }}>
+        <button onClick={onClose} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+          <ChevronLeft size={20} />
+        </button>
+        <div className="flex-1 min-w-0">
           <h2 className="text-[16px] font-semibold" style={{ color: "var(--foreground)" }}>Récap paie</h2>
-          {data && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{fromFr} → {toFr} · {periodDays}j</p>}
+          {data && <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{fromFr} → {toFr} · {periodDays}j</p>}
         </div>
-        <div className="flex items-center gap-2">
-          {data && (
-            <button onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium"
-              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-              <Printer size={13} />Imprimer
-            </button>
-          )}
-          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={20} /></button>
-        </div>
+        {data && (
+          <button onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium flex-shrink-0"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+            <Printer size={13} />Imprimer
+          </button>
+        )}
       </div>
 
       {/* Date picker + generate */}
@@ -862,8 +862,8 @@ export default function ShiftsTeamPage() {
               const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
               return (
                 <button key={dateStr} onClick={() => dayShifts.length > 0 && setSelected(dateStr)}
-                  className="flex flex-col items-start p-1 transition-colors text-left"
-                  style={{ minHeight: 88, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: dayShifts.length > 0 ? "pointer" : "default" }}>
+                  className="flex flex-col items-start overflow-hidden transition-colors text-left"
+                  style={{ minHeight: 80, padding: "3px 2px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: dayShifts.length > 0 ? "pointer" : "default" }}>
                   <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : "var(--foreground-muted)" }}>
                     {day.getDate()}
@@ -871,19 +871,15 @@ export default function ShiftsTeamPage() {
                   <div className="w-full space-y-0.5">
                     {dayShifts.slice(0, 3).map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
-                      const timeLabel = s.start_time && s.end_time
-                        ? `${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}`
-                        : null;
+                      const fmt = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
+                      const timeLabel = s.start_time && s.end_time ? `${fmt(s.start_time)}–${fmt(s.end_time)}` : null;
                       return (
-                        <div key={s.id} className="w-full rounded overflow-hidden px-1 py-0.5"
-                          style={{ background: `${color}18`, border: `1px solid ${color}35`, opacity: s.tips_enabled ? 1 : 0.5 }}>
-                          <div className="flex items-center gap-0.5 w-full overflow-hidden">
-                            <span className="text-[8px] font-semibold truncate leading-tight flex-1 min-w-0" style={{ color }}>{s.first_name ?? "?"}</span>
-                            {!s.tips_enabled && <Ban size={6} style={{ color, flexShrink: 0 }} />}
-                          </div>
+                        <div key={s.id} className="w-full overflow-hidden min-w-0"
+                          style={{ borderLeft: `2px solid ${color}`, background: `${color}12`, opacity: s.tips_enabled ? 1 : 0.5, borderRadius: 2, paddingLeft: 2 }}>
                           {timeLabel && (
-                            <p className="text-[7px] font-mono leading-tight truncate" style={{ color, opacity: 0.8 }}>{timeLabel}</p>
+                            <p className="text-[7px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
                           )}
+                          {!s.tips_enabled && <Ban size={5} style={{ color, display: "inline" }} />}
                         </div>
                       );
                     })}
