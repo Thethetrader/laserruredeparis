@@ -213,22 +213,21 @@ export default function EstablishmentSettingsPage() {
               </div>
             );
           })}
+
+          {/* Ajouter un poste masqué */}
           {tipSettings.hidden.length > 0 && (
-            <details style={{ borderTop: "1px solid var(--border)" }}>
-              <summary className="px-4 py-2.5 text-[11px] cursor-pointer list-none flex items-center gap-2" style={{ color: "var(--foreground-dim)" }}>
-                <RotateCcw size={11} />
-                {tipSettings.hidden.length} poste{tipSettings.hidden.length > 1 ? "s" : ""} supprimé{tipSettings.hidden.length > 1 ? "s" : ""}
-              </summary>
-              {tipSettings.hidden.map(status => (
-                <div key={status} className="flex items-center gap-3 px-4 py-2.5" style={{ opacity: 0.5 }}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tipSettings.colors[status] ?? STAFF_STATUSES[status].color }} />
-                  <span className="flex-1 text-[12px]" style={{ color: "var(--foreground)" }}>{tipSettings.labels[status] ?? STAFF_STATUSES[status].label}</span>
-                  <button onClick={() => toggleHidden(status)} className="text-[10px] px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1" style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                    <RotateCcw size={9} />Restaurer
+            <div className="px-4 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--foreground-dim)" }}>Postes masqués</p>
+              <div className="flex flex-wrap gap-2">
+                {tipSettings.hidden.map(status => (
+                  <button key={status} onClick={() => toggleHidden(status)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px]"
+                    style={{ background: "var(--background)", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
+                    <span>+</span> {tipSettings.labels[status] ?? STAFF_STATUSES[status].label}
                   </button>
-                </div>
-              ))}
-            </details>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
