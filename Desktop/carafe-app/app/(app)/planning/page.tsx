@@ -139,6 +139,10 @@ export default function PlanningPage() {
   const [validating, setValidating] = useState(false);
   const [estId, setEstId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRealEmployee, setIsRealEmployee] = useState(false);
+  const [myShifts, setMyShifts] = useState<PlanningShift[]>([]);
+  const [refusalPopup, setRefusalPopup] = useState(false);
+  const [refusingShiftId, setRefusingShiftId] = useState<string | null>(null);
 
   const weekDates = getWeekDates(weekStart);
 
@@ -174,7 +178,27 @@ export default function PlanningPage() {
     const membershipData = (await memberQ.limit(1).maybeSingle()).data;
 
     const resolvedEid = membershipData?.establishment_id ?? null;
-    if (!resolvedEid) { setPlanningWeek(null); setLoading(false); return; }
+    if (!resolvedEid) {
+      // Try as employee
+      let empQ = supabase.from("establishment_members").select("establishment_id").eq("profile_id", user.id).eq("is_active", true);
+      if (validActiveId) empQ = empQ.eq("establishment_id", validActiveId);
+      const { data: empMember } = await empQ.limit(1).maybeSingle();
+      if (!empMember) { setPlanningWeek(null); setLoading(false); return; }
+      setIsRealEmployee(true);
+      setEstId(empMember.establishment_id);
+      // Load published planning weeks for this employee
+      const from = toDateStr(monday);
+      const { data: pubWeeks } = await supabase.from("planning_weeks").select("id, week_start, status").eq("establishment_id", empMember.establishment_id).eq("status", "published").gte("week_start", from).order("week_start").limit(4);
+      if (pubWeeks?.length) {
+        const weekIds = pubWeeks.map((w: { id: string }) => w.id);
+        const { data: empShifts } = await supabase.from("planning_shifts").select("id, user_id, shift_date, start_time, end_time, service, confirmation_status").eq("user_id", user.id).in("planning_week_id", weekIds).order("shift_date").order("start_time");
+        setMyShifts((empShifts ?? []) as PlanningShift[]);
+      } else {
+        setMyShifts([]);
+      }
+      setLoading(false);
+      return;
+    }
     setEstId(resolvedEid);
 
     const weekStr = toDateStr(monday);
@@ -336,10 +360,92 @@ export default function PlanningPage() {
     setPlanningShifts([]);
   }
 
-  if (isEmployee) {
+  if (isEmployee || isRealEmployee) {
+    const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+    const byDate = new Map<string, PlanningShift[]>();
+    myShifts.forEach(s => { if (!byDate.has(s.shift_date)) byDate.set(s.shift_date, []); byDate.get(s.shift_date)!.push(s); });
+    const sortedDates = Array.from(byDate.keys()).sort();
+
+    async function confirmShift(shiftId: string) {
+      const supabase = createClient();
+      await supabase.from("planning_shifts").update({ confirmation_status: "confirmed" }).eq("id", shiftId);
+      setMyShifts(prev => prev.map(s => s.id === shiftId ? { ...s, confirmation_status: "confirmed" as const } : s));
+    }
+
+    async function refuseShift(shiftId: string) {
+      const supabase = createClient();
+      await supabase.from("planning_shifts").update({ confirmation_status: "modified" }).eq("id", shiftId);
+      setMyShifts(prev => prev.map(s => s.id === shiftId ? { ...s, confirmation_status: "modified" as const } : s));
+      setRefusingShiftId(null);
+      setRefusalPopup(false);
+    }
+
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Accès réservé aux managers</p>
+      <div className="px-4 py-6 max-w-lg">
+        <div className="mb-6">
+          <MonoLabel size="xs" className="mb-1 block">Planning</MonoLabel>
+          <h1 className="text-[22px] font-semibold" style={{ color: "var(--foreground)" }}>Mes shifts planifiés</h1>
+          <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Confirme ou signale un problème</p>
+        </div>
+
+        {loading && <div className="h-32 rounded-xl animate-pulse" style={{ background: "var(--background-elev)" }} />}
+
+        {!loading && sortedDates.length === 0 && (
+          <div className="rounded-xl p-8 text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun planning publié pour les prochaines semaines</p>
+          </div>
+        )}
+
+        {!loading && sortedDates.length > 0 && (
+          <div className="space-y-3">
+            {sortedDates.map(date => {
+              const shifts = byDate.get(date)!;
+              const d = new Date(date + "T12:00:00");
+              const dayLabel = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+              return (
+                <div key={date} className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                  <div className="px-4 py-2.5" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                    <p className="text-[12px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{dayLabel}</p>
+                  </div>
+                  {shifts.map(shift => {
+                    const isConfirmed = shift.confirmation_status === "confirmed";
+                    const isRefused = shift.confirmation_status === "modified";
+                    return (
+                      <div key={shift.id} className="px-4 py-3 flex items-center gap-3" style={{ background: isRefused ? "rgba(239,68,68,0.03)" : isConfirmed ? "rgba(16,185,129,0.03)" : "var(--background)", borderBottom: "1px solid var(--border-soft)" }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{shift.service}</p>
+                          <p className="text-[11px] font-mono" style={{ color: "var(--foreground-dim)" }}>{shift.start_time.slice(0,5)} → {shift.end_time.slice(0,5)}</p>
+                        </div>
+                        {isConfirmed && <span className="text-[11px] px-2 py-1 rounded-full" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)" }}>✓ Confirmé</span>}
+                        {isRefused && <span className="text-[11px] px-2 py-1 rounded-full" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>✗ Refusé</span>}
+                        {!isConfirmed && !isRefused && (
+                          <div className="flex gap-2">
+                            <button onClick={() => confirmShift(shift.id)} className="text-[11px] px-2.5 py-1.5 rounded-lg font-medium" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.3)" }}>✓ OK</button>
+                            <button onClick={() => { setRefusingShiftId(shift.id); setRefusalPopup(true); }} className="text-[11px] px-2.5 py-1.5 rounded-lg font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.25)" }}>✗ Non</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Refusal popup */}
+        {refusalPopup && refusingShiftId && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-4" style={{ background: "rgba(0,0,0,0.7)" }} onClick={() => setRefusalPopup(false)}>
+            <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+              <h3 className="text-[15px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>Signaler un problème</h3>
+              <p className="text-[12px] mb-4" style={{ color: "var(--foreground-dim)" }}>Le manager sera informé et pourra réassigner ce shift à quelqu'un d'autre.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setRefusalPopup(false)} className="flex-1 py-2.5 rounded-xl text-[13px]" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Annuler</button>
+                <button onClick={() => refuseShift(refusingShiftId)} className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold" style={{ background: "rgba(239,68,68,0.12)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }}>Confirmer le refus</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -952,6 +1058,11 @@ function PublishedView({ shifts, weekDates, rates }: {
                   style={{ color: statusColor, background: `${statusColor}15`, border: `1px solid ${statusColor}30` }}>
                   {statusIcon} {statusLabel}
                 </span>
+                {anyModified && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-lg cursor-pointer" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    → Réassigner
+                  </span>
+                )}
               </div>
             </div>
           );
