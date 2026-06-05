@@ -1346,6 +1346,8 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
+  const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
+  const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
 
   const openProtocol = async (p: Protocol) => {
     setProtocolPopup(p);
@@ -1876,24 +1878,59 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
               )}
               {protocolPopup.steps && protocolPopup.steps.length > 0 && (
                 <div className="space-y-2">
-                  {protocolPopup.steps.map((step, idx) => (
-                    <div key={idx} className="flex gap-3 items-start">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
-                        style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{idx + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)" }}>{step.text}</p>
-                        {step.frequency && (
-                          <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
-                            {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
+                  {protocolPopup.steps.map((step, idx) => {
+                    const key = `${protocolPopup.id}_${idx}`;
+                    const taken = stepsTaken.has(key);
+                    const done = stepsDone.has(key);
+                    return (
+                      <div key={idx} className="rounded-xl p-3" style={{ background: done ? "rgba(16,185,129,0.06)" : taken ? "rgba(6,182,212,0.05)" : "var(--background-soft)", border: `1px solid ${done ? "rgba(16,185,129,0.2)" : taken ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+                        <div className="flex gap-2.5 items-start">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                            style={{ background: done ? "rgba(16,185,129,0.2)" : "rgba(139,92,246,0.15)", color: done ? "var(--success)" : "#A78BFA" }}>
+                            {done ? "✓" : idx + 1}
                           </span>
-                        )}
-                        {step.photo_url && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] leading-snug" style={{ color: done ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: done ? "line-through" : "none" }}>{step.text}</p>
+                            {step.frequency && (
+                              <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
+                                {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
+                              </span>
+                            )}
+                            {step.photo_url && (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 120 }} />
+                            )}
+                            {taken && !done && (
+                              <p className="text-[10px] mt-1" style={{ color: "var(--accent)" }}>En cours · {data.my_first_name || "moi"}</p>
+                            )}
+                          </div>
+                        </div>
+                        {!done && (
+                          <div className="flex gap-1.5 mt-2.5 pl-7">
+                            {!taken && (
+                              <button onClick={() => setStepsTaken(prev => new Set([...prev, key]))}
+                                className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
+                                style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>
+                                Je prends
+                              </button>
+                            )}
+                            {taken && (
+                              <button onClick={() => setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; })}
+                                className="text-[11px] px-2.5 py-1 rounded-lg"
+                                style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                                Se désister
+                              </button>
+                            )}
+                            <button onClick={() => { setStepsDone(prev => new Set([...prev, key])); setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; }); }}
+                              className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
+                              style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
+                              Valider ✓
+                            </button>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
