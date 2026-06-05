@@ -928,7 +928,7 @@ function WeekGrid({ shifts, weekDates, showStatus, onDayClick }: { shifts: Plann
 
   return (
     <div className="overflow-x-auto lg:overflow-x-visible" style={{ WebkitOverflowScrolling: "touch" }}>
-      <div style={{ minWidth: LABEL_W + n * MIN_COL }} className="lg:min-w-0">
+      <div className="flex flex-col">
         {/* Day headers */}
         <div className="flex items-stretch" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0 }} />
