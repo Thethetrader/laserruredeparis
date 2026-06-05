@@ -896,7 +896,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                             const updatedAt = (p as unknown as { updated_at?: string }).updated_at;
                             const isNew = updatedAt && (Date.now() - new Date(updatedAt).getTime()) < 7*86400000;
                             return isNew && !readProtocols.has(p.id) && <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>Mis à jour</span>;
-                          })()}}
+                          })()}
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
