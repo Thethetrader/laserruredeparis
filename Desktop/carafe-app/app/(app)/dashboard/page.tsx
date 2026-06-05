@@ -307,7 +307,7 @@ export default function DashboardPage() {
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
+      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
