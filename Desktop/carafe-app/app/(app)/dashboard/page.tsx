@@ -538,6 +538,12 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
   onValidated: () => void;
 }) {
   const [taskList, setTaskList] = useState(stats.tasks ?? []);
+  useEffect(() => {
+    setTaskList(prev => (stats.tasks ?? []).map(t => ({
+      ...t,
+      done: t.done || prev.find(p => p.id === t.id)?.done || false,
+    })));
+  }, [stats]);
   const todo = taskList.filter(t => !t.done);
   const done = taskList.filter(t => t.done);
   const localDone = done.length;
@@ -781,6 +787,12 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
+  useEffect(() => {
+    if (taskGaugePopup) {
+      const fresh = data.task_stats.find(s => s.label === taskGaugePopup.label);
+      if (fresh) setTaskGaugePopup(fresh);
+    }
+  }, [data.task_stats]);
   const [stepClaimsLoading, setStepClaimsLoading] = useState(false);
   const supabaseMgr = createClient();
 
@@ -876,7 +888,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.label} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
@@ -1443,6 +1455,12 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
+  useEffect(() => {
+    if (taskGaugePopup) {
+      const fresh = data.task_stats.find(s => s.label === taskGaugePopup.label);
+      if (fresh) setTaskGaugePopup(fresh);
+    }
+  }, [data.task_stats]);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
@@ -1692,7 +1710,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.label} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
