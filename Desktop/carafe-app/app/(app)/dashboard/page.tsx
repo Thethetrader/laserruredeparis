@@ -762,6 +762,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
+  const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -855,7 +856,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 {data.protocols.filter(p => p.show_on_dashboard).map(p => {
                   const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
                   return (
-                    <button key={p.id} onClick={() => openProtocol(p)} className="w-full text-left">
+                    <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
@@ -1244,6 +1245,46 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 style={{ background: "var(--accent)", color: "#09090B" }}
                 onClick={() => setKpiPopup(null)}>
                 Voir tout →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup protocole (manager) */}
+      {protocolPopup && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="p-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.1)" }}>
+                    <BookOpen size={13} style={{ color: "var(--accent)" }} />
+                  </div>
+                  {protocolPopup.is_mandatory && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.15)" }}>Obligatoire</span>
+                  )}
+                </div>
+                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--foreground)" }}>{protocolPopup.title}</p>
+              </div>
+              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {protocolPopup.content ? (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
+              ) : (
+                <p className="text-sm text-center py-6" style={{ color: "var(--foreground-dim)" }}>Aucun contenu</p>
+              )}
+            </div>
+            <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+              <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl"
+                style={{ background: "var(--accent)", color: "#09090B" }}>
+                Gérer les protocoles →
               </a>
             </div>
           </div>
