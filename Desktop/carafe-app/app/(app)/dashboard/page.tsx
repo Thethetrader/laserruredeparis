@@ -787,6 +787,16 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
+  const [pinnedClaims, setPinnedClaims] = useState<ProtocolStepClaim[]>([]);
+
+  useEffect(() => {
+    const pinned = data.protocols.filter(p => p.show_on_dashboard);
+    if (!pinned.length) return;
+    const ids = pinned.map(p => p.id);
+    supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").in("protocol_id", ids).eq("establishment_id", data.establishment_id)
+      .then(({ data: claims }) => setPinnedClaims(claims ?? []));
+  }, [data.protocols]);
+
   useEffect(() => {
     if (taskGaugePopup) {
       const fresh = data.task_stats.find(s => s.label === taskGaugePopup.label);
@@ -799,7 +809,9 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const fetchStepClaims = async (protocolId: string) => {
     setStepClaimsLoading(true);
     const { data: claims } = await supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
-    setStepClaims(claims ?? []);
+    const fresh = claims ?? [];
+    setStepClaims(fresh);
+    setPinnedClaims(prev => [...prev.filter(c => c.protocol_id !== protocolId), ...fresh]);
     setStepClaimsLoading(false);
   };
 
@@ -925,7 +937,9 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               </div>
               <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
                 {data.protocols.filter(p => p.show_on_dashboard).map(p => {
-                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                  const totalSteps = p.steps?.length ?? 0;
+                  const doneSteps = pinnedClaims.filter(c => c.protocol_id === p.id && c.is_done).length;
+                  const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
                   return (
                     <button key={p.id} onClick={() => openProtocolMgr(p)} className="w-full text-left">
                       <div className="flex items-center justify-between mb-1">
@@ -938,7 +952,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                       <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
                         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--accent)" }} />
                       </div>
-                      <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} lecture{p.total_members > 1 ? "s" : ""}</p>
+                      <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{doneSteps}/{totalSteps} étape{totalSteps > 1 ? "s" : ""} validée{totalSteps > 1 ? "s" : ""}</p>
                     </button>
                   );
                 })}
