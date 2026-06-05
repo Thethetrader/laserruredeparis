@@ -143,6 +143,9 @@ export default function PlanningPage() {
   const [myShifts, setMyShifts] = useState<PlanningShift[]>([]);
   const [refusalPopup, setRefusalPopup] = useState(false);
   const [refusingShiftId, setRefusingShiftId] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; name: string; staff_status: string }[]>([]);
+  const [addShiftFor, setAddShiftFor] = useState<{ date: string } | null>(null);
+  const [savingShift, setSavingShift] = useState(false);
 
   const weekDates = getWeekDates(weekStart);
 
@@ -200,6 +203,18 @@ export default function PlanningPage() {
       return;
     }
     setEstId(resolvedEid);
+
+    const { data: teamData } = await supabase
+      .from("establishment_members")
+      .select("profile_id, profiles(first_name, staff_status)")
+      .eq("establishment_id", resolvedEid)
+      .eq("is_active", true)
+      .order("profile_id");
+    setEmployees((teamData ?? []).map((m: any) => ({
+      id: m.profile_id,
+      name: m.profiles?.first_name ?? "?",
+      staff_status: m.profiles?.staff_status ?? "",
+    })));
 
     const weekStr = toDateStr(monday);
 
@@ -360,6 +375,43 @@ export default function PlanningPage() {
     setPlanningShifts([]);
   }
 
+  async function handleAddShift(userId: string, service: string, start: string, end: string) {
+    if (!estId || !addShiftFor) return;
+    setSavingShift(true);
+    const supabase = createClient();
+    const weekStr = toDateStr(weekStart);
+
+    let weekId = planningWeek?.id ?? null;
+    if (!weekId) {
+      const { data: existing } = await supabase.from("planning_weeks")
+        .select("id").eq("establishment_id", estId).eq("week_start", weekStr).maybeSingle();
+      if (existing) {
+        weekId = existing.id;
+      } else {
+        const { data: newWeek } = await supabase.from("planning_weeks")
+          .insert({ establishment_id: estId, week_start: weekStr, status: "published", service_needs: needs })
+          .select("id").single();
+        weekId = newWeek?.id ?? null;
+      }
+    }
+
+    if (!weekId) { setSavingShift(false); return; }
+
+    await supabase.from("planning_shifts").insert({
+      planning_week_id: weekId,
+      user_id: userId,
+      shift_date: addShiftFor.date,
+      start_time: start,
+      end_time: end,
+      service,
+      confirmation_status: "pending",
+    });
+
+    setAddShiftFor(null);
+    setSavingShift(false);
+    await load(weekStart);
+  }
+
   if (isEmployee || isRealEmployee) {
     const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
     const byDate = new Map<string, PlanningShift[]>();
@@ -502,9 +554,35 @@ export default function PlanningPage() {
             defaultOpen={!hasPlanning}
           />
 
+          {/* Manual week strip — no planning yet */}
+          {planningWeek === null && (
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-4 py-3 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
+                <Plus size={13} style={{ color: "var(--foreground-dim)" }} />
+                <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>Ajouter des shifts manuellement</p>
+              </div>
+              <div className="flex">
+                {weekDates.map((date, i) => {
+                  const today = toDateStr(new Date()) === toDateStr(date);
+                  return (
+                    <button key={i} onClick={() => setAddShiftFor({ date: toDateStr(date) })}
+                      className="flex-1 flex flex-col items-center py-3 gap-1 transition-all active:scale-95"
+                      style={{ borderRight: i < 6 ? "1px solid var(--border-soft)" : "none", background: "transparent" }}>
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[i]}</span>
+                      <span className="text-[18px] font-bold leading-none" style={{ color: today ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center mt-0.5" style={{ border: "1px dashed var(--border)", color: "var(--foreground-dim)" }}>
+                        <Plus size={9} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Planning grid */}
           {planningWeek?.status === "published" && (
-            <PublishedView shifts={planningShifts} weekDates={weekDates} rates={devRates} />
+            <PublishedView shifts={planningShifts} weekDates={weekDates} rates={devRates} onDayClick={date => setAddShiftFor({ date })} />
           )}
           {planningWeek?.status === "draft" && (
             <DraftView
@@ -514,9 +592,22 @@ export default function PlanningPage() {
               onRegenerate={handleRegenerate}
               validating={validating}
               rates={devRates}
+              onDayClick={date => setAddShiftFor({ date })}
             />
           )}
         </div>
+      )}
+
+      {/* Add shift modal */}
+      {addShiftFor && (
+        <AddShiftModal
+          date={addShiftFor.date}
+          employees={employees}
+          services={needs.services}
+          onClose={() => setAddShiftFor(null)}
+          onSave={handleAddShift}
+          saving={savingShift}
+        />
       )}
     </div>
   );
@@ -815,7 +906,7 @@ function ShiftChip({ shift, showStatus }: { shift: PlanningShift; showStatus?: b
   );
 }
 
-function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; weekDates: Date[]; showStatus?: boolean }) {
+function WeekGrid({ shifts, weekDates, showStatus, onDayClick }: { shifts: PlanningShift[]; weekDates: Date[]; showStatus?: boolean; onDayClick?: (date: string) => void }) {
   const activeDates = weekDates.filter(d => shifts.some(s => s.shift_date === toDateStr(d)));
   if (activeDates.length === 0) return null;
 
@@ -844,13 +935,22 @@ function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; 
           {activeDates.map((date, i) => {
             const today = toDateStr(new Date()) === toDateStr(date);
             const dayIdx = weekDates.indexOf(date);
+            const dateStr = toDateStr(date);
             return (
               <div key={i} className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5"
                 style={{ minWidth: MIN_COL, borderLeft: "1px solid var(--border-soft)" }}>
                 <span className="text-[9px] font-mono font-bold uppercase tracking-widest"
                   style={{ color: "var(--foreground-dim)" }}>{DAYS_FR_SHORT[dayIdx]}</span>
-                <span className="text-[18px] font-bold leading-none"
-                  style={{ color: today ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                {onDayClick ? (
+                  <button onClick={() => onDayClick(dateStr)}
+                    className="text-[18px] font-bold leading-none w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+                    style={{ color: today ? "var(--accent)" : "var(--foreground)", background: "transparent" }}>
+                    {date.getDate()}
+                  </button>
+                ) : (
+                  <span className="text-[18px] font-bold leading-none"
+                    style={{ color: today ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                )}
               </div>
             );
           })}
@@ -871,6 +971,13 @@ function WeekGrid({ shifts, weekDates, showStatus }: { shifts: PlanningShift[]; 
                 <div key={i} className="flex-1 flex flex-col gap-1 p-2"
                   style={{ minWidth: MIN_COL, minHeight: 72, borderLeft: "1px solid var(--border-soft)", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
                   {cell.map(s => <ShiftChip key={s.id} shift={s} showStatus={showStatus} />)}
+                  {onDayClick && (
+                    <button onClick={() => onDayClick(toDateStr(date))}
+                      className="w-5 h-5 rounded-full flex items-center justify-center self-center mt-0.5 opacity-30 hover:opacity-80 transition-opacity"
+                      style={{ border: "1px dashed var(--border)", color: "var(--foreground-dim)" }}>
+                      <Plus size={9} />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -971,13 +1078,14 @@ function WeekSummary({ shifts, rates }: {
   );
 }
 
-function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating, rates }: {
+function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating, rates, onDayClick }: {
   shifts: PlanningShift[];
   weekDates: Date[];
   onValidate: () => void;
   onRegenerate: () => void;
   validating: boolean;
   rates: Record<string, EmployeeRate>;
+  onDayClick?: (date: string) => void;
 }) {
   return (
     <div className="space-y-3">
@@ -988,7 +1096,7 @@ function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating, ra
         </p>
       </div>
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-        <WeekGrid shifts={shifts} weekDates={weekDates} />
+        <WeekGrid shifts={shifts} weekDates={weekDates} onDayClick={onDayClick} />
       </div>
       <WeekSummary shifts={shifts} rates={rates} />
       <div className="flex gap-3 pt-2">
@@ -1007,10 +1115,11 @@ function DraftView({ shifts, weekDates, onValidate, onRegenerate, validating, ra
   );
 }
 
-function PublishedView({ shifts, weekDates, rates }: {
+function PublishedView({ shifts, weekDates, rates, onDayClick }: {
   shifts: PlanningShift[];
   weekDates: Date[];
   rates: Record<string, EmployeeRate>;
+  onDayClick?: (date: string) => void;
 }) {
   const confirmed = shifts.filter(s => s.confirmation_status === "confirmed").length;
   const pending = shifts.filter(s => s.confirmation_status === "pending").length;
@@ -1038,7 +1147,7 @@ function PublishedView({ shifts, weekDates, rates }: {
         </div>
       </div>
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-        <WeekGrid shifts={shifts} weekDates={weekDates} showStatus />
+        <WeekGrid shifts={shifts} weekDates={weekDates} showStatus onDayClick={onDayClick} />
       </div>
       <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--foreground-dim)" }}>Confirmations</p>
@@ -1069,6 +1178,102 @@ function PublishedView({ shifts, weekDates, rates }: {
         })}
       </div>
       <WeekSummary shifts={shifts} rates={rates} />
+    </div>
+  );
+}
+
+// ── Add Shift Modal ────────────────────────────────────────────────────────────
+
+function AddShiftModal({ date, employees, services, onClose, onSave, saving }: {
+  date: string;
+  employees: { id: string; name: string; staff_status: string }[];
+  services: ServiceEntry[];
+  onClose: () => void;
+  onSave: (userId: string, service: string, start: string, end: string) => void;
+  saving: boolean;
+}) {
+  const [userId, setUserId] = useState(employees[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? "custom");
+  const [start, setStart] = useState(services[0]?.start ?? "09:00");
+  const [end, setEnd] = useState(services[0]?.end ?? "17:00");
+
+  const d = new Date(date + "T12:00:00");
+  const dayLabel = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+  function pickService(svcId: string) {
+    setServiceId(svcId);
+    const svc = services.find(s => s.id === svcId);
+    if (svc) { setStart(svc.start); setEnd(svc.end); }
+  }
+
+  const allServices = [...services, { id: "custom", name: "Personnalisé", start, end }];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-5 space-y-4"
+        style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+        onClick={e => e.stopPropagation()}>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Ajouter un shift</p>
+            <p className="text-[15px] font-semibold capitalize mt-0.5" style={{ color: "var(--foreground)" }}>{dayLabel}</p>
+          </div>
+          <button onClick={onClose}><X size={18} style={{ color: "var(--foreground-dim)" }} /></button>
+        </div>
+
+        {/* Employee */}
+        <div>
+          <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Employé</p>
+          <select value={userId} onChange={e => setUserId(e.target.value)}
+            className="w-full text-[13px] rounded-xl px-3 py-2.5 outline-none"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+            {employees.map(emp => (
+              <option key={emp.id} value={emp.id}>{emp.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Service */}
+        <div>
+          <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Service</p>
+          <div className="flex gap-2 flex-wrap">
+            {allServices.map(svc => (
+              <button key={svc.id} onClick={() => pickService(svc.id)}
+                className="px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all"
+                style={serviceId === svc.id
+                  ? { background: "var(--accent)", color: "#09090B" }
+                  : { background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
+                {svc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Hours */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Début</p>
+            <input type="time" value={start} onChange={e => setStart(e.target.value)}
+              className="w-full text-[14px] font-mono rounded-xl px-3 py-2.5 outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Fin</p>
+            <input type="time" value={end} onChange={e => setEnd(e.target.value)}
+              className="w-full text-[14px] font-mono rounded-xl px-3 py-2.5 outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          </div>
+        </div>
+
+        <button onClick={() => onSave(userId, serviceId === "custom" ? "custom" : serviceId, start, end)}
+          disabled={saving || !userId}
+          className="w-full py-3 rounded-xl text-[14px] font-semibold transition-opacity"
+          style={{ background: "var(--accent)", color: "#09090B", opacity: saving || !userId ? 0.5 : 1 }}>
+          {saving ? "Enregistrement…" : "Ajouter le shift"}
+        </button>
+      </div>
     </div>
   );
 }
