@@ -95,6 +95,8 @@ interface DashboardData {
   unread_mandatory: number;
   unread_total: number;
   task_stats: TaskStat[];
+  tips_this_month: number;
+  tip_mode: string;
 }
 
 const BADGE_CONFIG = {
@@ -281,7 +283,7 @@ export default function DashboardPage() {
     const activeEstId = typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null;
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
-    let memberQ = supabase.from("establishment_members").select("role, establishment_id")
+    let memberQ = supabase.from("establishment_members").select("role, establishment_id, establishments(tip_settings)")
       .eq("profile_id", user.id).eq("is_active", true);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     const { data: memberData } = await memberQ.limit(1).maybeSingle();
@@ -289,11 +291,13 @@ export default function DashboardPage() {
     if (!memberData) { setLoading(false); return; }
 
     const estId = memberData.establishment_id;
+    const estTipSettings = (memberData as unknown as { establishments?: { tip_settings?: { mode?: string } } }).establishments?.tip_settings;
+    const tipMode = estTipSettings?.mode ?? "self";
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId),
@@ -303,9 +307,9 @@ export default function DashboardPage() {
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
+      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
+      supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
-
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
     const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean }>;
@@ -1332,6 +1336,17 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
           </div>
         </button>
       </div>
+
+      {/* Tips du mois — mode dispatch uniquement */}
+      {data.tip_mode === "dispatch" && (
+        <div className="rounded-xl px-4 py-3 mb-4 flex items-center justify-between" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Pourboires ce mois</p>
+            <p className="text-[20px] font-bold font-mono" style={{ color: "#F59E0B" }}>{data.tips_this_month > 0 ? `${data.tips_this_month.toFixed(0)} €` : "—"}</p>
+          </div>
+          <a href="/shifts" className="text-[11px] px-3 py-1.5 rounded-base" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>Voir shifts →</a>
+        </div>
+      )}
 
       {successMsg && (
         <div className="rounded-xl px-4 py-3 mb-4 text-sm font-medium" style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "var(--success)" }}>
