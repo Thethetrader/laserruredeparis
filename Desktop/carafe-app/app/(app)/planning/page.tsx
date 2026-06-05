@@ -896,7 +896,7 @@ function ShiftChip({ shift, showStatus }: { shift: PlanningShift; showStatus?: b
     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold"
       style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}>
       <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="truncate flex-1">{shift.first_name ?? "?"}</span>
+      <span className="hidden lg:block truncate flex-1">{shift.first_name ?? "?"}</span>
       {showStatus && (
         <span className="text-[10px] font-bold" style={{ color: statusColor }}>
           {CONFIRMATION_ICON[shift.confirmation_status] ?? "·"}
@@ -927,8 +927,8 @@ function WeekGrid({ shifts, weekDates, showStatus, onDayClick }: { shifts: Plann
   const LABEL_W = 76;
 
   return (
-    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ minWidth: LABEL_W + n * MIN_COL }}>
+    <div className="overflow-x-auto lg:overflow-x-visible" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div style={{ minWidth: LABEL_W + n * MIN_COL }} className="lg:min-w-0">
         {/* Day headers */}
         <div className="flex items-stretch" style={{ borderBottom: "1px solid var(--border-soft)" }}>
           <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0 }} />
@@ -937,8 +937,8 @@ function WeekGrid({ shifts, weekDates, showStatus, onDayClick }: { shifts: Plann
             const dayIdx = weekDates.indexOf(date);
             const dateStr = toDateStr(date);
             return (
-              <div key={i} className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5"
-                style={{ minWidth: MIN_COL, borderLeft: "1px solid var(--border-soft)" }}>
+              <div key={i} className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 min-w-[92px] lg:min-w-0"
+                style={{ borderLeft: "1px solid var(--border-soft)" }}>
                 <span className="text-[9px] font-mono font-bold uppercase tracking-widest"
                   style={{ color: "var(--foreground-dim)" }}>{DAYS_FR_SHORT[dayIdx]}</span>
                 {onDayClick ? (
@@ -968,8 +968,8 @@ function WeekGrid({ shifts, weekDates, showStatus, onDayClick }: { shifts: Plann
             {activeDates.map((date, i) => {
               const cell = getShifts(date, key);
               return (
-                <div key={i} className="flex-1 flex flex-col gap-1 p-2"
-                  style={{ minWidth: MIN_COL, minHeight: 72, borderLeft: "1px solid var(--border-soft)", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
+                <div key={i} className="flex-1 flex flex-col gap-1 p-2 min-w-[92px] lg:min-w-0"
+                  style={{ minHeight: 72, borderLeft: "1px solid var(--border-soft)", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
                   {cell.map(s => <ShiftChip key={s.id} shift={s} showStatus={showStatus} />)}
                   {onDayClick && (
                     <button onClick={() => onDayClick(toDateStr(date))}
