@@ -290,6 +290,28 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
             </div>
           </div>
 
+          {/* CA block */}
+          {totalCA !== null && totalCA > 0 && (
+            <div className="rounded-2xl px-4 py-4 mt-2"
+              style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart2 size={13} style={{ color: "var(--success)" }} />
+                <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--success)" }}>Chiffre d&apos;affaires</p>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                <Row label="CA total (TTC)" value={formatCA(totalCA)} bold color="var(--success)" />
+                <Row label="CA / service" value={formatCA(totalCA / Math.max(1, data.reduce((s, e) => s + e.services, 0)))} />
+                {data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) > 0 && (
+                  <Row
+                    label="Tips / CA"
+                    value={`${Math.round((data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) / totalCA) * 100)}%`}
+                    color="#F59E0B"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Masse salariale */}
           {(() => {
             const withRate = data.filter(e => e.hourlyRateNet && e.hourlyRateNet > 0 && e.totalHours > 0);
@@ -328,27 +350,6 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
             );
           })()}
 
-          {/* CA block */}
-          {totalCA !== null && totalCA > 0 && (
-            <div className="rounded-2xl px-4 py-4 mt-2"
-              style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart2 size={13} style={{ color: "var(--success)" }} />
-                <p className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--success)" }}>Chiffre d&apos;affaires</p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                <Row label="CA total (TTC)" value={formatCA(totalCA)} bold color="var(--success)" />
-                <Row label="CA / service" value={formatCA(totalCA / Math.max(1, data.reduce((s, e) => s + e.services, 0)))} />
-                {data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) > 0 && (
-                  <Row
-                    label="Tips / CA"
-                    value={`${Math.round((data.filter(e => e.tipsEnabled).reduce((s, e) => s + e.totalTips, 0) / totalCA) * 100)}%`}
-                    color="#F59E0B"
-                  />
-                )}
-              </div>
-            </div>
-          )}
 
           <button onClick={() => setData(null)} className="w-full py-2.5 rounded-xl text-[12px] font-medium"
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
