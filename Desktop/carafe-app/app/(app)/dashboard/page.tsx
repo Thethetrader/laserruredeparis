@@ -34,6 +34,9 @@ interface ProtocolStepClaim {
   step_index: number;
   user_id: string;
   user_name: string;
+  is_done: boolean;
+  done_at: string | null;
+  done_by_name: string | null;
 }
 
 interface MemberScore {
@@ -777,36 +780,41 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
-  const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
-  const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
   const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
+  const [stepClaimsLoading, setStepClaimsLoading] = useState(false);
   const supabaseMgr = createClient();
 
   const fetchStepClaims = async (protocolId: string) => {
-    const { data: claims } = await supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
+    setStepClaimsLoading(true);
+    const { data: claims } = await supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
     setStepClaims(claims ?? []);
+    setStepClaimsLoading(false);
   };
 
   const openProtocolMgr = (p: Protocol) => {
     setProtocolPopup(p);
-    setStepsTaken(new Set());
-    setStepsDone(new Set());
+    setStepClaims([]);
     fetchStepClaims(p.id);
   };
 
-  const claimStepMgr = async (key: string, protocolId: string, stepIndex: number) => {
-    setStepsTaken(prev => new Set([...prev, key]));
+  const claimStepMgr = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabaseMgr.auth.getUser();
     if (!user) return;
-    await supabaseMgr.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id }, { onConflict: "protocol_id,step_index,establishment_id" });
+    await supabaseMgr.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: false, done_at: null, done_by_name: null }, { onConflict: "protocol_id,step_index,establishment_id" });
     fetchStepClaims(protocolId);
   };
 
-  const unclaimStepMgr = async (key: string, protocolId: string, stepIndex: number) => {
-    setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; });
+  const unclaimStepMgr = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabaseMgr.auth.getUser();
     if (!user) return;
     await supabaseMgr.from("protocol_step_claims").delete().eq("protocol_id", protocolId).eq("step_index", stepIndex).eq("establishment_id", data.establishment_id).eq("user_id", user.id);
+    fetchStepClaims(protocolId);
+  };
+
+  const validateStepMgr = async (protocolId: string, stepIndex: number) => {
+    const { data: { user } } = await supabaseMgr.auth.getUser();
+    if (!user) return;
+    await supabaseMgr.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }, { onConflict: "protocol_id,step_index,establishment_id" });
     fetchStepClaims(protocolId);
   };
 
@@ -1324,20 +1332,23 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {protocolPopup.content && (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
               )}
+              {stepClaimsLoading && (
+                <p className="text-[12px] text-center py-2" style={{ color: "var(--foreground-dim)" }}>Chargement…</p>
+              )}
               {protocolPopup.steps && protocolPopup.steps.length > 0 && (
                 <div className="space-y-2">
                   {protocolPopup.steps.map((step, idx) => {
-                    const key = `${protocolPopup.id}_${idx}`;
-                    const taken = stepsTaken.has(key);
-                    const done = stepsDone.has(key);
                     const claimRecord = stepClaims.find(c => c.step_index === idx);
-
+                    const done = claimRecord?.is_done ?? false;
                     const claimedByMe = claimRecord && claimRecord.user_id === data.my_profile_id;
+                    const claimedByOther = claimRecord && claimRecord.user_id !== data.my_profile_id;
                     return (
                       <div key={idx} className="rounded-xl p-3 flex gap-3 items-start transition-all"
-                        style={{ background: done ? "rgba(34,197,94,0.12)" : (taken || claimedByMe) ? "rgba(6,182,212,0.10)" : "var(--surface-raised)" }}>
+                        style={{ background: done ? "rgba(34,197,94,0.12)" : claimedByMe ? "rgba(6,182,212,0.10)" : "var(--surface-raised)" }}>
                         <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
-                          style={{ background: done ? "rgba(34,197,94,0.25)" : (taken || claimedByMe) ? "rgba(6,182,212,0.20)" : "rgba(139,92,246,0.15)", color: done ? "#22C55E" : (taken || claimedByMe) ? "#06B6D4" : "#A78BFA" }}>{idx + 1}</span>
+                          style={{ background: done ? "rgba(34,197,94,0.25)" : claimedByMe ? "rgba(6,182,212,0.20)" : "rgba(139,92,246,0.15)", color: done ? "#22C55E" : claimedByMe ? "#06B6D4" : "#A78BFA" }}>
+                          {done ? "✓" : idx + 1}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)", textDecoration: done ? "line-through" : "none", opacity: done ? 0.6 : 1 }}>{step.text}</p>
                           {step.frequency && (
@@ -1345,31 +1356,40 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                               {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
                             </span>
                           )}
-                          {claimRecord && !done && (
-                            <p className="text-[10px] mt-0.5 font-medium" style={{ color: claimedByMe ? "#06B6D4" : "#F59E0B" }}>
-                              {claimedByMe ? `En cours · ${data.my_first_name}` : `Pris par ${claimRecord.user_name}`}
+                          {claimRecord && (
+                            <p className="text-[10px] mt-0.5 font-medium" style={{ color: done ? "#22C55E" : claimedByMe ? "#06B6D4" : "#F59E0B" }}>
+                              {done ? `Validé par ${claimRecord.done_by_name ?? claimRecord.user_name}` : claimedByMe ? `En cours · ${data.my_first_name}` : `Pris par ${claimRecord.user_name}`}
                             </p>
                           )}
                           {step.photo_url && (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
                           )}
-                          {!done && (
+                          {!done && !claimedByOther && (
                             <div className="flex gap-1.5 mt-2 flex-wrap">
-                              {(!taken && !claimedByMe) ? (
-                                <button onClick={() => claimStepMgr(key, protocolPopup.id, idx)}
+                              {!claimedByMe ? (
+                                <button onClick={() => claimStepMgr(protocolPopup.id, idx)}
                                   className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
                                   style={{ background: "rgba(6,182,212,0.15)", color: "#06B6D4" }}>
                                   Je prends
                                 </button>
                               ) : (
-                                <button onClick={() => unclaimStepMgr(key, protocolPopup.id, idx)}
+                                <button onClick={() => unclaimStepMgr(protocolPopup.id, idx)}
                                   className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
                                   style={{ background: "rgba(239,68,68,0.12)", color: "#F87171" }}>
                                   Se désister
                                 </button>
                               )}
-                              <button onClick={() => { setStepsDone(prev => new Set([...prev, key])); setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; }); }}
+                              <button onClick={() => validateStepMgr(protocolPopup.id, idx)}
+                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                                style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
+                                Valider ✓
+                              </button>
+                            </div>
+                          )}
+                          {!done && claimedByOther && (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                              <button onClick={() => validateStepMgr(protocolPopup.id, idx)}
                                 className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
                                 style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
                                 Valider ✓
@@ -1422,19 +1442,19 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
-  const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
-  const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
   const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
+  const [stepClaimsLoading, setStepClaimsLoading] = useState(false);
 
   const fetchStepClaimsEmp = async (protocolId: string) => {
-    const { data: claims } = await supabase.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
+    setStepClaimsLoading(true);
+    const { data: claims } = await supabase.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
     setStepClaims(claims ?? []);
+    setStepClaimsLoading(false);
   };
 
   const openProtocol = async (p: Protocol) => {
     setProtocolPopup(p);
-    setStepsTaken(new Set());
-    setStepsDone(new Set());
+    setStepClaims([]);
     fetchStepClaimsEmp(p.id);
     if (!readProtocols.has(p.id)) {
       setReadProtocols(prev => new Set([...prev, p.id]));
@@ -1445,19 +1465,24 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     }
   };
 
-  const claimStepEmp = async (key: string, protocolId: string, stepIndex: number) => {
-    setStepsTaken(prev => new Set([...prev, key]));
+  const claimStepEmp = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id }, { onConflict: "protocol_id,step_index,establishment_id" });
+    await supabase.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: false, done_at: null, done_by_name: null }, { onConflict: "protocol_id,step_index,establishment_id" });
     fetchStepClaimsEmp(protocolId);
   };
 
-  const unclaimStepEmp = async (key: string, protocolId: string, stepIndex: number) => {
-    setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; });
+  const unclaimStepEmp = async (protocolId: string, stepIndex: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from("protocol_step_claims").delete().eq("protocol_id", protocolId).eq("step_index", stepIndex).eq("establishment_id", data.establishment_id).eq("user_id", user.id);
+    fetchStepClaimsEmp(protocolId);
+  };
+
+  const validateStepEmp = async (protocolId: string, stepIndex: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }, { onConflict: "protocol_id,step_index,establishment_id" });
     fetchStepClaimsEmp(protocolId);
   };
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
@@ -1976,17 +2001,18 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
               {protocolPopup.content && (
                 <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
               )}
+              {stepClaimsLoading && (
+                <p className="text-[12px] text-center py-2" style={{ color: "var(--foreground-dim)" }}>Chargement…</p>
+              )}
               {protocolPopup.steps && protocolPopup.steps.length > 0 && (
                 <div className="space-y-2">
                   {protocolPopup.steps.map((step, idx) => {
-                    const key = `${protocolPopup.id}_${idx}`;
-                    const taken = stepsTaken.has(key);
-                    const done = stepsDone.has(key);
                     const claimRecord = stepClaims.find(c => c.step_index === idx);
+                    const done = claimRecord?.is_done ?? false;
                     const claimedByMe = claimRecord && claimRecord.user_id === data.my_profile_id;
-
+                    const claimedByOther = claimRecord && claimRecord.user_id !== data.my_profile_id;
                     return (
-                      <div key={idx} className="rounded-xl p-3" style={{ background: done ? "rgba(16,185,129,0.06)" : (taken || claimedByMe) ? "rgba(6,182,212,0.05)" : "var(--background-soft)", border: `1px solid ${done ? "rgba(16,185,129,0.2)" : (taken || claimedByMe) ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+                      <div key={idx} className="rounded-xl p-3" style={{ background: done ? "rgba(16,185,129,0.06)" : claimedByMe ? "rgba(6,182,212,0.05)" : "var(--background-soft)", border: `1px solid ${done ? "rgba(16,185,129,0.2)" : claimedByMe ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
                         <div className="flex gap-2.5 items-start">
                           <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
                             style={{ background: done ? "rgba(16,185,129,0.2)" : "rgba(139,92,246,0.15)", color: done ? "var(--success)" : "#A78BFA" }}>
@@ -2003,34 +2029,36 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                               /* eslint-disable-next-line @next/next/no-img-element */
                               <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 120 }} />
                             )}
-                            {claimRecord && !done && (
-                              <p className="text-[10px] mt-1 font-medium" style={{ color: claimedByMe ? "var(--accent)" : "#F59E0B" }}>
-                                {claimedByMe ? `En cours · ${data.my_first_name || "moi"}` : `Pris par ${claimRecord.user_name}`}
+                            {claimRecord && (
+                              <p className="text-[10px] mt-1 font-medium" style={{ color: done ? "var(--success)" : claimedByMe ? "var(--accent)" : "#F59E0B" }}>
+                                {done ? `Validé par ${claimRecord.done_by_name ?? claimRecord.user_name}` : claimedByMe ? `En cours · ${data.my_first_name || "moi"}` : `Pris par ${claimRecord.user_name}`}
                               </p>
                             )}
                           </div>
                         </div>
                         {!done && (
                           <div className="flex gap-1.5 mt-2.5 pl-7">
-                            {(!taken && !claimedByMe) && (
-                              <button onClick={() => claimStepEmp(key, protocolPopup.id, idx)}
+                            {!claimedByMe && !claimedByOther && (
+                              <button onClick={() => claimStepEmp(protocolPopup.id, idx)}
                                 className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
                                 style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>
                                 Je prends
                               </button>
                             )}
-                            {(taken || claimedByMe) && (
-                              <button onClick={() => unclaimStepEmp(key, protocolPopup.id, idx)}
+                            {claimedByMe && (
+                              <button onClick={() => unclaimStepEmp(protocolPopup.id, idx)}
                                 className="text-[11px] px-2.5 py-1 rounded-lg"
                                 style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
                                 Se désister
                               </button>
                             )}
-                            <button onClick={() => { setStepsDone(prev => new Set([...prev, key])); setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; }); }}
-                              className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
-                              style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
-                              Valider ✓
-                            </button>
+                            {(claimedByMe || !claimedByOther) && (
+                              <button onClick={() => validateStepEmp(protocolPopup.id, idx)}
+                                className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
+                                style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
+                                Valider ✓
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
