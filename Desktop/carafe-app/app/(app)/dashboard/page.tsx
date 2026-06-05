@@ -932,7 +932,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                         <span className="text-[10px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
                           {member.delays_count === 0 ? "✓" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
                         </span>
-                        <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{member.protocols_read}/{member.protocols_total} proto</span>
+
                       </div>
                       <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
                     </div>
@@ -949,26 +949,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             </div>
           )}
 
-          {/* 6. Ponctualité */}
-          {data.leaderboard.length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <Clock size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Ponctualité équipe</p>
-              </div>
-              {data.leaderboard.map((m, i) => (
-                <div key={m.profile_id} className="px-4 py-3 flex items-center gap-3" style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={26} />
-                  <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
-                  <span className="text-[11px] font-medium px-2 py-1 rounded" style={m.delays_count === 0 ? { background: "rgba(16,185,129,0.1)", color: "var(--success)" } : { background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
-                    {m.delays_count === 0 ? "✓ OK" : `${m.delays_count} retard${m.delays_count > 1 ? "s" : ""}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-        </div>
       </div>
 
       {/* Modals */}
