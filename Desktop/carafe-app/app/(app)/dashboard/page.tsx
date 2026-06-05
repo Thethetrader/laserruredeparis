@@ -300,6 +300,7 @@ export default function DashboardPage() {
     const estTipSettings = (memberData as unknown as { establishments?: { tip_settings?: { mode?: string } } }).establishments?.tip_settings;
     const tipMode = estTipSettings?.mode ?? "self";
     const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
@@ -312,8 +313,8 @@ export default function DashboardPage() {
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
-      supabase.from("task_templates").select("id, title, category, is_active, requires_photo").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
+      supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("task_completions").select("task_template_id, service_date").eq("establishment_id", estId).gte("service_date", weekAgo),
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
@@ -323,8 +324,11 @@ export default function DashboardPage() {
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
-    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean }>;
-    const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
+    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean; frequency: string }>;
+    const rawCompletions = (taskCompRes.data ?? []) as Array<{ task_template_id: string | null; service_date: string }>;
+    const completedTodayIds = new Set(rawTasks.filter(t =>
+      rawCompletions.some(c => c.task_template_id === t.id && (t.frequency === "weekly" ? c.service_date >= weekAgo : c.service_date === today))
+    ).map(t => t.id));
     const shiftsData = (shiftsRes.data ?? []) as Array<{ tips: number | null; tips_2: number | null }>;
     const tipsThisMonth = shiftsData.reduce((s, sh) => s + (sh.tips ?? 0) + (sh.tips_2 ?? 0), 0);
 

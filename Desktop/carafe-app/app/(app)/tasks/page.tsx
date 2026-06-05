@@ -45,6 +45,7 @@ interface TaskCompletion {
   task_one_shot_id: string | null;
   validated_by: string;
   validated_at: string;
+  service_date: string;
   photo_url: string | null;
   notes: string | null;
   is_catchup: boolean;
@@ -172,6 +173,7 @@ export default function TasksManagerPage() {
   const [claiming, setClaiming] = useState<string | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const currentHour = new Date().getHours();
 
   const load = useCallback(async () => {
@@ -209,7 +211,7 @@ export default function TasksManagerPage() {
 
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }, { data: claimsData }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
-      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
+      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).gte("service_date", weekAgo),
       supabase.from("task_one_shots").select("*, profiles!task_one_shots_created_by_fkey(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category, steps").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
@@ -386,7 +388,17 @@ export default function TasksManagerPage() {
     setSavingOneShot(false);
   }
 
-  const completionMap = new Map(completions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
+  const completionMap = new Map<string, TaskCompletion>(
+    templates.flatMap(task => {
+      const c = completions.find(c =>
+        c.task_template_id === task.id &&
+        (task.frequency === "weekly" ? c.service_date >= weekAgo : c.service_date === today)
+      );
+      return c ? [[task.id, c]] : [];
+    }).concat(
+      completions.filter(c => c.task_one_shot_id).map(c => [c.task_one_shot_id!, c])
+    )
+  );
 
   const filteredTemplates = templates.filter(t =>
     filterRole === "all" || t.target_role === filterRole || t.target_role === "all"
@@ -396,7 +408,7 @@ export default function TasksManagerPage() {
     filteredTemplates.filter(t => t.category === cat && isWindowOpen(t.category, currentHour));
 
   const totalTasks = filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).length + oneShots.length;
-  const doneTasks = completions.length;
+  const doneTasks = completionMap.size;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const allDone = totalTasks > 0 && doneTasks >= totalTasks;
 
