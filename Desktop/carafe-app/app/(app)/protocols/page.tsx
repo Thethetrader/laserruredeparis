@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2 } from "lucide-react";
+import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2, LayoutDashboard } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = false;
@@ -44,6 +44,7 @@ interface Protocol {
   attachment_type?: AttachmentType;
   attachment_name?: string | null;
   steps?: StepItem[] | string[] | null;
+  show_on_dashboard?: boolean;
 }
 
 const CATEGORY_LABELS: Record<ProtocolCategory, string> = {
@@ -458,6 +459,14 @@ export default function ProtocolsPage() {
     setProtocols(prev => prev.filter(p => p.id !== id));
   }
 
+  async function toggleDashboard(protocol: Protocol) {
+    const newValue = !protocol.show_on_dashboard;
+    if (!DEV_MODE) {
+      await supabase.from("protocols").update({ show_on_dashboard: newValue }).eq("id", protocol.id);
+    }
+    setProtocols(prev => prev.map(p => p.id === protocol.id ? { ...p, show_on_dashboard: newValue } : p));
+  }
+
   const allCategories = Object.keys(CATEGORY_LABELS) as ProtocolCategory[];
 
   const categoryProtocols = (cat: ProtocolCategory) => protocols.filter(p => p.category === cat);
@@ -772,6 +781,7 @@ export default function ProtocolsPage() {
               onMarkRead={() => markAsRead(protocol.id)}
               onEdit={() => openEditForm(protocol)}
               onDelete={() => deleteProtocol(protocol.id)}
+              onToggleDashboard={() => toggleDashboard(protocol)}
             />
           ))}
         </div>
@@ -793,9 +803,10 @@ interface ProtocolCardProps {
   onMarkRead: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onToggleDashboard?: () => void;
 }
 
-function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMarkRead, onEdit, onDelete }: ProtocolCardProps) {
+function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMarkRead, onEdit, onDelete, onToggleDashboard }: ProtocolCardProps) {
   const needsValidation = !isManager && !isRead;
   const hasPdf = protocol.attachment_type === "pdf";
   const hasImage = protocol.attachment_type === "image";
@@ -860,6 +871,12 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
         <div className="flex items-center gap-2 flex-shrink-0" style={{ marginTop: 2 }}>
           {isManager && isExpanded && (
             <>
+              <button onClick={e => { e.stopPropagation(); onToggleDashboard?.(); }}
+                className="p-1.5 rounded-base transition-opacity hover:opacity-100"
+                style={{ color: protocol.show_on_dashboard ? "var(--accent)" : "var(--foreground-dim)", opacity: protocol.show_on_dashboard ? 1 : 0.4 }}
+                title={protocol.show_on_dashboard ? "Retirer du dashboard" : "Épingler sur le dashboard"}>
+                <LayoutDashboard size={13} />
+              </button>
               <button onClick={e => { e.stopPropagation(); onEdit?.(); }}
                 className="p-1.5 rounded-base transition-opacity hover:opacity-100 opacity-50"
                 style={{ color: "var(--accent)" }} title="Modifier">
