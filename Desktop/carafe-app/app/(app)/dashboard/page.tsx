@@ -899,7 +899,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>
+                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
                           {(() => {
                             const updatedAt = (p as unknown as { updated_at?: string }).updated_at;
                             const isNew = updatedAt && (Date.now() - new Date(updatedAt).getTime()) < 7*86400000;
