@@ -25,6 +25,7 @@ interface Protocol {
   read_count: number;
   total_members: number;
   show_on_dashboard?: boolean;
+  steps?: Array<{ text: string; frequency?: string; photo_url?: string }> | null;
 }
 
 interface MemberScore {
@@ -305,7 +306,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -317,7 +318,7 @@ export default function DashboardPage() {
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -348,6 +349,7 @@ export default function DashboardPage() {
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
       show_on_dashboard: p.show_on_dashboard ?? false,
+      steps: Array.isArray(p.steps) ? (p.steps as Array<{ text: string; frequency?: string; photo_url?: string } | string>).map(s => typeof s === "string" ? { text: s } : s) : null,
     }));
 
     const leaderboard: MemberScore[] = members
@@ -1253,11 +1255,11 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
 
       {/* Popup protocole (manager) */}
       {protocolPopup && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
             <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1274,10 +1276,33 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 <X size={18} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4">
-              {protocolPopup.content ? (
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              {protocolPopup.content && (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
-              ) : (
+              )}
+              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
+                <div className="space-y-2">
+                  {protocolPopup.steps.map((step, idx) => (
+                    <div key={idx} className="flex gap-3 items-start">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                        style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)" }}>{step.text}</p>
+                        {step.frequency && (
+                          <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
+                            {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
+                          </span>
+                        )}
+                        {step.photo_url && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
                 <p className="text-sm text-center py-6" style={{ color: "var(--foreground-dim)" }}>Aucun contenu</p>
               )}
             </div>
@@ -1841,12 +1866,33 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <X size={18} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4">
-              {protocolPopup.content ? (
-                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>
-                  {protocolPopup.content}
-                </p>
-              ) : (
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              {protocolPopup.content && (
+                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
+              )}
+              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
+                <div className="space-y-2">
+                  {protocolPopup.steps.map((step, idx) => (
+                    <div key={idx} className="flex gap-3 items-start">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                        style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)" }}>{step.text}</p>
+                        {step.frequency && (
+                          <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
+                            {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
+                          </span>
+                        )}
+                        {step.photo_url && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
                 <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun contenu pour ce protocole.</p>
               )}
             </div>
