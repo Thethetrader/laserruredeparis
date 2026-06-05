@@ -33,6 +33,7 @@ const employeeNav: NavItem[] = [
   { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
   { href: "/shifts/team",        icon: CalendarDays,    label: "Calendrier" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
+  { href: "/planning",           icon: LayoutDashboard, label: "Planning" },
   { href: "/shifts",             icon: CalendarDays,    label: "Mes shifts", exact: true },
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/scoring",            icon: Zap,             label: "Mon Score" },
