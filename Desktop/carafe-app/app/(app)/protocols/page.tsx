@@ -244,6 +244,11 @@ export default function ProtocolsPage() {
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<string[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   useEffect(() => {
     if (DEV_MODE) {
       setRole(devRole);
@@ -467,6 +472,30 @@ export default function ProtocolsPage() {
     setProtocols(prev => prev.map(p => p.id === protocol.id ? { ...p, show_on_dashboard: newValue } : p));
   }
 
+  async function liaSearch(q: string) {
+    if (!q.trim()) { setSearchResults(null); setSearchError(null); return; }
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const res = await fetch("/api/protocol-search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: q,
+          protocols: protocols.map(p => ({ id: p.id, title: p.title, content: p.content, steps: p.steps })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erreur");
+      setSearchResults(data.ids ?? []);
+    } catch (e: unknown) {
+      setSearchError(e instanceof Error ? e.message : "Erreur de recherche");
+      setSearchResults(null);
+    } finally {
+      setSearching(false);
+    }
+  }
+
   const allCategories = Object.keys(CATEGORY_LABELS) as ProtocolCategory[];
 
   const categoryProtocols = (cat: ProtocolCategory) => protocols.filter(p => p.category === cat);
@@ -532,8 +561,66 @@ export default function ProtocolsPage() {
           )}
         </div>
 
+        {/* LIA Search */}
+        <div className="mb-6">
+          <form onSubmit={e => { e.preventDefault(); liaSearch(searchQuery); }} className="flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <Sparkles size={14} strokeWidth={1.5} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <input
+                type="text"
+                placeholder="Rechercher avec LIA… ex: mise en place de la salle"
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); if (!e.target.value.trim()) { setSearchResults(null); setSearchError(null); } }}
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "var(--foreground)" }}
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => { setSearchQuery(""); setSearchResults(null); setSearchError(null); }}>
+                  <X size={13} style={{ color: "var(--foreground-dim)" }} />
+                </button>
+              )}
+            </div>
+            <button type="submit" disabled={searching || !searchQuery.trim()}
+              className="px-3 py-2.5 rounded-xl text-sm font-medium flex-shrink-0"
+              style={{ background: "var(--accent)", color: "#09090B", opacity: searching || !searchQuery.trim() ? 0.5 : 1 }}>
+              {searching ? "…" : "Chercher"}
+            </button>
+          </form>
+          {searchError && <p className="text-xs mt-2" style={{ color: "var(--danger)" }}>{searchError}</p>}
+        </div>
+
+        {/* Search results */}
+        {searchResults !== null && (
+          <div className="mb-6">
+            <p className="text-xs font-mono mb-3" style={{ color: "var(--foreground-dim)" }}>
+              {searchResults.length === 0 ? "Aucun protocole trouvé pour cette recherche" : `${searchResults.length} protocole${searchResults.length > 1 ? "s" : ""} trouvé${searchResults.length > 1 ? "s" : ""}`}
+            </p>
+            <div className="space-y-3">
+              {searchResults.map(id => {
+                const p = protocols.find(pr => pr.id === id);
+                if (!p) return null;
+                return (
+                  <ProtocolCard
+                    key={p.id}
+                    protocol={p}
+                    isManager={isManager}
+                    isExpanded={expanded.has(p.id)}
+                    isRead={reads.has(p.id)}
+                    onToggle={() => toggleExpanded(p.id)}
+                    onMarkRead={() => markAsRead(p.id)}
+                    onEdit={() => openEditForm(p)}
+                    onDelete={() => deleteProtocol(p.id)}
+                    onToggleDashboard={() => toggleDashboard(p)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Unread mandatory banner */}
-        {!isManager && totalUnreadMandatory > 0 && (
+        {!isManager && totalUnreadMandatory > 0 && searchResults === null && (
           <div className="rounded-xl px-4 py-3 mb-6 flex items-start gap-3"
             style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
             <AlertCircle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
@@ -561,8 +648,8 @@ export default function ProtocolsPage() {
           />
         )}
 
-        {/* Category grid */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Category grid — hidden during search */}
+        {searchResults === null && <div className="grid grid-cols-2 gap-3">
           {allCategories.map(cat => {
             const count = categoryProtocols(cat).length;
             const unread = categoryUnread(cat);
@@ -591,9 +678,9 @@ export default function ProtocolsPage() {
               </button>
             );
           })}
-        </div>
+        </div>}
 
-        {protocols.length === 0 && (
+        {protocols.length === 0 && searchResults === null && (
           <div className="rounded-xl flex flex-col items-center justify-center py-16 mt-3"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <BookOpen size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 12 }} />
