@@ -423,7 +423,7 @@ export default function TasksManagerPage() {
               style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
             >
               <Settings size={12} />
-              Configurer
+              Nouvelle tâche
             </Link>
             <button
               onClick={() => setShowOneShotModal(true)}
