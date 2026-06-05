@@ -769,6 +769,8 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
+  const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
+  const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -1286,24 +1288,52 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               )}
               {protocolPopup.steps && protocolPopup.steps.length > 0 && (
                 <div className="space-y-2">
-                  {protocolPopup.steps.map((step, idx) => (
-                    <div key={idx} className="flex gap-3 items-start">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
-                        style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{idx + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)" }}>{step.text}</p>
-                        {step.frequency && (
-                          <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
-                            {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
-                          </span>
-                        )}
-                        {step.photo_url && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
-                        )}
+                  {protocolPopup.steps.map((step, idx) => {
+                    const key = `${protocolPopup.id}_${idx}`;
+                    const taken = stepsTaken.has(key);
+                    const done = stepsDone.has(key);
+                    return (
+                      <div key={idx} className="rounded-xl p-3 flex gap-3 items-start transition-all"
+                        style={{ background: done ? "rgba(34,197,94,0.12)" : taken ? "rgba(6,182,212,0.10)" : "var(--surface-raised)" }}>
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                          style={{ background: done ? "rgba(34,197,94,0.25)" : taken ? "rgba(6,182,212,0.20)" : "rgba(139,92,246,0.15)", color: done ? "#22C55E" : taken ? "#06B6D4" : "#A78BFA" }}>{idx + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)", textDecoration: done ? "line-through" : "none", opacity: done ? 0.6 : 1 }}>{step.text}</p>
+                          {step.frequency && (
+                            <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
+                              {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
+                            </span>
+                          )}
+                          {step.photo_url && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
+                          )}
+                          {!done && (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                              {!taken ? (
+                                <button onClick={() => setStepsTaken(prev => new Set([...prev, key]))}
+                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                                  style={{ background: "rgba(6,182,212,0.15)", color: "#06B6D4" }}>
+                                  Je prends
+                                </button>
+                              ) : (
+                                <button onClick={() => setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; })}
+                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                                  style={{ background: "rgba(239,68,68,0.12)", color: "#F87171" }}>
+                                  Se désister
+                                </button>
+                              )}
+                              <button onClick={() => { setStepsDone(prev => new Set([...prev, key])); setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; }); }}
+                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                                style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
+                                Valider ✓
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
