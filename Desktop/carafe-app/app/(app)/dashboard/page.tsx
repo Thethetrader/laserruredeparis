@@ -520,8 +520,39 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
   const [photo, setPhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [claims, setClaims] = useState<{ id: string; task_template_id: string | null; task_one_shot_id: string | null; profile_id: string; first_name: string | null }[]>([]);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [myFirstName, setMyFirstName] = useState("");
 
   const canValidate = stats.period === "today";
+
+  useEffect(() => {
+    if (!canValidate || DEV_MODE) return;
+    const today = new Date().toISOString().split("T")[0];
+    const supabase = createClient();
+    supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name").eq("establishment_id", establishmentId).eq("service_date", today)
+      .then(({ data }) => setClaims((data ?? []) as typeof claims));
+    supabase.from("profiles").select("first_name").eq("id", profileId).single()
+      .then(({ data }) => setMyFirstName((data as { first_name: string | null } | null)?.first_name ?? ""));
+  }, [canValidate, establishmentId, profileId]);
+
+  async function claimTask(taskId: string) {
+    setClaiming(taskId);
+    const today = new Date().toISOString().split("T")[0];
+    const supabase = createClient();
+    await supabase.from("task_claims").insert({ establishment_id: establishmentId, task_template_id: taskId, profile_id: profileId, first_name: myFirstName, service_date: today });
+    const { data } = await supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name").eq("establishment_id", establishmentId).eq("service_date", today);
+    setClaims((data ?? []) as typeof claims);
+    setClaiming(null);
+  }
+
+  async function unclaimTask(claimId: string) {
+    setClaiming(claimId);
+    const supabase = createClient();
+    await supabase.from("task_claims").delete().eq("id", claimId);
+    setClaims(prev => prev.filter(c => c.id !== claimId));
+    setClaiming(null);
+  }
 
   async function submitValidation() {
     if (!validating) return;
@@ -650,27 +681,28 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
                     <div className="px-4 pt-4 pb-2">
                       <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>À faire ({todo.length})</p>
                       <div className="space-y-1.5">
-                        {todo.map((t, i) => (
-                          <div
-                            key={i}
-                            onClick={() => canValidate && t.id && setValidating({ id: t.id, title: t.title, requiresPhoto: t.requires_photo ?? false })}
-                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-opacity"
-                            style={{
-                              background: "var(--background-soft)",
-                              border: "1px solid var(--border)",
-                              cursor: canValidate && t.id ? "pointer" : "default",
-                            }}
-                          >
-                            <Circle size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                        {todo.map((t, i) => {
+                          const claim = t.id ? claims.find(c => c.task_template_id === t.id) : null;
+                          const claimedByMe = claim?.profile_id === profileId;
+                          const isClaimingThis = claiming === t.id || claiming === claim?.id;
+                          return (
+                          <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg"
+                            style={{ background: "var(--background-soft)", border: `1px solid ${claim && !claimedByMe ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
+                            <Circle size={14} style={{ color: claim && !claimedByMe ? "#F59E0B" : "var(--foreground-dim)", flexShrink: 0 }} />
                             <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{t.title}</p>
-                              <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{t.category}</p>
+                              <p className="text-[13px] font-medium truncate" style={{ color: claim && !claimedByMe ? "var(--foreground-dim)" : "var(--foreground)" }}>{t.title}</p>
+                              {claim && <p className="text-[10px]" style={{ color: claimedByMe ? "var(--accent)" : "#F59E0B" }}>{claimedByMe ? `En cours · ${myFirstName || "moi"}` : `Pris par ${claim.first_name ?? "quelqu'un"}`}</p>}
                             </div>
                             {canValidate && t.id && (
-                              <span className="text-[11px] font-medium flex-shrink-0" style={{ color: "var(--accent)" }}>Valider →</span>
+                              <div className="flex gap-1.5 flex-shrink-0">
+                                {!claim && <button onClick={() => claimTask(t.id!)} disabled={!!isClaimingThis} className="text-[11px] px-2 py-1 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)", opacity: isClaimingThis ? 0.5 : 1 }}>Je prends</button>}
+                                {(!claim || claimedByMe) && <button onClick={() => setValidating({ id: t.id!, title: t.title, requiresPhoto: t.requires_photo ?? false })} className="text-[11px] px-2 py-1 rounded" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>Valider</button>}
+                                {claimedByMe && claim && <button onClick={() => unclaimTask(claim.id)} className="text-[11px] px-1.5 py-1 rounded opacity-40 hover:opacity-100" style={{ color: "var(--foreground-dim)" }}>✕</button>}
+                              </div>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
