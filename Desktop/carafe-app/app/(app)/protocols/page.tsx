@@ -13,6 +13,21 @@ const DEV_PROFILE_ID = "dev-user";
 type ProtocolCategory = "salle" | "cuisine" | "bar" | "accueil" | "hygiene" | "securite" | "ouverture" | "fermeture";
 type AttachmentType = "pdf" | "image" | null;
 
+interface StepItem {
+  text: string;
+  frequency?: "daily" | "opening" | "closing" | "continuous";
+  photo_url?: string;
+}
+
+function parseSteps(raw: unknown): StepItem[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map(s => typeof s === "string" ? { text: s } : s as StepItem);
+}
+
+const STEP_FREQ_LABELS: Record<string, string> = {
+  daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu",
+};
+
 interface Protocol {
   id: string;
   establishment_id: string;
@@ -28,7 +43,7 @@ interface Protocol {
   attachment_url?: string | null;
   attachment_type?: AttachmentType;
   attachment_name?: string | null;
-  steps?: string[] | null;
+  steps?: StepItem[] | string[] | null;
 }
 
 const CATEGORY_LABELS: Record<ProtocolCategory, string> = {
@@ -224,7 +239,7 @@ export default function ProtocolsPage() {
   const [formCategory, setFormCategory] = useState<ProtocolCategory>("salle");
   const [formMandatory, setFormMandatory] = useState(false);
   const [formFile, setFormFile] = useState<File | null>(null);
-  const [formSteps, setFormSteps] = useState<string[]>([]);
+  const [formSteps, setFormSteps] = useState<StepItem[]>([]);
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -300,7 +315,7 @@ export default function ProtocolsPage() {
       fd.append("file", file);
       const res = await fetch("/api/protocols/extract-steps", { method: "POST", body: fd });
       const data = await res.json();
-      if (data.steps) setFormSteps(data.steps);
+      if (data.steps) setFormSteps(data.steps.map((s: string) => ({ text: s })));
     } finally {
       setExtracting(false);
     }
@@ -362,7 +377,7 @@ export default function ProtocolsPage() {
         attachment_url: attachmentUrl,
         attachment_type: attachmentType,
         attachment_name: attachmentName,
-        steps: formSteps.length > 0 ? formSteps : null,
+        steps: formSteps.length > 0 ? formSteps as unknown as undefined : null,
       };
       setProtocols(prev => [newP, ...prev]);
       resetForm();
@@ -376,7 +391,7 @@ export default function ProtocolsPage() {
         content: formContent || "",
         category: formCategory as unknown as undefined,
         is_mandatory: formMandatory,
-        steps: formSteps.length > 0 ? formSteps : null,
+        steps: formSteps.length > 0 ? formSteps as unknown as undefined : null,
         updated_at: new Date().toISOString(),
         ...(attachmentUrl ? { attachment_url: attachmentUrl, attachment_type: attachmentType ?? undefined, attachment_name: attachmentName ?? undefined } : {}),
       };
@@ -426,7 +441,7 @@ export default function ProtocolsPage() {
     setFormContent(protocol.content ?? "");
     setFormCategory(protocol.category as ProtocolCategory);
     setFormMandatory(protocol.is_mandatory);
-    setFormSteps(protocol.steps ?? []);
+    setFormSteps(parseSteps(protocol.steps));
     setFormFile(null);
     setFormError(null);
     setShowForm(true);
@@ -785,6 +800,9 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
   const hasPdf = protocol.attachment_type === "pdf";
   const hasImage = protocol.attachment_type === "image";
   const hasSteps = Array.isArray(protocol.steps) && protocol.steps.length > 0;
+  const parsedSteps = hasSteps ? parseSteps(protocol.steps) : [];
+  const stepPhotos = parsedSteps.filter(s => s.photo_url).map(s => s.photo_url!);
+  const allPhotos = [...(protocol.attachment_type === "image" && protocol.attachment_url ? [protocol.attachment_url] : []), ...stepPhotos];
 
   return (
     <div className="rounded-xl overflow-hidden"
@@ -904,17 +922,43 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
           )}
           {hasSteps && (
             <div className="px-5 py-4" style={{ borderTop: hasPdf || hasImage ? "1px solid var(--border)" : undefined }}>
+              {/* Photo slider des étapes */}
+              {allPhotos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2 mb-3 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+                  {allPhotos.map((url, idx) => (
+                    <button key={idx} onClick={() => window.open(url, "_blank")}
+                      className="flex-shrink-0 rounded-lg overflow-hidden"
+                      style={{ width: 80, height: 60 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>
                 Étapes
               </p>
-              <ol className="space-y-2">
-                {protocol.steps!.map((step, i) => (
+              <ol className="space-y-2.5">
+                {parsedSteps.map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <span className="flex-shrink-0 text-[11px] font-mono font-semibold rounded-md px-1.5 py-0.5 mt-0.5"
                       style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", minWidth: 24, textAlign: "center" }}>
                       {i + 1}
                     </span>
-                    <span className="text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>{step}</span>
+                    <div className="flex-1 min-w-0">
+                      {step.photo_url && (
+                        <button onClick={() => window.open(step.photo_url, "_blank")} className="mb-1.5 rounded-lg overflow-hidden block" style={{ width: 120, height: 80 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={step.photo_url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      )}
+                      <span className="text-sm leading-relaxed" style={{ color: "var(--foreground)" }}>{step.text}</span>
+                      {step.frequency && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA" }}>
+                          {STEP_FREQ_LABELS[step.frequency] ?? step.frequency}
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ol>
@@ -955,7 +999,7 @@ interface ProtocolFormProps {
   formCategory: ProtocolCategory; setFormCategory: (v: ProtocolCategory) => void;
   formMandatory: boolean; setFormMandatory: (v: boolean) => void;
   formFile: File | null; setFormFile: (v: File | null) => void;
-  formSteps: string[]; setFormSteps: (v: string[]) => void;
+  formSteps: StepItem[]; setFormSteps: (v: StepItem[]) => void;
   extracting: boolean; onExtractSteps: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -971,9 +1015,9 @@ function ProtocolForm({
   fileInputRef, handleFileChange,
   isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
-  const updateStep = (index: number, value: string) => {
+  const updateStep = (index: number, field: keyof StepItem, value: string) => {
     const next = [...formSteps];
-    next[index] = value;
+    next[index] = { ...next[index], [field]: value };
     setFormSteps(next);
   };
 
@@ -982,7 +1026,7 @@ function ProtocolForm({
   };
 
   const addStep = () => {
-    setFormSteps([...formSteps, ""]);
+    setFormSteps([...formSteps, { text: "" }]);
   };
 
   return (
@@ -1059,23 +1103,41 @@ function ProtocolForm({
             </div>
             <div className="space-y-1.5 rounded-xl p-3" style={{ background: "var(--background-soft)", border: "1px solid rgba(139,92,246,0.2)" }}>
               {formSteps.map((step, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className="flex-shrink-0 text-[11px] font-mono font-semibold rounded px-1.5 py-1 mt-0.5"
-                    style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", minWidth: 22, textAlign: "center" }}>
-                    {i + 1}
-                  </span>
-                  <input
-                    value={step}
-                    onChange={e => updateStep(i, e.target.value)}
-                    className="flex-1 px-2 py-1 text-sm rounded outline-none"
-                    style={{ background: "transparent", border: "1px solid transparent", color: "var(--foreground)" }}
-                    onFocus={e => e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"}
-                    onBlur={e => e.currentTarget.style.borderColor = "transparent"}
-                  />
-                  <button onClick={() => removeStep(i)} className="flex-shrink-0 mt-1 p-1 rounded transition-opacity hover:opacity-100 opacity-40"
-                    style={{ color: "var(--foreground-dim)" }}>
-                    <Trash2 size={12} />
-                  </button>
+                <div key={i} className="rounded-lg p-2.5 space-y-1.5" style={{ background: "var(--background)", border: "1px solid rgba(139,92,246,0.15)" }}>
+                  <div className="flex items-start gap-2">
+                    <span className="flex-shrink-0 text-[11px] font-mono font-semibold rounded px-1.5 py-1"
+                      style={{ background: "rgba(139,92,246,0.1)", color: "#A78BFA", minWidth: 22, textAlign: "center" }}>
+                      {i + 1}
+                    </span>
+                    <input
+                      value={step.text}
+                      onChange={e => updateStep(i, "text", e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm rounded outline-none"
+                      style={{ background: "transparent", border: "1px solid transparent", color: "var(--foreground)" }}
+                      onFocus={e => e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"}
+                      onBlur={e => e.currentTarget.style.borderColor = "transparent"}
+                      placeholder="Décrivez l'étape…"
+                    />
+                    <button onClick={() => removeStep(i)} className="flex-shrink-0 p-1 rounded opacity-40 hover:opacity-100"
+                      style={{ color: "var(--foreground-dim)" }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 pl-7">
+                    <select value={step.frequency ?? ""} onChange={e => updateStep(i, "frequency", e.target.value)}
+                      className="text-[11px] px-2 py-1 rounded-base outline-none"
+                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: step.frequency ? "#A78BFA" : "var(--foreground-dim)" }}>
+                      <option value="">Fréquence (optionnel)</option>
+                      <option value="daily">Quotidien</option>
+                      <option value="opening">Ouverture</option>
+                      <option value="closing">Fermeture</option>
+                      <option value="continuous">Continu</option>
+                    </select>
+                    <input type="text" value={step.photo_url ?? ""} onChange={e => updateStep(i, "photo_url", e.target.value)}
+                      placeholder="URL photo (optionnel)"
+                      className="flex-1 text-[11px] px-2 py-1 rounded-base outline-none"
+                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
+                  </div>
                 </div>
               ))}
               <button onClick={addStep}
