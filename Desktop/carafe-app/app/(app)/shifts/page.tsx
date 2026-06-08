@@ -375,12 +375,12 @@ const days     = getDaysInMonth(year, month);
                         return (
                           <>
                             {time1 && (
-                              <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}20`, borderLeft: `2px solid ${color}` }}>
+                              <div className="w-full min-w-0" style={{ background: `${color}20`, borderLeft: `2px solid ${color}`, borderRadius: 2 }}>
                                 <p className="text-[7px] lg:text-[10px] font-mono leading-tight px-0.5 py-px" style={{ color }}>{time1}</p>
                               </div>
                             )}
                             {time2 && (
-                              <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}10`, borderLeft: `2px solid ${color}60` }}>
+                              <div className="w-full min-w-0" style={{ background: `${color}10`, borderLeft: `2px solid ${color}60`, borderRadius: 2 }}>
                                 <p className="text-[7px] lg:text-[10px] font-mono leading-tight px-0.5 py-px" style={{ color, opacity: 0.7 }}>{time2}</p>
                               </div>
                             )}
