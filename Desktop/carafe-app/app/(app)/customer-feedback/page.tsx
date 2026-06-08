@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown, Sparkles, TrendingUp, TrendingDown, Lightbulb, Activity } from "lucide-react";
+import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown, Sparkles, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
@@ -820,25 +820,6 @@ export default function CustomerFeedbackPage() {
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  {analysis.actions && analysis.actions.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Lightbulb size={12} style={{ color: "#A78BFA" }} />
-                        <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#A78BFA" }}>Actions à faire</span>
-                      </div>
-                      <div className="space-y-2">
-                        {analysis.actions.map((rec, i) => (
-                          <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5"
-                            style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
-                            <span className="text-[11px] font-mono font-bold mt-0.5 flex-shrink-0" style={{ color: "#A78BFA" }}>{i + 1}.</span>
-                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{rec}</p>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}

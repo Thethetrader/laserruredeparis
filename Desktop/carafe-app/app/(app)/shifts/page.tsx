@@ -347,7 +347,7 @@ const days     = getDaysInMonth(year, month);
         ) : (
           <div className="grid grid-cols-7">
             {cells.map((day, i) => {
-              if (!day) return <div key={`e-${i}`} style={{ minHeight: 80, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
+              if (!day) return <div key={`e-${i}`} className="lg:min-h-[96px]" style={{ minHeight: 80, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
               const dateStr  = toDateStr(day);
               const shift    = shiftMap.get(dateStr);
               const isToday  = dateStr === todayStr;
@@ -357,6 +357,7 @@ const days     = getDaysInMonth(year, month);
               return (
                 <button key={dateStr} onClick={() => !isFuture && setSelected(dateStr)}
                   className="flex flex-col items-start justify-start overflow-hidden transition-colors hover:bg-white/[0.02]"
+                  className="lg:min-h-[96px]"
                   style={{ minHeight: 72, padding: "4px 3px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: shift ? "rgba(6,182,212,0.04)" : "transparent", cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.3 : 1 }}>
                   <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : shift ? "var(--foreground)" : "var(--foreground-muted)" }}>
@@ -375,16 +376,16 @@ const days     = getDaysInMonth(year, month);
                           <>
                             {time1 && (
                               <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}20`, borderLeft: `2px solid ${color}` }}>
-                                <p className="text-[7px] font-mono leading-tight px-0.5 py-px" style={{ color }}>{time1}</p>
+                                <p className="text-[7px] lg:text-[10px] font-mono leading-tight px-0.5 py-px" style={{ color }}>{time1}</p>
                               </div>
                             )}
                             {time2 && (
                               <div className="w-full rounded overflow-hidden min-w-0" style={{ background: `${color}10`, borderLeft: `2px solid ${color}60` }}>
-                                <p className="text-[7px] font-mono leading-tight px-0.5 py-px" style={{ color, opacity: 0.7 }}>{time2}</p>
+                                <p className="text-[7px] lg:text-[10px] font-mono leading-tight px-0.5 py-px" style={{ color, opacity: 0.7 }}>{time2}</p>
                               </div>
                             )}
                             {totalTips > 0 && (
-                              <p className="text-[7px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
+                              <p className="text-[7px] lg:text-[10px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
                             )}
                           </>
                         );

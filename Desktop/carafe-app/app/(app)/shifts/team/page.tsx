@@ -904,14 +904,14 @@ export default function ShiftsTeamPage() {
                         <div key={s.id} className="w-full overflow-hidden min-w-0"
                           style={{ borderLeft: `2px solid ${color}`, background: `${color}12`, opacity: s.tips_enabled ? 1 : 0.5, borderRadius: 2, paddingLeft: 2 }}>
                           {timeLabel && (
-                            <p className="text-[7px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
+                            <p className="text-[7px] lg:text-[10px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
                           )}
                           {!s.tips_enabled && <Ban size={5} style={{ color, display: "inline" }} />}
                         </div>
                       );
                     })}
                     {dayShifts.length > 3 && <p className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
-                    {dayTips > 0 && <p className="text-[8px] font-mono font-bold mt-0.5 leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
+                    {dayTips > 0 && <p className="text-[8px] lg:text-[11px] font-mono font-bold mt-0.5 leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
                   </div>
                 </button>
               );

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   CheckCircle2, Circle, Camera, AlertTriangle, ChevronDown, ChevronUp,
   RefreshCw, Users, UtensilsCrossed, Wine, Briefcase, Sunrise, Sunset, Zap,
-  X, Plus, Clock, Settings, BookOpen, ZoomIn, User,
+  X, Plus, Clock, Settings, BookOpen, ZoomIn, User, Pencil, Trash2, RotateCcw,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
@@ -170,6 +170,7 @@ export default function TasksManagerPage() {
   const [myFirstName, setMyFirstName] = useState("");
   const [claiming, setClaiming] = useState<string | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [editTask, setEditTask] = useState<TaskTemplate | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
   const currentHour = new Date().getHours();
@@ -303,6 +304,19 @@ export default function TasksManagerPage() {
     await supabase.from("task_claims").delete().eq("id", claimId);
     await load();
     setClaiming(null);
+  }
+
+  async function unvalidateTask(completionId: string) {
+    const supabase = createClient();
+    await supabase.from("task_completions").delete().eq("id", completionId);
+    setCompletions(prev => prev.filter(c => c.id !== completionId));
+  }
+
+  async function handleDeleteTask(task: TaskTemplate) {
+    if (!window.confirm(`Supprimer « ${task.title} » ?`)) return;
+    const supabase = createClient();
+    await supabase.from("task_templates").update({ is_active: false }).eq("id", task.id);
+    setTemplates(prev => prev.filter(t => t.id !== task.id));
   }
 
   function resetOneShotForm() {
@@ -544,6 +558,13 @@ export default function TasksManagerPage() {
                                     <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.25)" }}><ZoomIn size={11} color="white" /></div>
                                   </button>
                                 )}
+                                {isManager && (
+                                  <button onClick={() => unvalidateTask(comp.id)} title="Annuler la validation"
+                                    className="p-1 rounded-lg opacity-30 hover:opacity-80 transition-opacity"
+                                    style={{ color: "var(--foreground-dim)" }}>
+                                    <RotateCcw size={11} />
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <>
@@ -561,24 +582,40 @@ export default function TasksManagerPage() {
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>{roleLabel(task.target_role)}</span>
                             </div>
                           </div>
-                          {!isDone && (
-                            <div className="flex flex-col gap-1.5 flex-shrink-0">
-                              {!claim && (
-                                <button onClick={() => claimTask(task.id)} disabled={isClaimingThis}
-                                  className="px-2.5 py-1 rounded-base text-[11px] font-medium"
-                                  style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>
-                                  Je prends
+                          <div className="flex flex-col gap-1.5 flex-shrink-0">
+                            {!isDone && (
+                              <>
+                                {!claim && (
+                                  <button onClick={() => claimTask(task.id)} disabled={isClaimingThis}
+                                    className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                                    style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>
+                                    Je prends
+                                  </button>
+                                )}
+                                {(!claim || claimedByMe) && (
+                                  <button onClick={() => validateTask(task.id)} disabled={isValidatingThis}
+                                    className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                                    style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}>
+                                    {isValidatingThis ? <RefreshCw size={11} className="animate-spin" /> : "Valider"}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {isManager && (
+                              <div className="flex gap-1 justify-end">
+                                <button onClick={() => setEditTask(task)} title="Modifier"
+                                  className="p-1 rounded-lg transition-opacity hover:opacity-100 opacity-40"
+                                  style={{ color: "var(--foreground-dim)" }}>
+                                  <Pencil size={12} />
                                 </button>
-                              )}
-                              {(!claim || claimedByMe) && (
-                                <button onClick={() => validateTask(task.id)} disabled={isValidatingThis}
-                                  className="px-2.5 py-1 rounded-base text-[11px] font-medium"
-                                  style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}>
-                                  {isValidatingThis ? <RefreshCw size={11} className="animate-spin" /> : "Valider"}
+                                <button onClick={() => handleDeleteTask(task)} title="Supprimer"
+                                  className="p-1 rounded-lg transition-opacity hover:opacity-100 opacity-40"
+                                  style={{ color: "#EF4444" }}>
+                                  <Trash2 size={12} />
                                 </button>
-                              )}
-                            </div>
-                          )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -628,6 +665,15 @@ export default function TasksManagerPage() {
           tipSettings={tipSettings}
           onClose={() => setShowAddTask(false)}
           onSaved={() => { setShowAddTask(false); load(); }}
+        />
+      )}
+
+      {editTask && (
+        <EditTaskModal
+          task={editTask}
+          tipSettings={tipSettings}
+          onClose={() => setEditTask(null)}
+          onSaved={(updated) => { setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t)); setEditTask(null); }}
         />
       )}
     </div>
@@ -871,6 +917,156 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
                 const n = steps.length * (targetRoles.length || 1);
                 return n > 1 ? `Créer ${n} tâches` : "Créer la tâche";
               })()}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── EDIT TASK MODAL ─────────────────────────────────────── */
+function EditTaskModal({ task, tipSettings, onClose, onSaved }: {
+  task: TaskTemplate;
+  tipSettings: TipSettings;
+  onClose: () => void;
+  onSaved: (updated: TaskTemplate) => void;
+}) {
+  const supabase = createClient();
+  const [title, setTitle] = useState(task.title);
+  const [category, setCategory] = useState<TaskCategory>(task.category);
+  const [targetRole, setTargetRole] = useState<string>(task.target_role);
+  const [frequency, setFrequency] = useState<"daily" | "weekly">(task.frequency as "daily" | "weekly");
+  const [requiresPhoto, setRequiresPhoto] = useState(task.requires_photo);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const activeStatuses = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden?.includes(s));
+  const roleOptions: { value: string; label: string }[] = [
+    { value: "all", label: "Tous" },
+    { value: "manager", label: "Manager" },
+    ...activeStatuses.map(s => ({ value: s, label: tipSettings.labels?.[s] ?? STAFF_STATUSES[s]?.label ?? s })),
+  ];
+
+  const CATS: { value: TaskCategory; label: string }[] = [
+    { value: "opening", label: "Ouverture" },
+    { value: "closing", label: "Fermeture" },
+    { value: "continuous", label: "Continu" },
+    { value: "custom", label: "Ponctuel" },
+  ];
+
+  async function handleSave() {
+    if (!title.trim()) return;
+    setSaving(true); setError(null);
+    const { error: err } = await supabase.from("task_templates").update({
+      title: title.trim(),
+      category,
+      target_role: targetRole,
+      frequency,
+      requires_photo: requiresPhoto,
+    }).eq("id", task.id);
+    if (err) { setError(err.message); setSaving(false); return; }
+    onSaved({ ...task, title: title.trim(), category, target_role: targetRole as TaskTargetRole, frequency, requires_photo: requiresPhoto });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}>
+
+        <div className="flex items-center justify-between px-5 py-4 sticky top-0"
+          style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Modifier la tâche</p>
+          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre</label>
+            <input
+              value={title} onChange={e => setTitle(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+              style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+              onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+              onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
+            <div className="flex gap-2 flex-wrap">
+              {CATS.map(c => (
+                <button key={c.value} onClick={() => setCategory(c.value)}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+                  style={category === c.value
+                    ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                    : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Poste concerné</label>
+            <div className="flex gap-2 flex-wrap">
+              {roleOptions.map(opt => (
+                <button key={opt.value} onClick={() => setTargetRole(opt.value)}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+                  style={targetRole === opt.value
+                    ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                    : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Fréquence</label>
+            <div className="flex gap-2">
+              {(["daily", "weekly"] as const).map(f => (
+                <button key={f} onClick={() => setFrequency(f)}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+                  style={frequency === f
+                    ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                    : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                  {f === "daily" ? "Quotidienne" : "Hebdomadaire"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={() => setRequiresPhoto(!requiresPhoto)}
+            className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all"
+            style={requiresPhoto
+              ? { background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)" }
+              : { background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+            <Camera size={13} style={{ color: requiresPhoto ? "var(--accent)" : "var(--foreground-dim)" }} />
+            <span className="text-[12px]" style={{ color: requiresPhoto ? "var(--accent)" : "var(--foreground-muted)" }}>
+              {requiresPhoto ? "Photo obligatoire" : "Photo optionnelle"}
+            </span>
+            <div className="ml-auto w-8 h-4 rounded-full relative flex-shrink-0"
+              style={{ background: requiresPhoto ? "var(--accent)" : "var(--border)" }}>
+              <div className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all"
+                style={{ left: requiresPhoto ? "calc(100% - 14px)" : "2px" }} />
+            </div>
+          </button>
+
+          {error && <p className="text-[12px]" style={{ color: "var(--danger)" }}>{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-3 text-sm font-medium rounded-xl"
+              style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+              Annuler
+            </button>
+            <button onClick={handleSave} disabled={!title.trim() || saving}
+              className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity"
+              style={{ background: "var(--accent)", color: "#09090B", opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
+              {saving ? "Sauvegarde…" : "Enregistrer"}
             </button>
           </div>
         </div>

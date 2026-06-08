@@ -821,16 +821,24 @@ export default function PlanningPage() {
 
           {/* ── Generate button ── */}
           {!hasGenerated && anyValidated && (
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="w-full py-3.5 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: generating ? 0.7 : 1 }}
-            >
-              {generating
-                ? <><RefreshCw size={14} className="animate-spin" />Génération IA…</>
-                : <><Sparkles size={14} />Générer le planning IA</>}
-            </button>
+            <>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="w-full py-3.5 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2"
+                style={{ background: "var(--accent)", color: "#09090B", opacity: generating ? 0.7 : 1 }}
+              >
+                {generating
+                  ? <><RefreshCw size={14} className="animate-spin" />Génération IA…</>
+                  : <><Sparkles size={14} />Générer le planning IA</>}
+              </button>
+              {error && (
+                <div className="px-3 py-2 rounded-lg text-[12px]"
+                  style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}>
+                  {error}
+                </div>
+              )}
+            </>
           )}
 
           {/* ── Draft view ── */}
