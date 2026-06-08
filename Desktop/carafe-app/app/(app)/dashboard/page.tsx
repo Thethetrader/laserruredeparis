@@ -890,7 +890,9 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               </div>
               <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
                 {protocols.filter(p => p.show_on_dashboard).map(p => {
-                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                  const totalSteps = p.steps?.length ?? 0;
+                  const doneSteps = totalSteps > 0 ? [...stepsDone].filter(k => k.startsWith(`${p.id}-`)).length : 0;
+                  const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
                   return (
                     <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left">
                       <div className="flex items-center justify-between mb-1">
@@ -898,12 +900,11 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                           <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
                           {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
                         </div>
-                        <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: pct === 100 ? "var(--success)" : "var(--warning)" }}>{pct}%</span>
+                        <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: pct === 100 ? "var(--success)" : "var(--foreground-dim)" }}>{doneSteps}/{totalSteps}</span>
                       </div>
                       <div className="rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
                         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--accent)" }} />
                       </div>
-                      <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} lecture{p.total_members > 1 ? "s" : ""}</p>
                     </button>
                   );
                 })}
