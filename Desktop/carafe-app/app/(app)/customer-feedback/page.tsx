@@ -667,7 +667,7 @@ export default function CustomerFeedbackPage() {
           ? `${isPos ? "▲ Positifs" : "▼ Négatifs"} · ${summaryPopup.cat}`
           : `${isPos ? "▲ Tous les positifs" : "▼ Tous les négatifs"}`;
         return (
-          <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
             onClick={e => { if (e.target === e.currentTarget) setSummaryPopup(null); }}>
             <div className="w-full max-w-md rounded-2xl overflow-hidden"
