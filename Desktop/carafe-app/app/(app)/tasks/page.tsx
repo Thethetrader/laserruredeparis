@@ -652,7 +652,7 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<TaskCategory>("opening");
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
-  const [targetRole, setTargetRole] = useState<TaskTargetRole>("all");
+  const [targetRoles, setTargetRoles] = useState<string[]>(["all"]);
   const [steps, setSteps] = useState<TaskStep[]>([{ title: "", requires_photo: false, protocol_id: "" }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -663,6 +663,21 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
     { value: "manager", label: "Manager" },
     ...activeStatuses.map(s => ({ value: s, label: tipSettings.labels?.[s] ?? STAFF_STATUSES[s]?.label ?? s })),
   ];
+
+  function toggleRole(val: string) {
+    if (val === "all") {
+      setTargetRoles(["all"]);
+      return;
+    }
+    setTargetRoles(prev => {
+      const without = prev.filter(r => r !== "all");
+      if (without.includes(val)) {
+        const next = without.filter(r => r !== val);
+        return next.length === 0 ? ["all"] : next;
+      }
+      return [...without, val];
+    });
+  }
 
   const CATS: { value: TaskCategory; label: string; icon: string }[] = [
     { value: "opening", label: "Ouverture", icon: "🌅" },
@@ -692,21 +707,26 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
     try {
       const { data: existing } = await supabase.from("task_templates").select("display_order").eq("establishment_id", estId).eq("category", category).order("display_order", { ascending: false }).limit(1).maybeSingle();
       let order = (existing?.display_order ?? 0) + 1;
-      for (const step of steps) {
-        const title = steps.length === 1 ? name.trim() : `${name.trim()} — ${step.title.trim()}`;
-        const { error: err } = await supabase.from("task_templates").insert({
-          establishment_id: estId,
-          title,
-          category,
-          frequency,
-          target_role: targetRole,
-          requires_photo: step.requires_photo,
-          protocol_id: step.protocol_id || null,
-          is_critical: false,
-          is_active: true,
-          display_order: order++,
-        });
-        if (err) throw err;
+      const roles = targetRoles.length === 0 ? ["all"] : targetRoles;
+      for (const role of roles) {
+        for (const step of steps) {
+          const stepSuffix = steps.length > 1 ? ` — ${step.title.trim()}` : "";
+          const roleSuffix = roles.length > 1 && role !== "all" ? ` (${roleOptions.find(r => r.value === role)?.label ?? role})` : "";
+          const title = `${name.trim()}${stepSuffix}${roleSuffix}`;
+          const { error: err } = await supabase.from("task_templates").insert({
+            establishment_id: estId,
+            title,
+            category,
+            frequency,
+            target_role: role,
+            requires_photo: step.requires_photo,
+            protocol_id: step.protocol_id || null,
+            is_critical: false,
+            is_active: true,
+            display_order: order++,
+          });
+          if (err) throw err;
+        }
       }
       onSaved();
     } catch (e: unknown) {
@@ -742,6 +762,25 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
               onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
               onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
             />
+          </div>
+
+          {/* Postes concernés */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Postes concernés</label>
+            <div className="flex flex-wrap gap-2">
+              {roleOptions.map(opt => {
+                const selected = targetRoles.includes(opt.value);
+                return (
+                  <button key={opt.value} onClick={() => toggleRole(opt.value)}
+                    className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+                    style={selected
+                      ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                      : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Étapes */}
@@ -828,7 +867,10 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
             <button onClick={handleSave} disabled={!canSave || saving}
               className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity"
               style={{ background: "var(--accent)", color: "#09090B", opacity: (!canSave || saving) ? 0.5 : 1 }}>
-              {saving ? "Création…" : steps.length > 1 ? `Créer ${steps.length} tâches` : "Créer la tâche"}
+              {saving ? "Création…" : (() => {
+                const n = steps.length * (targetRoles.length || 1);
+                return n > 1 ? `Créer ${n} tâches` : "Créer la tâche";
+              })()}
             </button>
           </div>
         </div>
