@@ -152,10 +152,9 @@ export default function CustomerFeedbackPage() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<{
-    points_forts: string[];
-    points_ameliorer: string[];
     tendance: string;
-    recommandations: string[];
+    tableau: Array<{ item: string; categorie: string; sentiment: string; resume: string; echos: number }>;
+    actions: string[];
   } | null>(null);
 
   useEffect(() => {
@@ -778,61 +777,62 @@ export default function CustomerFeedbackPage() {
               {!analyzing && analysis && (
                 <>
                   {/* Tendance */}
-                  <div className="rounded-xl p-4" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity size={13} style={{ color: "var(--accent)" }} />
-                      <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--accent)" }}>Tendance</span>
+                  <div className="rounded-xl p-3.5" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Activity size={12} style={{ color: "var(--accent)" }} />
+                      <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--accent)" }}>Tendance</span>
                     </div>
                     <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground)" }}>{analysis.tendance}</p>
                   </div>
 
-                  {/* Points forts */}
-                  {analysis.points_forts.length > 0 && (
+                  {/* Tableau des avis */}
+                  {analysis.tableau && analysis.tableau.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <TrendingUp size={13} style={{ color: "var(--success)" }} />
-                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--success)" }}>Points forts</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Avis par sujet</span>
                       </div>
-                      <div className="space-y-2">
-                        {analysis.points_forts.map((pt, i) => (
-                          <div key={i} className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
-                            style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)" }}>
-                            <span className="text-[11px] font-mono mt-0.5 flex-shrink-0" style={{ color: "var(--success)" }}>▲</span>
-                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{pt}</p>
-                          </div>
-                        ))}
+                      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                        {/* Header */}
+                        <div className="grid px-3 py-2" style={{ gridTemplateColumns: "1fr 80px 40px", background: "var(--background-soft)", borderBottom: "1px solid var(--border)" }}>
+                          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Sujet</span>
+                          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Ressenti</span>
+                          <span className="text-[10px] font-mono uppercase tracking-widest text-right" style={{ color: "var(--foreground-dim)" }}>Échos</span>
+                        </div>
+                        {/* Rows */}
+                        {analysis.tableau.map((row, i) => {
+                          const isPos = row.sentiment === "positive";
+                          return (
+                            <div key={i} className="px-3 py-3" style={{ borderBottom: i < analysis.tableau.length - 1 ? "1px solid var(--border)" : "none", background: "var(--background-elev)" }}>
+                              <div className="grid items-start" style={{ gridTemplateColumns: "1fr 80px 40px" }}>
+                                <div className="min-w-0 pr-2">
+                                  <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{row.item}</p>
+                                  <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{row.resume}</p>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: isPos ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", color: isPos ? "var(--success)" : "var(--danger)" }}>
+                                    {isPos ? "▲ positif" : "▼ négatif"}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  {row.echos > 0 && <span className="text-[12px] font-mono font-semibold" style={{ color: isPos ? "var(--success)" : "var(--danger)" }}>{row.echos}×</span>}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
-                  {/* Points à améliorer */}
-                  {analysis.points_ameliorer.length > 0 && (
+                  {/* Actions */}
+                  {analysis.actions && analysis.actions.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <TrendingDown size={13} style={{ color: "var(--warning)" }} />
-                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--warning)" }}>À améliorer</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Lightbulb size={12} style={{ color: "#A78BFA" }} />
+                        <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "#A78BFA" }}>Actions à faire</span>
                       </div>
                       <div className="space-y-2">
-                        {analysis.points_ameliorer.map((pt, i) => (
-                          <div key={i} className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
-                            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                            <span className="text-[11px] font-mono mt-0.5 flex-shrink-0" style={{ color: "var(--warning)" }}>▼</span>
-                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{pt}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recommandations */}
-                  {analysis.recommandations.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Lightbulb size={13} style={{ color: "#A78BFA" }} />
-                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#A78BFA" }}>Actions à faire</span>
-                      </div>
-                      <div className="space-y-2">
-                        {analysis.recommandations.map((rec, i) => (
+                        {analysis.actions.map((rec, i) => (
                           <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5"
                             style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
                             <span className="text-[11px] font-mono font-bold mt-0.5 flex-shrink-0" style={{ color: "#A78BFA" }}>{i + 1}.</span>

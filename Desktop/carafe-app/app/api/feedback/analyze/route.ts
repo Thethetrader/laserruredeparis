@@ -36,24 +36,24 @@ export async function POST(req: NextRequest) {
       return `- [${f.tonality === "positive" ? "POSITIF" : "NEGATIF"}] ${f.item_cat.toUpperCase()} · ${f.item} : « ${f.content} »${echo}`;
     }).join("\n");
 
-    const prompt = `Tu es un consultant expert en restauration. Analyse ces retours clients collectés par l'équipe ${period} et fais un debrief concis et actionnable.
+    const prompt = `Tu es un consultant expert en restauration. Analyse ces retours clients collectés par l'équipe ${period}.
 
 RETOURS (${feedbacks.length} au total) :
 ${feedbackLines}
 
 Réponds UNIQUEMENT en JSON valide, sans markdown :
 {
-  "points_forts": ["phrase courte", "phrase courte"],
-  "points_ameliorer": ["phrase courte", "phrase courte"],
-  "tendance": "1-2 phrases sur la dynamique générale de la période",
-  "recommandations": ["action concrète", "action concrète", "action concrète"]
+  "tendance": "1 phrase max sur la dynamique générale",
+  "tableau": [
+    { "item": "nom du plat/service", "categorie": "cuisine|salle|bar|accueil", "sentiment": "positive|negative", "resume": "ce qui est dit en 5-8 mots", "echos": 0 }
+  ],
+  "actions": ["action concrète cette semaine", "action concrète", "action concrète"]
 }
 
 Règles :
-- Maximum 4 points forts et 4 points à améliorer
-- Exactement 3 recommandations, formulées comme des actions concrètes à faire cette semaine
-- Tiens compte du nombre d'échos (collègues qui confirment) pour pondérer l'importance
-- Si un retour revient souvent, mets-le en avant
+- Une ligne dans tableau par plat/sujet distinct (regroupe les doublons)
+- "echos" = nombre total de clients ayant mentionné ce point (inclus les échos confirmés)
+- Exactement 3 actions, formulées comme ordres directs
 - Sois direct, pas de langue de bois`;
 
     const response = await anthropic.messages.create({
@@ -64,10 +64,9 @@ Règles :
 
     const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
     let parsed: {
-      points_forts: string[];
-      points_ameliorer: string[];
       tendance: string;
-      recommandations: string[];
+      tableau: Array<{ item: string; categorie: string; sentiment: string; resume: string; echos: number }>;
+      actions: string[];
     };
 
     try {
