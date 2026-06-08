@@ -920,6 +920,14 @@ export default function ShiftsTeamPage() {
         )}
       </div>
 
+      {/* Tips distribués */}
+      {!loading && totalDispatched > 0 && (
+        <div className="rounded-xl px-4 py-3" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          <p className="text-[22px] font-bold" style={{ color: "#F59E0B" }}>{formatTips(totalDispatched)}</p>
+          <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips distribués</p>
+        </div>
+      )}
+
       {/* Monthly CA card */}
       {!loading && caSettings.mode === "per_month" && (
         <div className="mt-3 rounded-xl p-4" style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
