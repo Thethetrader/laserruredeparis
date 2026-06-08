@@ -22,6 +22,7 @@ interface Protocol {
   category?: string;
   is_mandatory: boolean;
   show_on_dashboard?: boolean;
+  steps?: Array<{ text: string; frequency?: string; photo_url?: string }> | null;
   is_read: boolean;
   read_count: number;
   total_members: number;
@@ -304,7 +305,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -316,7 +317,7 @@ export default function DashboardPage() {
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -361,6 +362,7 @@ export default function DashboardPage() {
     const protocols: Protocol[] = rawProtocols.map(p => ({
       id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
       show_on_dashboard: p.show_on_dashboard ?? false,
+      steps: Array.isArray(p.steps) ? (p.steps as Array<{ text: string; frequency?: string; photo_url?: string } | string>).map(s => typeof s === "string" ? { text: s } : s) : null,
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
@@ -777,6 +779,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
+  const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -1111,6 +1114,48 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
       {showAddProtocol && <AddProtocolModal data={data} onClose={() => setShowAddProtocol(false)} onAdded={handleProtocolAdded} />}
       {taskGaugePopup && <TaskGaugePopup stats={taskGaugePopup} onClose={() => setTaskGaugePopup(null)} establishmentId={data.establishment_id} profileId={data.my_profile_id} onValidated={() => { onTaskValidated(); }} />}
 
+      {/* Protocol popup manager */}
+      {protocolPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="p-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.1)" }}><BookOpen size={13} style={{ color: "var(--accent)" }} /></div>
+                  {protocolPopup.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.15)" }}>Obligatoire</span>}
+                </div>
+                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--foreground)" }}>{protocolPopup.title}</p>
+              </div>
+              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              {protocolPopup.content && <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>}
+              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
+                <div className="space-y-2">
+                  {protocolPopup.steps.map((step, idx) => (
+                    <div key={idx} className="flex gap-3 items-start rounded-xl p-3" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5" style={{ background: "rgba(139,92,246,0.15)", color: "#A78BFA" }}>{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)" }}>{step.text}</p>
+                        {step.frequency && <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>{{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}</span>}
+                        {step.photo_url && <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && <p className="text-sm text-center py-6" style={{ color: "var(--foreground-dim)" }}>Aucun contenu</p>}
+            </div>
+            <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+              <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl" style={{ background: "var(--accent)", color: "#09090B" }}>Gérer les protocoles →</a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPI Popup */}
       {kpiPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1309,6 +1354,8 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
+  const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
+  const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
 
   const openProtocol = async (p: Protocol) => {
     setProtocolPopup(p);
@@ -1789,7 +1836,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
-          <div className="w-full max-w-md rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
+          <div className="w-full max-w-md rounded-2xl overflow-hidden"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
             <div className="flex items-start justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-start gap-2.5 flex-1 min-w-0">
@@ -1800,50 +1847,55 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <div className="min-w-0">
                   <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--foreground)" }}>{protocolPopup.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {protocolPopup.is_mandatory && (
-                      <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded"
-                        style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                        Obligatoire
-                      </span>
-                    )}
-                    {readProtocols.has(protocolPopup.id) && (
-                      <span className="text-[10px] font-medium" style={{ color: "var(--success)" }}>Lu ✓</span>
-                    )}
+                    {protocolPopup.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
+                    {readProtocols.has(protocolPopup.id) && <span className="text-[10px] font-medium" style={{ color: "var(--success)" }}>Lu ✓</span>}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}>
-                <X size={18} />
-              </button>
+              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}><X size={18} /></button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4">
-              {protocolPopup.content ? (
-                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>
-                  {protocolPopup.content}
-                </p>
-              ) : (
-                <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun contenu pour ce protocole.</p>
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              {protocolPopup.content && <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>}
+              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
+                <div className="space-y-2">
+                  {protocolPopup.steps.map((step, idx) => {
+                    const key = `${protocolPopup.id}_${idx}`;
+                    const taken = stepsTaken.has(key);
+                    const done = stepsDone.has(key);
+                    return (
+                      <div key={idx} className="rounded-xl p-3" style={{ background: done ? "rgba(16,185,129,0.06)" : taken ? "rgba(6,182,212,0.05)" : "var(--background-soft)", border: `1px solid ${done ? "rgba(16,185,129,0.2)" : taken ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
+                        <div className="flex gap-2.5 items-start">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+                            style={{ background: done ? "rgba(16,185,129,0.2)" : "rgba(139,92,246,0.15)", color: done ? "var(--success)" : "#A78BFA" }}>
+                            {done ? "✓" : idx + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] leading-snug" style={{ color: done ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: done ? "line-through" : "none" }}>{step.text}</p>
+                            {step.frequency && <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>{{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}</span>}
+                            {step.photo_url && <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 120 }} />}
+                            {taken && !done && <p className="text-[10px] mt-1" style={{ color: "var(--accent)" }}>En cours · {data.my_first_name || "moi"}</p>}
+                          </div>
+                        </div>
+                        {!done && (
+                          <div className="flex gap-1.5 mt-2.5 pl-7">
+                            {!taken && <button onClick={() => setStepsTaken(prev => new Set([...prev, key]))} className="text-[11px] px-2.5 py-1 rounded-lg font-medium" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>Je prends</button>}
+                            {taken && <button onClick={() => setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; })} className="text-[11px] px-2.5 py-1 rounded-lg" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Se désister</button>}
+                            <button onClick={() => { setStepsDone(prev => new Set([...prev, key])); setStepsTaken(prev => { const s = new Set(prev); s.delete(key); return s; }); }} className="text-[11px] px-2.5 py-1 rounded-lg font-medium" style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>Valider ✓</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
+              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun contenu pour ce protocole.</p>}
             </div>
             <div className="px-5 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
               {readProtocols.has(protocolPopup.id) ? (
-                <div className="flex items-center justify-center gap-2 py-2">
-                  <Check size={14} style={{ color: "var(--success)" }} />
-                  <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Lecture confirmée</p>
-                </div>
+                <div className="flex items-center justify-center gap-2 py-2"><Check size={14} style={{ color: "var(--success)" }} /><p className="text-sm font-medium" style={{ color: "var(--success)" }}>Lecture confirmée</p></div>
               ) : (
-                <button
-                  onClick={async () => {
-                    setReadProtocols(prev => new Set([...prev, protocolPopup.id]));
-                    setProtocolPopup(null);
-                    if (!DEV_MODE) {
-                      const sb = createClient();
-                      const { data: { user } } = await sb.auth.getUser();
-                      if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: protocolPopup.id, profile_id: user.id });
-                    }
-                  }}
-                  className="w-full py-2.5 text-sm font-semibold rounded-lg"
-                  style={{ background: "var(--accent)", color: "#09090B" }}>
+                <button onClick={async () => { setReadProtocols(prev => new Set([...prev, protocolPopup.id])); setProtocolPopup(null); if (!DEV_MODE) { const sb = createClient(); const { data: { user } } = await sb.auth.getUser(); if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: protocolPopup.id, profile_id: user.id }); } }}
+                  className="w-full py-2.5 text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
                   Confirmer la lecture ✓
                 </button>
               )}
