@@ -24,19 +24,6 @@ interface Protocol {
   is_read: boolean;
   read_count: number;
   total_members: number;
-  show_on_dashboard?: boolean;
-  steps?: Array<{ text: string; frequency?: string; photo_url?: string }> | null;
-}
-
-interface ProtocolStepClaim {
-  id: string;
-  protocol_id: string;
-  step_index: number;
-  user_id: string;
-  user_name: string;
-  is_done: boolean;
-  done_at: string | null;
-  done_by_name: string | null;
 }
 
 interface MemberScore {
@@ -108,6 +95,7 @@ interface DashboardData {
   unread_mandatory: number;
   unread_total: number;
   task_stats: TaskStat[];
+  overdue_weekly_tasks: { id: string; title: string; category: string }[];
   tips_this_month: number;
   tip_mode: string;
 }
@@ -220,8 +208,7 @@ const DEV_DATA_MANAGER: DashboardData = {
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
   task_stats: DEV_TASK_STATS,
-  tips_this_month: 0,
-  tip_mode: "self",
+  overdue_weekly_tasks: [],
 };
 
 const DEV_PROTOCOLS_EMPLOYEE: Protocol[] = [
@@ -246,6 +233,7 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
+  overdue_weekly_tasks: [],
   task_stats: [
     {
       label: "Aujourd'hui",
@@ -268,8 +256,6 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
       { title: "Plonge terminée", done: false, category: "Récurrent" },
     ]},
   ],
-  tips_this_month: 0,
-  tip_mode: "self",
 };
 
 const DEV_TODAY_FEEDBACK: FeedbackItem[] = [
@@ -311,37 +297,50 @@ export default function DashboardPage() {
     const estTipSettings = (memberData as unknown as { establishments?: { tip_settings?: { mode?: string } } }).establishments?.tip_settings;
     const tipMode = estTipSettings?.mode ?? "self";
     const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("task_completions").select("task_template_id, service_date").eq("establishment_id", estId).gte("service_date", weekAgo),
+      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
     const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean; frequency: string }>;
-    const rawCompletions = (taskCompRes.data ?? []) as Array<{ task_template_id: string | null; service_date: string }>;
-    const completedTodayIds = new Set(rawTasks.filter(t =>
-      rawCompletions.some(c => c.task_template_id === t.id && (t.frequency === "weekly" ? c.service_date >= weekAgo : c.service_date === today))
-    ).map(t => t.id));
-    const shiftsData = (shiftsRes.data ?? []) as Array<{ tips: number | null; tips_2: number | null }>;
-    const tipsThisMonth = shiftsData.reduce((s, sh) => s + (sh.tips ?? 0) + (sh.tips_2 ?? 0), 0);
+    const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
+
+    // Compute overdue weekly tasks (not completed since Monday)
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const mondayStr = monday.toISOString().split("T")[0];
+    const weeklyTaskIds = rawTasks.filter(t => t.frequency === "weekly").map(t => t.id);
+    let completedThisWeekIds = new Set<string>();
+    if (weeklyTaskIds.length > 0) {
+      const { data: weekComps } = await supabase.from("task_completions")
+        .select("task_template_id")
+        .eq("establishment_id", estId)
+        .gte("service_date", mondayStr)
+        .lte("service_date", today)
+        .in("task_template_id", weeklyTaskIds);
+      completedThisWeekIds = new Set((weekComps ?? []).map((c: { task_template_id: string | null }) => c.task_template_id).filter(Boolean) as string[]);
+    }
+    const overdue_weekly_tasks = rawTasks
+      .filter(t => t.frequency === "weekly" && !completedThisWeekIds.has(t.id))
+      .map(t => ({ id: t.id, title: t.title, category: t.category }));
 
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
@@ -363,8 +362,6 @@ export default function DashboardPage() {
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
-      show_on_dashboard: p.show_on_dashboard ?? false,
-      steps: Array.isArray(p.steps) ? (p.steps as Array<{ text: string; frequency?: string; photo_url?: string } | string>).map(s => typeof s === "string" ? { text: s } : s) : null,
     }));
 
     const leaderboard: MemberScore[] = members
@@ -419,8 +416,7 @@ export default function DashboardPage() {
       active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
       task_stats,
-      tips_this_month: tipsThisMonth,
-      tip_mode: tipMode,
+      overdue_weekly_tasks,
     });
     } catch {
       // silence errors
@@ -538,12 +534,6 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
   onValidated: () => void;
 }) {
   const [taskList, setTaskList] = useState(stats.tasks ?? []);
-  useEffect(() => {
-    setTaskList(prev => (stats.tasks ?? []).map(t => ({
-      ...t,
-      done: t.done || prev.find(p => p.id === t.id)?.done || false,
-    })));
-  }, [stats]);
   const todo = taskList.filter(t => !t.done);
   const done = taskList.filter(t => t.done);
   const localDone = done.length;
@@ -734,7 +724,7 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
                               <div className="flex gap-1.5 flex-shrink-0">
                                 {!claim && <button onClick={() => claimTask(t.id!)} disabled={!!isClaimingThis} className="text-[11px] px-2 py-1 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)", opacity: isClaimingThis ? 0.5 : 1 }}>Je prends</button>}
                                 {(!claim || claimedByMe) && <button onClick={() => setValidating({ id: t.id!, title: t.title, requiresPhoto: t.requires_photo ?? false })} className="text-[11px] px-2 py-1 rounded" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>Valider</button>}
-                                {claimedByMe && claim && <button onClick={() => unclaimTask(claim.id)} disabled={!!isClaimingThis} className="text-[11px] px-2 py-1 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>Se désister</button>}
+                                {claimedByMe && claim && <button onClick={() => unclaimTask(claim.id)} className="text-[11px] px-1.5 py-1 rounded opacity-40 hover:opacity-100" style={{ color: "var(--foreground-dim)" }}>✕</button>}
                               </div>
                             )}
                           </div>
@@ -785,74 +775,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
-  const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
-  const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
-  const [pinnedClaims, setPinnedClaims] = useState<ProtocolStepClaim[]>([]);
-
-  useEffect(() => {
-    const pinned = data.protocols.filter(p => p.show_on_dashboard);
-    if (!pinned.length) return;
-    const ids = pinned.map(p => p.id);
-    supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").in("protocol_id", ids).eq("establishment_id", data.establishment_id)
-      .then(({ data: claims }) => setPinnedClaims(claims ?? []));
-  }, [data.protocols]);
-
-  useEffect(() => {
-    if (taskGaugePopup) {
-      const fresh = data.task_stats.find(s => s.label === taskGaugePopup.label);
-      if (fresh) setTaskGaugePopup(fresh);
-    }
-  }, [data.task_stats]);
-  const [stepClaimsLoading, setStepClaimsLoading] = useState(false);
-  const supabaseMgr = createClient();
-
-  const fetchStepClaims = async (protocolId: string) => {
-    setStepClaimsLoading(true);
-    const { data: claims } = await supabaseMgr.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
-    const fresh = claims ?? [];
-    setStepClaims(fresh);
-    setPinnedClaims(prev => [...prev.filter(c => c.protocol_id !== protocolId), ...fresh]);
-    setStepClaimsLoading(false);
-  };
-
-  const openProtocolMgr = (p: Protocol) => {
-    setProtocolPopup(p);
-    setStepClaims([]);
-    fetchStepClaims(p.id);
-  };
-
-  const claimStepMgr = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabaseMgr.auth.getUser();
-    if (!user) return;
-    await supabaseMgr.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: false, done_at: null, done_by_name: null }, { onConflict: "protocol_id,step_index,establishment_id" });
-    fetchStepClaims(protocolId);
-  };
-
-  const unclaimStepMgr = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabaseMgr.auth.getUser();
-    if (!user) return;
-    await supabaseMgr.from("protocol_step_claims").delete().eq("protocol_id", protocolId).eq("step_index", stepIndex).eq("establishment_id", data.establishment_id).eq("user_id", user.id);
-    fetchStepClaims(protocolId);
-  };
-
-  const validateStepMgr = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabaseMgr.auth.getUser();
-    if (!user) return;
-    const existing = stepClaims.find(c => c.step_index === stepIndex);
-    if (existing) {
-      await supabaseMgr.from("protocol_step_claims").update({ is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }).eq("id", existing.id);
-    } else {
-      await supabaseMgr.from("protocol_step_claims").insert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name });
-    }
-    fetchStepClaims(protocolId);
-  };
-
-  const unvalidateStepMgr = async (protocolId: string, stepIndex: number) => {
-    const existing = stepClaims.find(c => c.step_index === stepIndex);
-    if (!existing) return;
-    await supabaseMgr.from("protocol_step_claims").update({ is_done: false, done_at: null, done_by_name: null }).eq("id", existing.id);
-    fetchStepClaims(protocolId);
-  };
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -907,7 +829,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.label} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
@@ -929,43 +851,25 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {data.task_stats.length === 0 && (
                 <p className="text-sm text-center py-4" style={{ color: "var(--foreground-dim)" }}>Aucune tâche configurée</p>
               )}
+              {data.overdue_weekly_tasks.length > 0 && (
+                <div className="pt-3 mt-1" style={{ borderTop: "1px solid var(--border)" }}>
+                  <p className="text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--warning)" }}>
+                    À faire cette semaine · {data.overdue_weekly_tasks.length}
+                  </p>
+                  <div className="space-y-1.5">
+                    {data.overdue_weekly_tasks.map(t => (
+                      <a key={t.id} href="/tasks"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
+                        style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--warning)" }}>⚠</span>
+                        <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{t.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Protocoles épinglés sur le dashboard */}
-          {data.protocols.filter(p => p.show_on_dashboard).length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <div className="flex items-center gap-2">
-                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles à suivre</p>
-                </div>
-                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Gérer</a>
-              </div>
-              <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
-                {data.protocols.filter(p => p.show_on_dashboard).map(p => {
-                  const totalSteps = p.steps?.length ?? 0;
-                  const doneSteps = pinnedClaims.filter(c => c.protocol_id === p.id && c.is_done).length;
-                  const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
-                  return (
-                    <button key={p.id} onClick={() => openProtocolMgr(p)} className="w-full text-left">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
-                          {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
-                        </div>
-                        <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: pct === 100 ? "var(--success)" : "var(--warning)" }}>{pct}%</span>
-                      </div>
-                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--accent)" }} />
-                      </div>
-                      <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{doneSteps}/{totalSteps} étape{totalSteps > 1 ? "s" : ""} validée{totalSteps > 1 ? "s" : ""}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* 2. Retours clients */}
           {data.feedback_summary.total > 0 && (
@@ -1027,7 +931,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
+                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>
                           {(() => {
                             const updatedAt = (p as unknown as { updated_at?: string }).updated_at;
                             const isNew = updatedAt && (Date.now() - new Date(updatedAt).getTime()) < 7*86400000;
@@ -1126,7 +1030,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             </div>
           )}
 
-        </div>
       </div>
 
       {/* Modals */}
@@ -1342,126 +1245,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           </div>
         </div>
       )}
-
-      {/* Popup protocole (manager) */}
-      {protocolPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
-            <div className="flex items-start gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <div className="p-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.1)" }}>
-                    <BookOpen size={13} style={{ color: "var(--accent)" }} />
-                  </div>
-                  {protocolPopup.is_mandatory && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.15)" }}>Obligatoire</span>
-                  )}
-                </div>
-                <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--foreground)" }}>{protocolPopup.title}</p>
-              </div>
-              <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-              {protocolPopup.content && (
-                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
-              )}
-              {stepClaimsLoading && (
-                <p className="text-[12px] text-center py-2" style={{ color: "var(--foreground-dim)" }}>Chargement…</p>
-              )}
-              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
-                <div className="space-y-2">
-                  {protocolPopup.steps.map((step, idx) => {
-                    const claimRecord = stepClaims.find(c => c.step_index === idx);
-                    const done = claimRecord?.is_done ?? false;
-                    const claimedByMe = claimRecord && claimRecord.user_id === data.my_profile_id;
-                    const claimedByOther = claimRecord && claimRecord.user_id !== data.my_profile_id;
-                    return (
-                      <div key={idx} className="rounded-xl p-3 flex gap-3 items-start transition-all"
-                        style={{ background: done ? "rgba(34,197,94,0.12)" : claimedByMe ? "rgba(6,182,212,0.10)" : "var(--surface-raised)" }}>
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
-                          style={{ background: done ? "rgba(34,197,94,0.25)" : claimedByMe ? "rgba(6,182,212,0.20)" : "rgba(139,92,246,0.15)", color: done ? "#22C55E" : claimedByMe ? "#06B6D4" : "#A78BFA" }}>
-                          {done ? "✓" : idx + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] leading-snug" style={{ color: "var(--foreground)", textDecoration: done ? "line-through" : "none", opacity: done ? 0.6 : 1 }}>{step.text}</p>
-                          {step.frequency && (
-                            <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
-                              {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
-                            </span>
-                          )}
-                          {claimRecord && (
-                            <p className="text-[10px] mt-0.5 font-medium" style={{ color: done ? "#22C55E" : claimedByMe ? "#06B6D4" : "#F59E0B" }}>
-                              {done ? `Validé par ${claimRecord.done_by_name ?? claimRecord.user_name}` : claimedByMe ? `En cours · ${data.my_first_name}` : `Pris par ${claimRecord.user_name}`}
-                            </p>
-                          )}
-                          {step.photo_url && (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 140 }} />
-                          )}
-                          {!done && !claimedByOther && (
-                            <div className="flex gap-1.5 mt-2 flex-wrap">
-                              {!claimedByMe ? (
-                                <button onClick={() => claimStepMgr(protocolPopup.id, idx)}
-                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                                  style={{ background: "rgba(6,182,212,0.15)", color: "#06B6D4" }}>
-                                  Je prends
-                                </button>
-                              ) : (
-                                <button onClick={() => unclaimStepMgr(protocolPopup.id, idx)}
-                                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                                  style={{ background: "rgba(239,68,68,0.12)", color: "#F87171" }}>
-                                  Se désister
-                                </button>
-                              )}
-                              <button onClick={() => validateStepMgr(protocolPopup.id, idx)}
-                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                                style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
-                                Valider ✓
-                              </button>
-                            </div>
-                          )}
-                          {!done && claimedByOther && (
-                            <div className="flex gap-1.5 mt-2 flex-wrap">
-                              <button onClick={() => validateStepMgr(protocolPopup.id, idx)}
-                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                                style={{ background: "rgba(34,197,94,0.15)", color: "#22C55E" }}>
-                                Valider ✓
-                              </button>
-                            </div>
-                          )}
-                          {done && (
-                            <div className="flex gap-1.5 mt-2 flex-wrap">
-                              <button onClick={() => unvalidateStepMgr(protocolPopup.id, idx)}
-                                className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                                style={{ background: "rgba(239,68,68,0.10)", color: "#F87171" }}>
-                                Annuler
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
-                <p className="text-sm text-center py-6" style={{ color: "var(--foreground-dim)" }}>Aucun contenu</p>
-              )}
-            </div>
-            <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
-              <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl"
-                style={{ background: "var(--accent)", color: "#09090B" }}>
-                Gérer les protocoles →
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1485,72 +1268,22 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
-  useEffect(() => {
-    if (taskGaugePopup) {
-      const fresh = data.task_stats.find(s => s.label === taskGaugePopup.label);
-      if (fresh) setTaskGaugePopup(fresh);
-    }
-  }, [data.task_stats]);
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
-  const [stepClaims, setStepClaims] = useState<ProtocolStepClaim[]>([]);
-  const [stepClaimsLoading, setStepClaimsLoading] = useState(false);
-
-  const fetchStepClaimsEmp = async (protocolId: string) => {
-    setStepClaimsLoading(true);
-    const { data: claims } = await supabase.from("protocol_step_claims").select("id, protocol_id, step_index, user_id, user_name, is_done, done_at, done_by_name").eq("protocol_id", protocolId).eq("establishment_id", data.establishment_id);
-    setStepClaims(claims ?? []);
-    setStepClaimsLoading(false);
-  };
 
   const openProtocol = async (p: Protocol) => {
     setProtocolPopup(p);
-    setStepClaims([]);
-    fetchStepClaimsEmp(p.id);
     if (!readProtocols.has(p.id)) {
       setReadProtocols(prev => new Set([...prev, p.id]));
       if (!DEV_MODE) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) await (supabase.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: p.id, profile_id: user.id });
+        const sb = createClient();
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: p.id, profile_id: user.id });
       }
     }
   };
-
-  const claimStepEmp = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("protocol_step_claims").upsert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: false, done_at: null, done_by_name: null }, { onConflict: "protocol_id,step_index,establishment_id" });
-    fetchStepClaimsEmp(protocolId);
-  };
-
-  const unclaimStepEmp = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("protocol_step_claims").delete().eq("protocol_id", protocolId).eq("step_index", stepIndex).eq("establishment_id", data.establishment_id).eq("user_id", user.id);
-    fetchStepClaimsEmp(protocolId);
-  };
-
-  const validateStepEmp = async (protocolId: string, stepIndex: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const existing = stepClaims.find(c => c.step_index === stepIndex);
-    if (existing) {
-      await supabase.from("protocol_step_claims").update({ is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name }).eq("id", existing.id);
-    } else {
-      await supabase.from("protocol_step_claims").insert({ protocol_id: protocolId, step_index: stepIndex, user_id: user.id, user_name: data.my_first_name, establishment_id: data.establishment_id, is_done: true, done_at: new Date().toISOString(), done_by_name: data.my_first_name });
-    }
-    fetchStepClaimsEmp(protocolId);
-  };
-
-  const unvalidateStepEmp = async (protocolId: string, stepIndex: number) => {
-    const existing = stepClaims.find(c => c.step_index === stepIndex);
-    if (!existing) return;
-    await supabase.from("protocol_step_claims").update({ is_done: false, done_at: null, done_by_name: null }).eq("id", existing.id);
-    fetchStepClaimsEmp(protocolId);
-  };
-
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
   const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
   const SWIPE_THRESHOLD = 90;
@@ -1748,7 +1481,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 const allDone = stat.done >= stat.total && stat.total > 0;
                 const color = allDone ? "var(--success)" : pct >= 50 ? "var(--accent)" : "var(--warning)";
                 return (
-                  <button key={stat.label} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
+                  <button key={stat.period} onClick={() => setTaskGaugePopup(stat)} className="w-full text-left transition-opacity hover:opacity-80">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{stat.label}</span>
@@ -1768,42 +1501,25 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
               {data.task_stats.length === 0 && (
                 <p className="text-sm text-center py-4" style={{ color: "var(--foreground-dim)" }}>Aucune tâche assignée</p>
               )}
+              {data.overdue_weekly_tasks.length > 0 && (
+                <div className="pt-3 mt-1" style={{ borderTop: "1px solid var(--border)" }}>
+                  <p className="text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--warning)" }}>
+                    À faire cette semaine · {data.overdue_weekly_tasks.length}
+                  </p>
+                  <div className="space-y-1.5">
+                    {data.overdue_weekly_tasks.map(t => (
+                      <a key={t.id} href="/me/tasks"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
+                        style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--warning)" }}>⚠</span>
+                        <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{t.title}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Protocoles épinglés sur le dashboard */}
-          {data.protocols.filter(p => p.show_on_dashboard).length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <div className="flex items-center gap-2">
-                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles à lire</p>
-                </div>
-                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-              </div>
-              <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
-                {data.protocols.filter(p => p.show_on_dashboard).map(p => {
-                  const isRead = p.is_read;
-                  return (
-                    <button key={p.id} onClick={() => openProtocol(p)} className="w-full text-left">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
-                          {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
-                        </div>
-                        <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: isRead ? "var(--success)" : "var(--warning)" }}>
-                          {isRead ? "Lu ✓" : "À lire →"}
-                        </span>
-                      </div>
-                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--background-soft)" }}>
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: isRead ? "100%" : "0%", background: "var(--success)" }} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Retours clients récents */}
           {data.feedback_items.length > 0 && (
@@ -2063,85 +1779,12 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <X size={18} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-              {protocolPopup.content && (
-                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>
-              )}
-              {stepClaimsLoading && (
-                <p className="text-[12px] text-center py-2" style={{ color: "var(--foreground-dim)" }}>Chargement…</p>
-              )}
-              {protocolPopup.steps && protocolPopup.steps.length > 0 && (
-                <div className="space-y-2">
-                  {protocolPopup.steps.map((step, idx) => {
-                    const claimRecord = stepClaims.find(c => c.step_index === idx);
-                    const done = claimRecord?.is_done ?? false;
-                    const claimedByMe = claimRecord && claimRecord.user_id === data.my_profile_id;
-                    const claimedByOther = claimRecord && claimRecord.user_id !== data.my_profile_id;
-                    return (
-                      <div key={idx} className="rounded-xl p-3" style={{ background: done ? "rgba(16,185,129,0.06)" : claimedByMe ? "rgba(6,182,212,0.05)" : "var(--background-soft)", border: `1px solid ${done ? "rgba(16,185,129,0.2)" : claimedByMe ? "rgba(6,182,212,0.2)" : "var(--border)"}` }}>
-                        <div className="flex gap-2.5 items-start">
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
-                            style={{ background: done ? "rgba(16,185,129,0.2)" : "rgba(139,92,246,0.15)", color: done ? "var(--success)" : "#A78BFA" }}>
-                            {done ? "✓" : idx + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] leading-snug" style={{ color: done ? "var(--foreground-dim)" : "var(--foreground)", textDecoration: done ? "line-through" : "none" }}>{step.text}</p>
-                            {step.frequency && (
-                              <span className="text-[10px] font-mono mt-0.5 inline-block" style={{ color: "#A78BFA" }}>
-                                {{ daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu" }[step.frequency] ?? step.frequency}
-                              </span>
-                            )}
-                            {step.photo_url && (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={step.photo_url} alt="" className="mt-1.5 rounded-lg object-cover" style={{ width: "100%", maxHeight: 120 }} />
-                            )}
-                            {claimRecord && (
-                              <p className="text-[10px] mt-1 font-medium" style={{ color: done ? "var(--success)" : claimedByMe ? "var(--accent)" : "#F59E0B" }}>
-                                {done ? `Validé par ${claimRecord.done_by_name ?? claimRecord.user_name}` : claimedByMe ? `En cours · ${data.my_first_name || "moi"}` : `Pris par ${claimRecord.user_name}`}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {!done && (
-                          <div className="flex gap-1.5 mt-2.5 pl-7">
-                            {!claimedByMe && !claimedByOther && (
-                              <button onClick={() => claimStepEmp(protocolPopup.id, idx)}
-                                className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
-                                style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)" }}>
-                                Je prends
-                              </button>
-                            )}
-                            {claimedByMe && (
-                              <button onClick={() => unclaimStepEmp(protocolPopup.id, idx)}
-                                className="text-[11px] px-2.5 py-1 rounded-lg"
-                                style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                                Se désister
-                              </button>
-                            )}
-                            {(claimedByMe || !claimedByOther) && (
-                              <button onClick={() => validateStepEmp(protocolPopup.id, idx)}
-                                className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
-                                style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
-                                Valider ✓
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {done && (
-                          <div className="flex gap-1.5 mt-2.5 pl-7">
-                            <button onClick={() => unvalidateStepEmp(protocolPopup.id, idx)}
-                              className="text-[11px] px-2.5 py-1 rounded-lg"
-                              style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                              Annuler
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && (
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {protocolPopup.content ? (
+                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>
+                  {protocolPopup.content}
+                </p>
+              ) : (
                 <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun contenu pour ce protocole.</p>
               )}
             </div>
