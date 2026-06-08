@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown } from "lucide-react";
+import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown, Sparkles, TrendingUp, TrendingDown, Lightbulb, Activity } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
@@ -147,6 +147,14 @@ export default function CustomerFeedbackPage() {
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
   const [showSummary, setShowSummary] = useState(false);
   const [userRole, setUserRole] = useState<string>("employee");
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<{
+    points_forts: string[];
+    points_ameliorer: string[];
+    tendance: string;
+    recommandations: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -242,6 +250,36 @@ export default function CustomerFeedbackPage() {
   }
 
   const isManager = userRole === "owner" || userRole === "manager";
+
+  const handleAnalyze = async () => {
+    if (feedbacks.length === 0) return;
+    setAnalyzing(true);
+    setAnalysis(null);
+    setShowAnalysis(true);
+    try {
+      const res = await fetch("/api/feedback/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feedbacks: feedbacks.map(f => ({
+            item_cat: f.item_cat,
+            tonality: f.tonality,
+            item: f.item,
+            content: f.content,
+            echo_count: f.echo_count,
+          })),
+          period: MONTH_LABELS[monthFilter].toLowerCase(),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) setAnalysis(data.analysis);
+      else setAnalysis(null);
+    } catch {
+      setAnalysis(null);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -349,12 +387,22 @@ export default function CustomerFeedbackPage() {
           <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
           <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retour{feedbacks.length !== 1 ? "s" : ""} · {MONTH_LABELS[monthFilter].toLowerCase()}</p>
         </div>
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl flex-shrink-0 transition-opacity hover:opacity-80"
-          style={{ background: "var(--accent)", color: "#09090B" }}>
-          <Plus size={15} /> Nouveau retour
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isManager && feedbacks.length > 0 && (
+            <button
+              onClick={handleAnalyze}
+              className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-80"
+              style={{ background: "var(--background-elev)", color: "var(--foreground)", border: "1px solid var(--border)" }}>
+              <Sparkles size={14} style={{ color: "var(--accent)" }} /> Analyser
+            </button>
+          )}
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-80"
+            style={{ background: "var(--accent)", color: "#09090B" }}>
+            <Plus size={15} /> Nouveau retour
+          </button>
+        </div>
       </div>
 
       {/* Month filter */}
@@ -552,6 +600,126 @@ export default function CustomerFeedbackPage() {
                 style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
                 Annuler
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analysis modal */}
+      {showAnalysis && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget && !analyzing) setShowAnalysis(false); }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", overflowY: "auto" }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} style={{ color: "var(--accent)" }} />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Analyse IA</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retours · {MONTH_LABELS[monthFilter].toLowerCase()}</p>
+                </div>
+              </div>
+              {!analyzing && (
+                <button onClick={() => setShowAnalysis(false)} style={{ color: "var(--foreground-dim)" }}>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-5">
+              {analyzing && (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <span className="w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: "var(--accent)" }} />
+                  <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Analyse en cours…</p>
+                </div>
+              )}
+
+              {!analyzing && !analysis && (
+                <div className="text-center py-10">
+                  <p className="text-sm" style={{ color: "var(--danger)" }}>Erreur lors de l'analyse. Réessaye.</p>
+                  <button onClick={handleAnalyze} className="mt-3 text-sm" style={{ color: "var(--accent)" }}>Réessayer</button>
+                </div>
+              )}
+
+              {!analyzing && analysis && (
+                <>
+                  {/* Tendance */}
+                  <div className="rounded-xl p-4" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity size={13} style={{ color: "var(--accent)" }} />
+                      <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--accent)" }}>Tendance</span>
+                    </div>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground)" }}>{analysis.tendance}</p>
+                  </div>
+
+                  {/* Points forts */}
+                  {analysis.points_forts.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp size={13} style={{ color: "var(--success)" }} />
+                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--success)" }}>Points forts</span>
+                      </div>
+                      <div className="space-y-2">
+                        {analysis.points_forts.map((pt, i) => (
+                          <div key={i} className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+                            style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)" }}>
+                            <span className="text-[11px] font-mono mt-0.5 flex-shrink-0" style={{ color: "var(--success)" }}>▲</span>
+                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{pt}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points à améliorer */}
+                  {analysis.points_ameliorer.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingDown size={13} style={{ color: "var(--warning)" }} />
+                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--warning)" }}>À améliorer</span>
+                      </div>
+                      <div className="space-y-2">
+                        {analysis.points_ameliorer.map((pt, i) => (
+                          <div key={i} className="flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+                            style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                            <span className="text-[11px] font-mono mt-0.5 flex-shrink-0" style={{ color: "var(--warning)" }}>▼</span>
+                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{pt}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommandations */}
+                  {analysis.recommandations.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb size={13} style={{ color: "#A78BFA" }} />
+                        <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "#A78BFA" }}>Actions à faire</span>
+                      </div>
+                      <div className="space-y-2">
+                        {analysis.recommandations.map((rec, i) => (
+                          <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5"
+                            style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
+                            <span className="text-[11px] font-mono font-bold mt-0.5 flex-shrink-0" style={{ color: "#A78BFA" }}>{i + 1}.</span>
+                            <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{rec}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button onClick={() => setShowAnalysis(false)}
+                    className="w-full py-3 text-sm font-medium rounded-xl mt-2"
+                    style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                    Fermer
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
