@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
@@ -45,7 +44,6 @@ interface TaskCompletion {
   task_one_shot_id: string | null;
   validated_by: string;
   validated_at: string;
-  service_date: string;
   photo_url: string | null;
   notes: string | null;
   is_catchup: boolean;
@@ -171,9 +169,9 @@ export default function TasksManagerPage() {
   const [userId, setUserId] = useState("");
   const [myFirstName, setMyFirstName] = useState("");
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [showAddTask, setShowAddTask] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const currentHour = new Date().getHours();
 
   const load = useCallback(async () => {
@@ -211,7 +209,7 @@ export default function TasksManagerPage() {
 
     const [{ data: tmpl }, { data: comp }, { data: shots }, { data: protos }, { data: memberRows }, { data: claimsData }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", member.establishment_id).eq("is_active", true).order("display_order"),
-      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).gte("service_date", weekAgo),
+      supabase.from("task_completions").select("*, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("service_date", today),
       supabase.from("task_one_shots").select("*, profiles!task_one_shots_created_by_fkey(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category, steps").eq("establishment_id", member.establishment_id),
       supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", member.establishment_id).eq("is_active", true),
@@ -388,17 +386,7 @@ export default function TasksManagerPage() {
     setSavingOneShot(false);
   }
 
-  const completionMap = new Map<string, TaskCompletion>(
-    templates.flatMap(task => {
-      const c = completions.find(c =>
-        c.task_template_id === task.id &&
-        (task.frequency === "weekly" ? c.service_date >= weekAgo : c.service_date === today)
-      );
-      return c ? [[task.id, c]] : [];
-    }).concat(
-      completions.filter(c => c.task_one_shot_id).map(c => [c.task_one_shot_id!, c])
-    )
-  );
+  const completionMap = new Map(completions.map(c => [c.task_template_id ?? c.task_one_shot_id, c]));
 
   const filteredTemplates = templates.filter(t =>
     filterRole === "all" || t.target_role === filterRole || t.target_role === "all"
@@ -408,7 +396,7 @@ export default function TasksManagerPage() {
     filteredTemplates.filter(t => t.category === cat && isWindowOpen(t.category, currentHour));
 
   const totalTasks = filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).length + oneShots.length;
-  const doneTasks = completionMap.size;
+  const doneTasks = completions.length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const allDone = totalTasks > 0 && doneTasks >= totalTasks;
 
@@ -429,14 +417,14 @@ export default function TasksManagerPage() {
         <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Tâches</h1>
         {isManager && (
           <div className="flex items-center gap-2">
-            <Link
-              href="/establishment/tasks"
+            <button
+              onClick={() => setShowAddTask(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
               style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
             >
-              <Settings size={12} />
+              <Plus size={12} />
               Nouvelle tâche
-            </Link>
+            </button>
             <button
               onClick={() => setShowOneShotModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
@@ -848,6 +836,268 @@ export default function TasksManagerPage() {
           <img src={lightboxUrl} alt="" className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
+
+      {showAddTask && (
+        <AddTaskModal
+          estId={estId}
+          protocols={protocols}
+          tipSettings={tipSettings}
+          onClose={() => setShowAddTask(false)}
+          onSaved={() => { setShowAddTask(false); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─── ADD TASK MODAL ─────────────────────────────────────── */
+interface TaskStep {
+  title: string;
+  requires_photo: boolean;
+  protocol_id: string;
+}
+
+function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
+  estId: string;
+  protocols: Protocol[];
+  tipSettings: TipSettings;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const supabase = createClient();
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<TaskCategory>("opening");
+  const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
+  const [targetRole, setTargetRole] = useState<TaskTargetRole>("all");
+  const [steps, setSteps] = useState<TaskStep[]>([{ title: "", requires_photo: false, protocol_id: "" }]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const activeStatuses = (Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden?.includes(s));
+  const roleOptions: { value: string; label: string }[] = [
+    { value: "all", label: "Tous" },
+    { value: "manager", label: "Manager" },
+    ...activeStatuses.map(s => ({ value: s, label: tipSettings.labels?.[s] ?? STAFF_STATUSES[s]?.label ?? s })),
+  ];
+
+  const CATS: { value: TaskCategory; label: string; icon: string }[] = [
+    { value: "opening", label: "Ouverture", icon: "🌅" },
+    { value: "closing", label: "Fermeture", icon: "🌙" },
+    { value: "continuous", label: "Continu", icon: "⚡" },
+    { value: "custom", label: "Ponctuel", icon: "📌" },
+  ];
+
+  function updateStep(i: number, patch: Partial<TaskStep>) {
+    setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
+  }
+
+  function addStep() {
+    setSteps(prev => [...prev, { title: "", requires_photo: false, protocol_id: "" }]);
+  }
+
+  function removeStep(i: number) {
+    if (steps.length === 1) return;
+    setSteps(prev => prev.filter((_, idx) => idx !== i));
+  }
+
+  const canSave = name.trim().length > 0 && steps.every(s => s.title.trim().length > 0);
+
+  async function handleSave() {
+    if (!canSave) return;
+    setSaving(true); setError(null);
+    try {
+      const { data: existing } = await supabase.from("task_templates").select("display_order").eq("establishment_id", estId).eq("category", category).order("display_order", { ascending: false }).limit(1).maybeSingle();
+      let order = (existing?.display_order ?? 0) + 1;
+      for (const step of steps) {
+        const title = steps.length === 1 ? name.trim() : `${name.trim()} — ${step.title.trim()}`;
+        const { error: err } = await supabase.from("task_templates").insert({
+          establishment_id: estId,
+          title,
+          category,
+          frequency,
+          target_role: targetRole,
+          requires_photo: step.requires_photo,
+          protocol_id: step.protocol_id || null,
+          is_critical: false,
+          is_active: true,
+          display_order: order++,
+        });
+        if (err) throw err;
+      }
+      onSaved();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erreur lors de la création");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 sticky top-0"
+          style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Nouvelle tâche</p>
+          <button onClick={onClose} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+
+          {/* Nom principal */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Nom principal</label>
+            <input
+              value={name} onChange={e => setName(e.target.value)}
+              placeholder="Ex: Nettoyage cuisine, Ouverture caisse…"
+              className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+              style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+              onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+              onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+            />
+          </div>
+
+          {/* Catégorie */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {CATS.map(c => (
+                <button key={c.value} onClick={() => setCategory(c.value)}
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-center transition-all"
+                  style={category === c.value
+                    ? { background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.35)" }
+                    : { background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                  <span className="text-base">{c.icon}</span>
+                  <span className="text-[10px] font-medium" style={{ color: category === c.value ? "var(--accent)" : "var(--foreground-dim)" }}>{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fréquence + Rôle */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Fréquence</label>
+              <div className="flex flex-col gap-1.5">
+                {[{ value: "daily", label: "Quotidien" }, { value: "weekly", label: "Hebdomadaire" }].map(f => (
+                  <button key={f.value} onClick={() => setFrequency(f.value as "daily" | "weekly")}
+                    className="py-2 rounded-lg text-[12px] font-medium transition-all"
+                    style={frequency === f.value
+                      ? { background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                      : { background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Rôle</label>
+              <div className="flex flex-col gap-1.5 max-h-[120px] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                {roleOptions.map(r => (
+                  <button key={r.value} onClick={() => setTargetRole(r.value as TaskTargetRole)}
+                    className="py-2 rounded-lg text-[12px] font-medium transition-all truncate"
+                    style={targetRole === r.value
+                      ? { background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
+                      : { background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Étapes */}
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+              Étapes {steps.length > 1 && <span style={{ color: "var(--foreground-dim)" }}>· {steps.length}</span>}
+            </label>
+            <div className="space-y-3">
+              {steps.map((step, i) => (
+                <div key={i} className="rounded-xl p-3.5 space-y-3"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2">
+                    {steps.length > 1 && (
+                      <span className="text-[11px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{i + 1}.</span>
+                    )}
+                    <input
+                      value={step.title}
+                      onChange={e => updateStep(i, { title: e.target.value })}
+                      placeholder={steps.length === 1 ? "Détail de la tâche (optionnel)" : "Nom de l'étape"}
+                      className="flex-1 px-3 py-2 text-[13px] rounded-lg outline-none"
+                      style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                      onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"}
+                      onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
+                    />
+                    {steps.length > 1 && (
+                      <button onClick={() => removeStep(i)} style={{ color: "var(--foreground-dim)", flexShrink: 0 }}>
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Photo toggle */}
+                  <button onClick={() => updateStep(i, { requires_photo: !step.requires_photo })}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-all"
+                    style={step.requires_photo
+                      ? { background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)" }
+                      : { background: "var(--background)", border: "1px solid var(--border)" }}>
+                    <Camera size={13} style={{ color: step.requires_photo ? "var(--accent)" : "var(--foreground-dim)", flexShrink: 0 }} />
+                    <span className="text-[12px]" style={{ color: step.requires_photo ? "var(--accent)" : "var(--foreground-muted)" }}>
+                      {step.requires_photo ? "Photo obligatoire" : "Photo optionnelle"}
+                    </span>
+                    <div className="ml-auto w-8 h-4 rounded-full relative transition-all flex-shrink-0"
+                      style={{ background: step.requires_photo ? "var(--accent)" : "var(--border)" }}>
+                      <div className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all"
+                        style={{ left: step.requires_photo ? "calc(100% - 14px)" : "2px" }} />
+                    </div>
+                  </button>
+
+                  {/* Protocole */}
+                  <div>
+                    <select
+                      value={step.protocol_id}
+                      onChange={e => updateStep(i, { protocol_id: e.target.value })}
+                      className="w-full px-3 py-2 text-[12px] rounded-lg outline-none"
+                      style={{ background: step.protocol_id ? "rgba(167,139,250,0.08)" : "var(--background)", border: `1px solid ${step.protocol_id ? "rgba(167,139,250,0.3)" : "var(--border)"}`, color: step.protocol_id ? "#A78BFA" : "var(--foreground-muted)" }}>
+                      <option value="">Pas de protocole lié</option>
+                      {protocols.map(p => (
+                        <option key={p.id} value={p.id}>{p.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add step button */}
+            <button onClick={addStep}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-medium transition-all"
+              style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px dashed var(--border)" }}>
+              <Plus size={13} />
+              Ajouter une étape
+            </button>
+          </div>
+
+          {error && <p className="text-[12px]" style={{ color: "var(--danger)" }}>{error}</p>}
+
+          {/* Footer */}
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-3 text-sm font-medium rounded-xl"
+              style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+              Annuler
+            </button>
+            <button onClick={handleSave} disabled={!canSave || saving}
+              className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity"
+              style={{ background: "var(--accent)", color: "#09090B", opacity: (!canSave || saving) ? 0.5 : 1 }}>
+              {saving ? "Création…" : steps.length > 1 ? `Créer ${steps.length} tâches` : "Créer la tâche"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
