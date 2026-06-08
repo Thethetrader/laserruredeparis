@@ -147,6 +147,7 @@ export default function CustomerFeedbackPage() {
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
   const [showSummary, setShowSummary] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
+  const [summaryPopup, setSummaryPopup] = useState<{ cat: string | null; tonality: "positive" | "negative" } | null>(null);
   const [userRole, setUserRole] = useState<string>("employee");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -495,16 +496,40 @@ export default function CustomerFeedbackPage() {
                     return (
                       <tr key={cat} style={{ borderTop: "1px solid var(--border)" }}>
                         <td className="py-2 font-medium capitalize" style={{ color: "var(--foreground)" }}>{cat}</td>
-                        <td className="py-2 text-center font-mono" style={{ color: pos > 0 ? "var(--success)" : "var(--foreground-dim)" }}>{pos > 0 ? pos : "—"}</td>
-                        <td className="py-2 text-center font-mono" style={{ color: neg > 0 ? "var(--warning)" : "var(--foreground-dim)" }}>{neg > 0 ? neg : "—"}</td>
+                        <td className="py-2 text-center">
+                          {pos > 0 ? (
+                            <button onClick={() => setSummaryPopup({ cat, tonality: "positive" })}
+                              className="font-mono px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+                              style={{ color: "var(--success)", background: "rgba(16,185,129,0.08)" }}>{pos}</button>
+                          ) : <span className="font-mono" style={{ color: "var(--foreground-dim)" }}>—</span>}
+                        </td>
+                        <td className="py-2 text-center">
+                          {neg > 0 ? (
+                            <button onClick={() => setSummaryPopup({ cat, tonality: "negative" })}
+                              className="font-mono px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+                              style={{ color: "var(--warning)", background: "rgba(245,158,11,0.08)" }}>{neg}</button>
+                          ) : <span className="font-mono" style={{ color: "var(--foreground-dim)" }}>—</span>}
+                        </td>
                         <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{catFbs.length}</td>
                       </tr>
                     );
                   })}
                   <tr style={{ borderTop: "2px solid var(--border)" }}>
                     <td className="py-2 font-semibold text-[11px] font-mono uppercase" style={{ color: "var(--foreground-dim)" }}>Total</td>
-                    <td className="py-2 text-center font-mono font-semibold" style={{ color: "var(--success)" }}>{feedbacks.filter(f => f.tonality === "positive").length}</td>
-                    <td className="py-2 text-center font-mono font-semibold" style={{ color: "var(--warning)" }}>{feedbacks.filter(f => f.tonality === "negative").length}</td>
+                    <td className="py-2 text-center">
+                      <button onClick={() => setSummaryPopup({ cat: null, tonality: "positive" })}
+                        className="font-mono font-semibold px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+                        style={{ color: "var(--success)", background: "rgba(16,185,129,0.08)" }}>
+                        {feedbacks.filter(f => f.tonality === "positive").length}
+                      </button>
+                    </td>
+                    <td className="py-2 text-center">
+                      <button onClick={() => setSummaryPopup({ cat: null, tonality: "negative" })}
+                        className="font-mono font-semibold px-1.5 py-0.5 rounded transition-all hover:opacity-80"
+                        style={{ color: "var(--warning)", background: "rgba(245,158,11,0.08)" }}>
+                        {feedbacks.filter(f => f.tonality === "negative").length}
+                      </button>
+                    </td>
                     <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{feedbacks.length}</td>
                   </tr>
                 </tbody>
@@ -630,6 +655,53 @@ export default function CustomerFeedbackPage() {
           )}
         </div>
       )}
+
+      {/* Summary popup */}
+      {summaryPopup && (() => {
+        const popupFbs = feedbacks.filter(f =>
+          f.tonality === summaryPopup.tonality &&
+          (summaryPopup.cat === null || f.item_cat === summaryPopup.cat)
+        );
+        const isPos = summaryPopup.tonality === "positive";
+        const title = summaryPopup.cat
+          ? `${isPos ? "▲ Positifs" : "▼ Négatifs"} · ${summaryPopup.cat}`
+          : `${isPos ? "▲ Tous les positifs" : "▼ Tous les négatifs"}`;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+            onClick={e => { if (e.target === e.currentTarget) setSummaryPopup(null); }}>
+            <div className="w-full max-w-md rounded-2xl overflow-hidden"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
+              <div className="flex items-center justify-between px-5 py-4 sticky top-0"
+                style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <p className="text-sm font-semibold capitalize" style={{ color: isPos ? "var(--success)" : "var(--warning)" }}>{title}</p>
+                <button onClick={() => setSummaryPopup(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+              </div>
+              <div className="p-4 space-y-3">
+                {popupFbs.map(f => (
+                  <div key={f.id} className="rounded-xl p-3.5"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <KarafAvatar firstName={f.reporter_first} lastName={f.reporter_last} avatarUrl={f.reporter_avatar} size={22} />
+                      <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{f.reporter_name}</span>
+                      <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>· {formatRelativeTime(f.created_at)}</span>
+                      {f.echo_count > 0 && (
+                        <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
+                          +{f.echo_count}
+                        </span>
+                      )}
+                    </div>
+                    {f.item && <p className="text-[14px] font-medium mb-0.5" style={{ color: "var(--foreground)" }}>{f.item}</p>}
+                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>« {f.content} »</p>
+                    {f.table_number && <p className="text-[10px] mt-1" style={{ color: "var(--foreground-dim)" }}>Table {f.table_number}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast */}
       {toast && (
