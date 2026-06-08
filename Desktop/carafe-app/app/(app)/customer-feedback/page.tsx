@@ -144,21 +144,6 @@ export default function CustomerFeedbackPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-
-  const readStorageKey = establishmentId ? `karaf_feedback_read_${establishmentId}` : null;
-
-  function loadStoredReadIds(): Set<string> {
-    if (!readStorageKey) return new Set();
-    try {
-      const raw = localStorage.getItem(readStorageKey);
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-    } catch { return new Set(); }
-  }
-
-  function persistReadIds(ids: Set<string>) {
-    if (!readStorageKey) return;
-    try { localStorage.setItem(readStorageKey, JSON.stringify([...ids])); } catch {}
-  }
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
   const [showSummary, setShowSummary] = useState(false);
   const [userRole, setUserRole] = useState<string>("employee");
@@ -260,8 +245,17 @@ export default function CustomerFeedbackPage() {
       };
     });
 
+    const allIds = views.map(f => f.id);
+    if (allIds.length > 0) {
+      const { data: reads } = await supabase
+        .from("feedback_reads")
+        .select("feedback_id")
+        .eq("profile_id", user.id)
+        .in("feedback_id", allIds);
+      setReadIds(new Set((reads ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
+    }
+
     setFeedbacks(views);
-    setReadIds(loadStoredReadIds());
     setLoading(false);
   }
 
@@ -303,20 +297,26 @@ export default function CustomerFeedbackPage() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
-  const markAsRead = (id: string) => {
-    setReadIds(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      persistReadIds(next);
-      return next;
-    });
+  const markAsRead = async (id: string) => {
+    setReadIds(prev => { const next = new Set(prev); next.add(id); return next; });
+    if (!DEV_MODE && profileId) {
+      await supabase.from("feedback_reads").upsert(
+        { profile_id: profileId, feedback_id: id },
+        { onConflict: "profile_id,feedback_id" }
+      );
+    }
   };
 
-  const markAllRead = () => {
-    const next = new Set(feedbacks.map(f => f.id));
-    setReadIds(next);
-    persistReadIds(next);
+  const markAllRead = async () => {
+    const ids = feedbacks.map(f => f.id);
+    setReadIds(new Set(ids));
     showToast("Tous les retours marqués comme lus ✓");
+    if (!DEV_MODE && profileId && ids.length > 0) {
+      await supabase.from("feedback_reads").upsert(
+        ids.map(id => ({ profile_id: profileId, feedback_id: id })),
+        { onConflict: "profile_id,feedback_id" }
+      );
+    }
   };
 
   const unreadCount = feedbacks.filter(f => !readIds.has(f.id)).length;
