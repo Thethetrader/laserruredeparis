@@ -939,7 +939,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                           })()}
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
                             <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: allRead ? "var(--success)" : "var(--accent)" }} />
                           </div>
                           <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}</span>
