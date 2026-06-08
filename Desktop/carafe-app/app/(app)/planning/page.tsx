@@ -88,9 +88,20 @@ function parseDailyNeeds(raw: unknown): Record<string, DayConfig> {
   if (raw && typeof raw === "object") {
     const r = raw as Record<string, unknown>;
     if (r.type === "daily_v1" && r.days && typeof r.days === "object") {
-      return r.days as Record<string, DayConfig>;
+      const days = r.days as Record<string, unknown>;
+      const normalized: Record<string, DayConfig> = {};
+      for (const [date, val] of Object.entries(days)) {
+        if (val && typeof val === "object") {
+          const d = val as Partial<DayConfig>;
+          normalized[date] = {
+            services: Array.isArray(d.services) ? d.services : [],
+            is_closed: d.is_closed ?? false,
+            validated: d.validated ?? false,
+          };
+        }
+      }
+      return normalized;
     }
-    // Legacy: old ServiceNeeds format → initialize empty (no per-day config saved)
   }
   return {};
 }
@@ -728,7 +739,7 @@ export default function PlanningPage() {
                   const cfg      = dailyConfig[dateStr];
                   const isEditing = editingDay === dateStr;
                   const validated = cfg?.validated;
-                  const configured = cfg && !cfg.is_closed && cfg.services.length > 0;
+                  const configured = cfg && !cfg.is_closed && (cfg.services?.length ?? 0) > 0;
                   const isClosed  = cfg?.is_closed;
 
                   let dotColor = "var(--border)";

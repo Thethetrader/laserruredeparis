@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
     if ((needs as DailyNeeds).type === "daily_v1") {
       const dailyNeeds = needs as DailyNeeds;
       serviceDayDates = Object.entries(dailyNeeds.days)
-        .filter(([date, cfg]) => !cfg.is_closed && cfg.services.length > 0 && weekDates.includes(date))
+        .filter(([date, cfg]) => !cfg.is_closed && (cfg.services?.length ?? 0) > 0 && weekDates.includes(date))
         .map(([date]) => date)
         .sort();
 
