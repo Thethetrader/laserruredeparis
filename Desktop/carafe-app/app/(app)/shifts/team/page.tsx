@@ -920,27 +920,6 @@ export default function ShiftsTeamPage() {
         )}
       </div>
 
-      {/* Stats */}
-      {!loading && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <p className="text-[22px] font-bold" style={{ color: "var(--foreground)" }}>{uniqueStaff}</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Employés actifs</p>
-          </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <p className="text-[22px] font-bold" style={{ color: "var(--foreground)" }}>{tipsEnabledCount}</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Avec pourboires</p>
-          </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <p className="text-[22px] font-bold" style={{ color: "var(--foreground)" }}>{shifts.length}</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Services ce mois</p>
-          </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: totalDispatched > 0 ? "rgba(245,158,11,0.06)" : "var(--background-elev)", border: `1px solid ${totalDispatched > 0 ? "rgba(245,158,11,0.2)" : "var(--border)"}` }}>
-            <p className="text-[22px] font-bold" style={{ color: totalDispatched > 0 ? "#F59E0B" : "var(--foreground)" }}>{totalDispatched > 0 ? formatTips(totalDispatched) : "—"}</p>
-            <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: "var(--foreground-dim)" }}>Tips distribués</p>
-          </div>
-        </div>
-      )}
       {/* Monthly CA card */}
       {!loading && caSettings.mode === "per_month" && (
         <div className="mt-3 rounded-xl p-4" style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)" }}>
