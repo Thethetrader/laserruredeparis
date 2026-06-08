@@ -48,7 +48,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        {/* Inline style to prevent white flash before CSS loads */}
         <style>{`
           body { background: #09090B; }
           #splash {
@@ -60,26 +59,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           #splash.fade { opacity: 0; pointer-events: none; }
           #splash img { width: 140px; height: 140px; object-fit: contain; }
         `}</style>
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function() {
-            var splash = document.getElementById('splash');
-            function removeSplash() {
-              if (!splash) return;
-              splash.classList.add('fade');
-              setTimeout(function() { if (splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 450);
-            }
-            if (document.readyState === 'complete') {
-              setTimeout(removeSplash, 300);
-            } else {
-              window.addEventListener('load', function() { setTimeout(removeSplash, 300); });
-            }
-          })();
-        `}} />
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
         <div id="splash">
           <img src="/logo.png" alt="Karaf" />
         </div>
+        {/* Script placed after #splash so the element exists in DOM */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            function removeSplash() {
+              var splash = document.getElementById('splash');
+              if (!splash) return;
+              splash.classList.add('fade');
+              setTimeout(function() { if (splash && splash.parentNode) splash.parentNode.removeChild(splash); }, 450);
+            }
+            window.addEventListener('load', function() { setTimeout(removeSplash, 300); });
+          })();
+        `}} />
         <ServiceWorkerRegistration />
         {children}
       </body>
