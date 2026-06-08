@@ -303,7 +303,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId).eq("show_on_dashboard", true),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),

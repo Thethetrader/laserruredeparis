@@ -15,9 +15,8 @@ type AttachmentType = "pdf" | "image" | null;
 
 interface StepItem {
   text: string;
-  frequency?: "daily" | "weekly" | "monthly";
+  frequency?: "daily" | "opening" | "closing" | "continuous";
   photo_url?: string;
-  photo_required?: boolean;
 }
 
 function parseSteps(raw: unknown): StepItem[] {
@@ -26,7 +25,7 @@ function parseSteps(raw: unknown): StepItem[] {
 }
 
 const STEP_FREQ_LABELS: Record<string, string> = {
-  daily: "Quotidien", weekly: "Hebdomadaire", monthly: "Mensuel",
+  daily: "Quotidien", opening: "Ouverture", closing: "Fermeture", continuous: "Continu",
 };
 
 interface Protocol {
@@ -244,11 +243,6 @@ export default function ProtocolsPage() {
   const [formSteps, setFormSteps] = useState<StepItem[]>([]);
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<string[] | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -473,30 +467,6 @@ export default function ProtocolsPage() {
     setProtocols(prev => prev.map(p => p.id === protocol.id ? { ...p, show_on_dashboard: newValue } : p));
   }
 
-  async function liaSearch(q: string) {
-    if (!q.trim()) { setSearchResults(null); setSearchError(null); return; }
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const res = await fetch("/api/protocol-search", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          query: q,
-          protocols: protocols.map(p => ({ id: p.id, title: p.title, content: p.content, steps: p.steps })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erreur");
-      setSearchResults(data.ids ?? []);
-    } catch (e: unknown) {
-      setSearchError(e instanceof Error ? e.message : "Erreur de recherche");
-      setSearchResults(null);
-    } finally {
-      setSearching(false);
-    }
-  }
-
   const allCategories = Object.keys(CATEGORY_LABELS) as ProtocolCategory[];
 
   const categoryProtocols = (cat: ProtocolCategory) => protocols.filter(p => p.category === cat);
@@ -562,66 +532,8 @@ export default function ProtocolsPage() {
           )}
         </div>
 
-        {/* LIA Search */}
-        <div className="mb-6">
-          <form onSubmit={e => { e.preventDefault(); liaSearch(searchQuery); }} className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5"
-              style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <Sparkles size={14} strokeWidth={1.5} style={{ color: "var(--accent)", flexShrink: 0 }} />
-              <input
-                type="text"
-                placeholder="Rechercher avec LIA… ex: mise en place de la salle"
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); if (!e.target.value.trim()) { setSearchResults(null); setSearchError(null); } }}
-                className="flex-1 bg-transparent text-sm outline-none"
-                style={{ color: "var(--foreground)" }}
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => { setSearchQuery(""); setSearchResults(null); setSearchError(null); }}>
-                  <X size={13} style={{ color: "var(--foreground-dim)" }} />
-                </button>
-              )}
-            </div>
-            <button type="submit" disabled={searching || !searchQuery.trim()}
-              className="px-3 py-2.5 rounded-xl text-sm font-medium flex-shrink-0"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: searching || !searchQuery.trim() ? 0.5 : 1 }}>
-              {searching ? "…" : "Chercher"}
-            </button>
-          </form>
-          {searchError && <p className="text-xs mt-2" style={{ color: "var(--danger)" }}>{searchError}</p>}
-        </div>
-
-        {/* Search results */}
-        {searchResults !== null && (
-          <div className="mb-6">
-            <p className="text-xs font-mono mb-3" style={{ color: "var(--foreground-dim)" }}>
-              {searchResults.length === 0 ? "Aucun protocole trouvé pour cette recherche" : `${searchResults.length} protocole${searchResults.length > 1 ? "s" : ""} trouvé${searchResults.length > 1 ? "s" : ""}`}
-            </p>
-            <div className="space-y-3">
-              {searchResults.map(id => {
-                const p = protocols.find(pr => pr.id === id);
-                if (!p) return null;
-                return (
-                  <ProtocolCard
-                    key={p.id}
-                    protocol={p}
-                    isManager={isManager}
-                    isExpanded={expanded.has(p.id)}
-                    isRead={reads.has(p.id)}
-                    onToggle={() => toggleExpanded(p.id)}
-                    onMarkRead={() => markAsRead(p.id)}
-                    onEdit={() => openEditForm(p)}
-                    onDelete={() => deleteProtocol(p.id)}
-                    onToggleDashboard={() => toggleDashboard(p)}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Unread mandatory banner */}
-        {!isManager && totalUnreadMandatory > 0 && searchResults === null && (
+        {!isManager && totalUnreadMandatory > 0 && (
           <div className="rounded-xl px-4 py-3 mb-6 flex items-start gap-3"
             style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
             <AlertCircle size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
@@ -645,12 +557,11 @@ export default function ProtocolsPage() {
             fileInputRef={fileInputRef} handleFileChange={handleFileChange}
             isEditing={!!editingProtocol} submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
             error={formError}
-            establishmentId={establishmentId}
           />
         )}
 
-        {/* Category grid — hidden during search */}
-        {searchResults === null && <div className="grid grid-cols-2 gap-3">
+        {/* Category grid */}
+        <div className="grid grid-cols-2 gap-3">
           {allCategories.map(cat => {
             const count = categoryProtocols(cat).length;
             const unread = categoryUnread(cat);
@@ -679,9 +590,9 @@ export default function ProtocolsPage() {
               </button>
             );
           })}
-        </div>}
+        </div>
 
-        {protocols.length === 0 && searchResults === null && (
+        {protocols.length === 0 && (
           <div className="rounded-xl flex flex-col items-center justify-center py-16 mt-3"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <BookOpen size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 12 }} />
@@ -1064,11 +975,6 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
                           {STEP_FREQ_LABELS[step.frequency] ?? step.frequency}
                         </span>
                       )}
-                      {step.photo_required && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
-                          📷 Photo obligatoire
-                        </span>
-                      )}
                     </div>
                   </li>
                 ))}
@@ -1117,7 +1023,6 @@ interface ProtocolFormProps {
   isEditing?: boolean;
   submitting: boolean; onSubmit: () => void; onCancel: () => void;
   error?: string | null;
-  establishmentId: string;
 }
 
 function ProtocolForm({
@@ -1125,26 +1030,12 @@ function ProtocolForm({
   formCategory, setFormCategory, formMandatory, setFormMandatory,
   formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
   fileInputRef, handleFileChange,
-  isEditing, submitting, onSubmit, onCancel, error, establishmentId,
+  isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
-  const [uploadingStepPhoto, setUploadingStepPhoto] = useState<Set<number>>(new Set());
-
-  const updateStep = (index: number, field: keyof StepItem, value: string | boolean) => {
+  const updateStep = (index: number, field: keyof StepItem, value: string) => {
     const next = [...formSteps];
     next[index] = { ...next[index], [field]: value };
     setFormSteps(next);
-  };
-
-  const uploadStepPhoto = async (index: number, file: File) => {
-    setUploadingStepPhoto(prev => new Set([...prev, index]));
-    const sb = createClient();
-    const path = `${establishmentId}/steps/${Date.now()}_${file.name}`;
-    const { data } = await sb.storage.from("protocols").upload(path, file);
-    if (data) {
-      const { data: { publicUrl } } = sb.storage.from("protocols").getPublicUrl(path);
-      updateStep(index, "photo_url", publicUrl);
-    }
-    setUploadingStepPhoto(prev => { const s = new Set(prev); s.delete(index); return s; });
   };
 
   const removeStep = (index: number) => {
@@ -1255,39 +1146,14 @@ function ProtocolForm({
                       style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: step.frequency ? "#A78BFA" : "var(--foreground-dim)" }}>
                       <option value="">Fréquence (optionnel)</option>
                       <option value="daily">Quotidien</option>
-                      <option value="weekly">Hebdomadaire</option>
-                      <option value="monthly">Mensuel</option>
+                      <option value="opening">Ouverture</option>
+                      <option value="closing">Fermeture</option>
+                      <option value="continuous">Continu</option>
                     </select>
-                    {step.photo_url ? (
-                      <div className="flex items-center gap-1.5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={step.photo_url} alt="" className="rounded object-cover flex-shrink-0" style={{ width: 36, height: 36 }} />
-                        <button onClick={() => updateStep(i, "photo_url", "")}
-                          className="text-[10px] px-1.5 py-0.5 rounded opacity-60 hover:opacity-100"
-                          style={{ color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }}>
-                          <X size={10} />
-                        </button>
-                        <button onClick={() => updateStep(i, "photo_required", !step.photo_required)}
-                          className="text-[10px] px-2 py-1 rounded-base font-medium transition-all"
-                          style={step.photo_required
-                            ? { background: "rgba(239,68,68,0.12)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.3)" }
-                            : { background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-                          {step.photo_required ? "📷 Obligatoire" : "Optionnelle"}
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-base cursor-pointer"
-                        style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: uploadingStepPhoto.has(i) ? "var(--accent)" : "var(--foreground-dim)" }}>
-                        {uploadingStepPhoto.has(i) ? (
-                          <span className="animate-pulse">Envoi…</span>
-                        ) : (
-                          <><Upload size={11} /> Photo</>
-                        )}
-                        <input type="file" accept="image/*" className="hidden"
-                          disabled={uploadingStepPhoto.has(i)}
-                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadStepPhoto(i, f); e.target.value = ""; }} />
-                      </label>
-                    )}
+                    <input type="text" value={step.photo_url ?? ""} onChange={e => updateStep(i, "photo_url", e.target.value)}
+                      placeholder="URL photo (optionnel)"
+                      className="flex-1 text-[11px] px-2 py-1 rounded-base outline-none"
+                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
                   </div>
                 </div>
               ))}
