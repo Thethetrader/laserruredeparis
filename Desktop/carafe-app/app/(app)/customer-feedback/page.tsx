@@ -144,6 +144,21 @@ export default function CustomerFeedbackPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const readStorageKey = establishmentId ? `karaf_feedback_read_${establishmentId}` : null;
+
+  function loadStoredReadIds(): Set<string> {
+    if (!readStorageKey) return new Set();
+    try {
+      const raw = localStorage.getItem(readStorageKey);
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  }
+
+  function persistReadIds(ids: Set<string>) {
+    if (!readStorageKey) return;
+    try { localStorage.setItem(readStorageKey, JSON.stringify([...ids])); } catch {}
+  }
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
   const [showSummary, setShowSummary] = useState(false);
   const [userRole, setUserRole] = useState<string>("employee");
@@ -246,6 +261,7 @@ export default function CustomerFeedbackPage() {
     });
 
     setFeedbacks(views);
+    setReadIds(loadStoredReadIds());
     setLoading(false);
   }
 
@@ -288,11 +304,18 @@ export default function CustomerFeedbackPage() {
   };
 
   const markAsRead = (id: string) => {
-    setReadIds(prev => { const next = new Set(prev); next.add(id); return next; });
+    setReadIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      persistReadIds(next);
+      return next;
+    });
   };
 
   const markAllRead = () => {
-    setReadIds(new Set(feedbacks.map(f => f.id)));
+    const next = new Set(feedbacks.map(f => f.id));
+    setReadIds(next);
+    persistReadIds(next);
     showToast("Tous les retours marqués comme lus ✓");
   };
 
