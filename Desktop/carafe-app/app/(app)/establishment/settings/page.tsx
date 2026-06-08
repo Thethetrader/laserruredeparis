@@ -25,6 +25,7 @@ export default function EstablishmentSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -79,15 +80,17 @@ export default function EstablishmentSettingsPage() {
 
   async function handleSave() {
     if (!establishment) return;
-    setSaving(true);
+    setSaving(true); setSaveError(null);
     if (DEV_MODE) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
-    await supabase.from("establishments")
+    const { error } = await supabase.from("establishments")
       .update({
         tip_settings: tipSettings as unknown as Record<string, unknown>,
         ca_settings: caSettings as unknown as Record<string, unknown>,
       })
       .eq("id", establishment.id);
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000);
+    setSaving(false);
+    if (error) { setSaveError(error.message); return; }
+    setSaved(true); setTimeout(() => setSaved(false), 2000);
   }
 
   if (loading) {
@@ -243,6 +246,7 @@ export default function EstablishmentSettingsPage() {
         }}>
         {saved ? <><Check size={14} />Enregistré</> : saving ? "Enregistrement…" : "Enregistrer"}
       </button>
+      {saveError && <p className="text-[12px] mt-2 text-center" style={{ color: "var(--danger)" }}>{saveError}</p>}
 
       {/* Déconnexion */}
       <button
