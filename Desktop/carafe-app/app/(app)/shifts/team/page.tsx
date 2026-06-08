@@ -410,6 +410,22 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   const [caDay, setCaDay] = useState("");
   const [caSaving, setCASaving] = useState(false);
   const [caSaved, setCASaved] = useState(false);
+  const [caError, setCAError] = useState<string | null>(null);
+
+  // Preload existing CA values for this date
+  useEffect(() => {
+    if (caSettings.mode === "disabled" || caSettings.mode === "per_month" || DEV_MODE) return;
+    supabase.from("ca_entries").select("service, amount")
+      .eq("establishment_id", estId).eq("entry_date", date)
+      .then(({ data }) => {
+        if (!data) return;
+        for (const e of data as { service: string; amount: number }[]) {
+          if (e.service === "midi") setCaMidi(String(e.amount));
+          else if (e.service === "soir") setCaSoir(String(e.amount));
+          else if (e.service === "day") setCaDay(String(e.amount));
+        }
+      });
+  }, [date, estId, caSettings.mode, supabase]);
 
   // Add shift — auto-open si dispatch mode sans aucun shift éligible
   const isDispatchMode = tipSettings.mode === "dispatch";
@@ -486,23 +502,32 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
   async function handleSaveCA() {
     const mode = caSettings.mode;
     if (mode === "disabled" || mode === "per_month") return;
-    setCASaving(true);
-    if (!DEV_MODE) {
-      if (mode === "per_service") {
-        const entries = [
-          { service: "midi", amount: parseFloat(caMidi) || 0 },
-          { service: "soir", amount: parseFloat(caSoir) || 0 },
-        ].filter(e => e.amount > 0);
-        for (const e of entries) {
-          await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: e.service, amount: e.amount }, { onConflict: "establishment_id,entry_date,service" });
+    setCASaving(true); setCAError(null);
+    try {
+      if (!DEV_MODE) {
+        if (mode === "per_service") {
+          const entries = [
+            { service: "midi", amount: parseFloat(caMidi) || 0 },
+            { service: "soir", amount: parseFloat(caSoir) || 0 },
+          ].filter(e => e.amount > 0);
+          for (const e of entries) {
+            const { error } = await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: e.service, amount: e.amount }, { onConflict: "establishment_id,entry_date,service" });
+            if (error) throw error;
+          }
+        } else {
+          const amount = parseFloat(caDay) || 0;
+          if (amount > 0) {
+            const { error } = await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: "day", amount }, { onConflict: "establishment_id,entry_date,service" });
+            if (error) throw error;
+          }
         }
-      } else {
-        const amount = parseFloat(caDay) || 0;
-        if (amount > 0) await supabase.from("ca_entries").upsert({ establishment_id: estId, entry_date: date, service: "day", amount }, { onConflict: "establishment_id,entry_date,service" });
       }
+      setCASaving(false); setCASaved(true);
+      setTimeout(() => setCASaved(false), 2000);
+    } catch (e: unknown) {
+      setCASaving(false);
+      setCAError(e instanceof Error ? e.message : "Erreur enregistrement CA");
     }
-    setCASaving(false); setCASaved(true);
-    setTimeout(() => setCASaved(false), 2000);
   }
 
   return (
@@ -532,10 +557,16 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
                     <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{s.first_name ?? "—"}</p>
                     {!s.tips_enabled && <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}><Ban size={8} />no tips</span>}
                   </div>
-                  <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{statusCfg?.label ?? "—"} · {formatHours(hours)}{s.start_time_2 ? " (double)" : ""}</p>
+                  <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                    {statusCfg?.label ?? "—"} · {formatHours(hours)}
+                    {(() => {
+                      const simTip = myTip != null && myTip > 0 ? myTip : null;
+                      const savedTip = (s.tips ?? 0) + (s.tips_2 ?? 0);
+                      const shown = simTip ?? (savedTip > 0 ? savedTip : null);
+                      return shown != null && s.tips_enabled ? <span style={{ color: "#F59E0B", fontWeight: 700 }}> · {formatTips(shown)}</span> : null;
+                    })()}
+                  </p>
                 </div>
-                {s.tips_enabled && myTip != null && myTip > 0 && <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>{formatTips(myTip)}</span>}
-                {s.tips_enabled && !isDispatch && (s.tips > 0 || s.tips_2 > 0) && <span className="text-[13px] font-mono font-bold" style={{ color: "#F59E0B" }}>{formatTips((s.tips ?? 0) + (s.tips_2 ?? 0))}</span>}
               </div>
             );
           })}
@@ -657,6 +688,7 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
               style={{ background: caSaved ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.3)" }}>
               {caSaved ? <><Check size={12} />Enregistré</> : caSaving ? "…" : "Enregistrer le CA"}
             </button>
+            {caError && <p className="text-[11px] mt-1" style={{ color: "var(--danger)" }}>{caError}</p>}
           </div>
         )}
       </div>
@@ -794,12 +826,6 @@ export default function ShiftsTeamPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>{estName || "Mon établissement"}</h1>
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
-              <span className="text-[12px] px-2.5 py-1 rounded-full font-medium"
-                style={{ background: tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.12)" : "rgba(6,182,212,0.1)", color: tipSettings.mode === "dispatch" ? "#F59E0B" : "var(--accent)", border: `1px solid ${tipSettings.mode === "dispatch" ? "rgba(245,158,11,0.3)" : "rgba(6,182,212,0.2)"}` }}>
-                {tipSettings.mode === "dispatch" ? "⚡ Mode dispatch" : "👤 Mode autonome"}
-              </span>
-            </div>
           </div>
           {/* Récap paie button — desktop only */}
           <button onClick={() => setShowPayroll(true)}
@@ -862,9 +888,9 @@ export default function ShiftsTeamPage() {
               const isToday = dateStr === toDateStr(today);
               const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
               return (
-                <button key={dateStr} onClick={() => dayShifts.length > 0 && setSelected(dateStr)}
+                <button key={dateStr} onClick={() => setSelected(dateStr)}
                   className="flex flex-col items-start overflow-hidden transition-colors text-left"
-                  style={{ minHeight: 80, padding: "3px 2px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: dayShifts.length > 0 ? "pointer" : "default" }}>
+                  style={{ minHeight: 80, padding: "3px 2px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: "pointer" }}>
                   <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : "var(--foreground-muted)" }}>
                     {day.getDate()}
@@ -877,11 +903,10 @@ export default function ShiftsTeamPage() {
                       return (
                         <div key={s.id} className="w-full overflow-hidden min-w-0"
                           style={{ borderLeft: `2px solid ${color}`, background: `${color}12`, opacity: s.tips_enabled ? 1 : 0.5, borderRadius: 2, paddingLeft: 2 }}>
-                          <div className="flex items-center gap-0.5 min-w-0">
-                            <p className="hidden lg:block text-[8px] font-semibold leading-tight truncate flex-1 min-w-0" style={{ color }}>{s.first_name}</p>
-                            {timeLabel && <p className="text-[7px] font-mono leading-tight flex-shrink-0" style={{ color }}>{timeLabel}</p>}
-                            {!s.tips_enabled && <Ban size={5} style={{ color, flexShrink: 0 }} />}
-                          </div>
+                          {timeLabel && (
+                            <p className="text-[7px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
+                          )}
+                          {!s.tips_enabled && <Ban size={5} style={{ color, display: "inline" }} />}
                         </div>
                       );
                     })}

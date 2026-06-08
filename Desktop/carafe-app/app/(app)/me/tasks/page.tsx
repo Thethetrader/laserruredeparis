@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   CheckCircle2, Circle, Camera, AlertTriangle, RefreshCw,
   X, Sunrise, Sunset, Zap, Clock, WifiOff, BarChart2, ChevronDown, ChevronUp,
-  BookOpen, ZoomIn, ArrowLeft,
+  BookOpen, ZoomIn,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import type { TaskCategory, TaskTargetRole } from "@/lib/types/database";
@@ -164,12 +164,6 @@ export default function MyTasksPage() {
   const [showWeek, setShowWeek] = useState(false);
   const [protocolModal, setProtocolModal] = useState<Protocol | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [claims, setClaims] = useState<{ id: string; task_template_id: string | null; task_one_shot_id: string | null; profile_id: string; first_name: string | null }[]>([]);
-  const [claiming, setClaiming] = useState<string | null>(null);
-  const [myFirstName, setMyFirstName] = useState("");
-  const [myUserId, setMyUserId] = useState("");
-  const [myEstId, setMyEstId] = useState("");
-  const [modalStep, setModalStep] = useState<"choice" | "validate">("choice");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
@@ -212,20 +206,13 @@ export default function MyTasksPage() {
     const forMe = (t: { assigned_to: string | null; target_role: TaskTargetRole }) =>
       t.assigned_to === userId || (!t.assigned_to && (t.target_role === role || t.target_role === "all"));
 
-    setMyUserId(userId ?? "");
-    setMyEstId(estId);
-    const { data: profileData } = await supabase.from("profiles").select("first_name").eq("id", userId ?? "").single();
-    setMyFirstName((profileData as { first_name: string | null } | null)?.first_name ?? "");
-
-    const [{ data: tmpl }, { data: comp }, { data: yesterday }, { data: shots }, { data: protos }, { data: claimsData }] = await Promise.all([
+    const [{ data: tmpl }, { data: comp }, { data: yesterday }, { data: shots }, { data: protos }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).order("display_order"),
       supabase.from("task_completions").select("*").eq("establishment_id", estId).eq("service_date", today),
       supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("task_one_shots").select("*").eq("establishment_id", estId).eq("due_date", today),
       supabase.from("protocols").select("id, title, content, category").eq("establishment_id", estId),
-      supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name").eq("establishment_id", estId).eq("service_date", today),
     ]);
-    setClaims((claimsData ?? []) as typeof claims);
 
     const week7 = getLast7Days();
     const weekStart = week7[0];
@@ -277,23 +264,6 @@ export default function MyTasksPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function claimTask(taskId: string) {
-    setClaiming(taskId);
-    const supabase = createClient();
-    await supabase.from("task_claims").insert({ establishment_id: myEstId, task_template_id: taskId, profile_id: myUserId, first_name: myFirstName, service_date: today });
-    const { data } = await supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name").eq("establishment_id", myEstId).eq("service_date", today);
-    setClaims((data ?? []) as typeof claims);
-    setClaiming(null);
-  }
-
-  async function unclaimTask(claimId: string) {
-    setClaiming(claimId);
-    const supabase = createClient();
-    await supabase.from("task_claims").delete().eq("id", claimId);
-    setClaims(prev => prev.filter(c => c.id !== claimId));
-    setClaiming(null);
-  }
-
   function openModal(t: TaskTemplate | TaskOneShot, isCatchup = false, oneShotId?: string) {
     setModalState({
       taskId: "id" in t ? t.id : "",
@@ -302,7 +272,6 @@ export default function MyTasksPage() {
       requiresPhoto: t.requires_photo,
       isCatchup,
     });
-    setModalStep("choice");
     setModalNotes("");
     setModalPhoto(null);
   }
@@ -697,121 +666,74 @@ export default function MyTasksPage() {
 
       {/* Modal de validation */}
       {modalState && (
-        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}
-          onClick={e => { if (e.target === e.currentTarget) setModalState(null); }}>
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={e => { if (e.target === e.currentTarget) setModalState(null); }}>
           <div
             className="w-full max-w-md rounded-2xl p-5 animate-in slide-in-from-bottom-4 duration-200"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                {modalStep === "validate" && (
-                  <button onClick={() => setModalStep("choice")} style={{ color: "var(--foreground-dim)" }}>
-                    <ArrowLeft size={16} />
-                  </button>
-                )}
-                <div>
-                  <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
-                    {modalState.isCatchup ? "Rattrapage" : modalStep === "validate" ? "Valider" : modalState.title}
-                  </h2>
-                  {modalStep === "validate" && <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{modalState.title}</p>}
-                </div>
+              <div>
+                <h2 className="text-[15px] font-semibold" style={{ color: "var(--foreground)" }}>
+                  {modalState.isCatchup ? "Rattrapage" : "Valider"}
+                </h2>
+                <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{modalState.title}</p>
               </div>
               <button onClick={() => setModalState(null)} style={{ color: "var(--foreground-dim)" }}>
                 <X size={18} />
               </button>
             </div>
 
-            {modalStep === "choice" ? (
-              /* Écran choix : prendre / valider / se désister */
-              (() => {
-                const claim = claims.find(c => c.task_template_id === modalState.taskId || c.task_one_shot_id === modalState.oneShotId);
-                const claimedByMe = claim?.profile_id === myUserId;
-                const isClaimingThis = claiming === modalState.taskId || claiming === claim?.id;
-                return (
-                  <div className="space-y-2.5">
-                    {claim && (
-                      <div className="px-3 py-2.5 rounded-lg text-center text-[12px]"
-                        style={{ background: claimedByMe ? "rgba(6,182,212,0.08)" : "rgba(245,158,11,0.08)", color: claimedByMe ? "var(--accent)" : "#F59E0B", border: `1px solid ${claimedByMe ? "rgba(6,182,212,0.2)" : "rgba(245,158,11,0.2)"}` }}>
-                        {claimedByMe ? `Tu as pris cette tâche · ${myFirstName || "moi"}` : `Pris par ${claim.first_name ?? "quelqu'un"}`}
-                      </div>
-                    )}
-                    {!claim && (
-                      <button onClick={() => { if (modalState.taskId) claimTask(modalState.taskId); }} disabled={!!isClaimingThis}
-                        className="w-full py-3 rounded-xl text-[13px] font-semibold transition-opacity"
-                        style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.25)", opacity: isClaimingThis ? 0.5 : 1 }}>
-                        {isClaimingThis ? "En cours…" : "Je prends cette tâche"}
-                      </button>
-                    )}
-                    {(!claim || claimedByMe) && (
-                      <button onClick={() => setModalStep("validate")}
-                        className="w-full py-3 rounded-xl text-[13px] font-semibold"
-                        style={{ background: "var(--success)", color: "#09090B" }}>
-                        Valider la tâche ✓
-                      </button>
-                    )}
-                    {claimedByMe && claim && (
-                      <button onClick={() => unclaimTask(claim.id)} disabled={!!isClaimingThis}
-                        className="w-full py-2.5 rounded-xl text-[13px] font-medium transition-opacity"
-                        style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>
-                        Se désister
-                      </button>
-                    )}
-                    <button onClick={() => setModalState(null)} className="w-full py-2.5 rounded-xl text-[13px]"
-                      style={{ color: "var(--foreground-dim)" }}>
-                      Fermer
-                    </button>
-                  </div>
-                );
-              })()
-            ) : (
-              /* Écran validation : photo + notes */
-              <>
-                <div className="mb-3">
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-[13px] font-medium transition-colors"
-                    style={{
-                      background: modalPhoto ? "rgba(16,185,129,0.08)" : "var(--background)",
-                      border: modalPhoto ? "1px solid rgba(16,185,129,0.3)" : "2px dashed var(--border-strong)",
-                      color: modalPhoto ? "var(--success)" : "var(--foreground-dim)",
-                    }}
-                  >
-                    {modalPhoto ? (
-                      <><CheckCircle2 size={14} />{modalPhoto.name}</>
-                    ) : (
-                      <><Camera size={14} />{modalState.requiresPhoto ? "Ajouter une photo" : "Ajouter une photo (optionnel)"}</>
-                    )}
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => setModalPhoto(e.target.files?.[0] ?? null)} />
-                  {!isOnline && (
-                    <p className="text-[11px] mt-1.5 flex items-center gap-1" style={{ color: "#F59E0B" }}>
-                      <WifiOff size={10} />
-                      Photo synchronisée dès la reconnexion
-                    </p>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  placeholder="Notes (optionnel)"
-                  value={modalNotes}
-                  onChange={e => setModalNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-base text-[13px] outline-none mb-4"
-                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => setModalStep("choice")} className="flex-1 py-2.5 rounded-base text-[13px] font-medium"
-                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-                    Retour
-                  </button>
-                  <button onClick={submitValidation} disabled={submitting || (modalState.requiresPhoto && !modalPhoto && isOnline)}
-                    className="flex-1 py-2.5 rounded-base text-[13px] font-semibold transition-colors"
-                    style={{ background: "var(--success)", color: "#09090B", opacity: submitting ? 0.7 : 1 }}>
-                    {submitting ? "Validation…" : "Confirmer ✓"}
-                  </button>
-                </div>
-              </>
-            )}
+            <div className="mb-3">
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-[13px] font-medium transition-colors"
+                style={{
+                  background: modalPhoto ? "rgba(16,185,129,0.08)" : "var(--background)",
+                  border: modalPhoto ? "1px solid rgba(16,185,129,0.3)" : "2px dashed var(--border-strong)",
+                  color: modalPhoto ? "var(--success)" : "var(--foreground-dim)",
+                }}
+              >
+                {modalPhoto ? (
+                  <><CheckCircle2 size={14} />{modalPhoto.name}</>
+                ) : (
+                  <><Camera size={14} />{modalState.requiresPhoto ? "Ajouter une photo" : "Ajouter une photo (optionnel)"}</>
+                )}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => setModalPhoto(e.target.files?.[0] ?? null)} />
+              {!isOnline && (
+                <p className="text-[11px] mt-1.5 flex items-center gap-1" style={{ color: "#F59E0B" }}>
+                  <WifiOff size={10} />
+                  Photo synchronisée dès la reconnexion
+                </p>
+              )}
+            </div>
+
+            <input
+              type="text"
+              placeholder="Notes (optionnel)"
+              value={modalNotes}
+              onChange={e => setModalNotes(e.target.value)}
+              className="w-full px-3 py-2 rounded-base text-[13px] outline-none mb-4"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setModalState(null)}
+                className="flex-1 py-2.5 rounded-base text-[13px] font-medium"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={submitValidation}
+                disabled={submitting || (modalState.requiresPhoto && !modalPhoto && isOnline)}
+                className="flex-1 py-2.5 rounded-base text-[13px] font-semibold transition-colors"
+                style={{ background: "var(--success)", color: "#09090B", opacity: submitting ? 0.7 : 1 }}
+              >
+                {submitting ? "Validation…" : "Tâche validée"}
+              </button>
+            </div>
           </div>
         </div>
       )}

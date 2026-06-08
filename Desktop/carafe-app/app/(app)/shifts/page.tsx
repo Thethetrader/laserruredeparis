@@ -95,7 +95,7 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings, tipsE
         {!hasCoupure ? (
           <button onClick={() => setHasCoupure(true)} className="w-full py-2 rounded-xl text-[12px] font-medium mb-3 flex items-center justify-center gap-2" style={{ background: "transparent", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
             <Plus size={13} />
-            Ajouter service du soir (coupure)
+            Ajouter service du soir
           </button>
         ) : (
           <div className="rounded-xl p-3 mb-3" style={{ background: "var(--background)", border: "1px solid rgba(6,182,212,0.2)" }}>
@@ -384,7 +384,7 @@ const days     = getDaysInMonth(year, month);
                               </div>
                             )}
                             {totalTips > 0 && (
-                              <p className="text-[7px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>€</p>
+                              <p className="text-[7px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>
                             )}
                           </>
                         );
