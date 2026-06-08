@@ -21,6 +21,7 @@ interface Protocol {
   content?: string;
   category?: string;
   is_mandatory: boolean;
+  show_on_dashboard?: boolean;
   is_read: boolean;
   read_count: number;
   total_members: number;
@@ -303,7 +304,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory").eq("establishment_id", estId).eq("show_on_dashboard", true),
+      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -315,7 +316,7 @@ export default function DashboardPage() {
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -359,6 +360,7 @@ export default function DashboardPage() {
 
     const protocols: Protocol[] = rawProtocols.map(p => ({
       id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
+      show_on_dashboard: p.show_on_dashboard ?? false,
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
@@ -870,6 +872,39 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               )}
             </div>
           </div>
+
+          {/* Protocoles épinglés sur le dashboard */}
+          {protocols.filter(p => p.show_on_dashboard).length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <BookOpen size={14} style={{ color: "var(--accent)" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles à suivre</p>
+                </div>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Gérer</a>
+              </div>
+              <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
+                {protocols.filter(p => p.show_on_dashboard).map(p => {
+                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                  return (
+                    <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
+                          {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
+                        </div>
+                        <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: pct === 100 ? "var(--success)" : "var(--warning)" }}>{pct}%</span>
+                      </div>
+                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--accent)" }} />
+                      </div>
+                      <p className="text-[11px] mt-1" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} lecture{p.total_members > 1 ? "s" : ""}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 2. Retours clients */}
           {data.feedback_summary.total > 0 && (
