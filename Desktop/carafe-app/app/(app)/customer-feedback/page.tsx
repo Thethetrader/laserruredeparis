@@ -247,12 +247,12 @@ export default function CustomerFeedbackPage() {
 
     const allIds = views.map(f => f.id);
     if (allIds.length > 0) {
-      const { data: reads } = await supabase
-        .from("feedback_reads")
-        .select("feedback_id")
-        .eq("profile_id", user.id)
-        .in("feedback_id", allIds);
-      setReadIds(new Set((reads ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
+      const [readsRes, dismissalsRes] = await Promise.all([
+        supabase.from("feedback_reads").select("feedback_id").eq("profile_id", user.id).in("feedback_id", allIds),
+        supabase.from("feedback_dismissals").select("feedback_id").eq("profile_id", user.id).in("feedback_id", allIds),
+      ]);
+      setReadIds(new Set((readsRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
+      setDismissedIds(new Set((dismissalsRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
     }
 
     setFeedbacks(views);
@@ -320,8 +320,14 @@ export default function CustomerFeedbackPage() {
   };
 
   const unreadCount = feedbacks.filter(f => !readIds.has(f.id)).length;
-  const dismissFeedback = (id: string) => {
+  const dismissFeedback = async (id: string) => {
     setDismissedIds(prev => new Set([...prev, id]));
+    if (!DEV_MODE && profileId) {
+      await supabase.from("feedback_dismissals").upsert(
+        { profile_id: profileId, feedback_id: id },
+        { onConflict: "profile_id,feedback_id" }
+      );
+    }
   };
 
   const toggleEcho = async (id: string) => {
