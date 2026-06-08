@@ -141,16 +141,19 @@ N'inclus dans "matches" que les retours de confidence "high" ou "medium". Maximu
         max_tokens: 512,
         messages: [{ role: "user", content: prompt }],
       }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000)),
     ]);
 
     const text = (response as Anthropic.Message).content[0].type === "text"
-      ? (response as Anthropic.Message).content[0].text
+      ? (response as Anthropic.Message).content[0].text.trim()
       : "";
 
     let aiResult: { similar_found: boolean; matches: Array<{ feedback_id: string; confidence: string; reason: string }> };
     try {
-      aiResult = JSON.parse(text);
+      const start = text.indexOf("{");
+      const end = text.lastIndexOf("}");
+      if (start === -1 || end === -1) throw new Error("no JSON");
+      aiResult = JSON.parse(text.slice(start, end + 1));
     } catch {
       return NextResponse.json({ similar_found: false, matches: [] });
     }
