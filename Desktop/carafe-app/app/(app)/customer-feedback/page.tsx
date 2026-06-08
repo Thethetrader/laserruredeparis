@@ -603,38 +603,28 @@ export default function CustomerFeedbackPage() {
         </div>
       )}
 
-      {/* Dismissed feedbacks (manager only) */}
-      {isManager && dismissedIds.size > 0 && (
-        <div className="mt-6">
+      {/* Dismissed feedbacks — collapsible section for all users */}
+      {dismissedIds.size > 0 && (
+        <div className="mt-8">
           <button
             onClick={() => setShowDismissed(v => !v)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-[12px] rounded-xl transition-all"
-            style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
-            {showDismissed ? "Masquer les retours écartés" : `${dismissedIds.size} retour${dismissedIds.size > 1 ? "s" : ""} écarté${dismissedIds.size > 1 ? "s" : ""} — Afficher`}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <span className="text-[12px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
+              Pas eu ce retour · {dismissedIds.size}
+            </span>
+            <ChevronDown size={14} style={{ color: "var(--foreground-dim)", transform: showDismissed ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
           </button>
           {showDismissed && (
-            <div className="space-y-3 mt-3 opacity-50">
+            <div className="space-y-3 mt-3" style={{ opacity: 0.55 }}>
               {feedbacks.filter(f => dismissedIds.has(f.id)).map(f => (
-                <div key={f.id} className="relative">
-                  <FeedbackCard feedback={f}
-                    isRead={readIds.has(f.id)}
-                    isManager={isManager}
-                    onEcho={() => toggleEcho(f.id)}
-                    onDelete={() => setDeleteTarget(f.id)}
-                    onMarkRead={() => markAsRead(f.id)}
-                    onDismiss={() => dismissFeedback(f.id)} />
-                  <button
-                    onClick={async () => {
-                      setDismissedIds(prev => { const next = new Set(prev); next.delete(f.id); return next; });
-                      if (!DEV_MODE && profileId) {
-                        await supabase.from("feedback_dismissals").delete().eq("profile_id", profileId).eq("feedback_id", f.id);
-                      }
-                    }}
-                    className="absolute top-2 right-2 z-10 px-2 py-1 text-[10px] font-medium rounded-md"
-                    style={{ background: "var(--background-elev)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }}>
-                    Restaurer
-                  </button>
-                </div>
+                <FeedbackCard key={f.id} feedback={f}
+                  isRead={readIds.has(f.id)}
+                  isManager={isManager}
+                  onEcho={() => toggleEcho(f.id)}
+                  onDelete={() => setDeleteTarget(f.id)}
+                  onMarkRead={() => markAsRead(f.id)}
+                  onDismiss={() => dismissFeedback(f.id)} />
               ))}
             </div>
           )}
