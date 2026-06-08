@@ -960,55 +960,6 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
             />
           </div>
 
-          {/* Catégorie */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {CATS.map(c => (
-                <button key={c.value} onClick={() => setCategory(c.value)}
-                  className="flex flex-col items-center gap-1 py-2.5 rounded-xl text-center transition-all"
-                  style={category === c.value
-                    ? { background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.35)" }
-                    : { background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                  <span className="text-base">{c.icon}</span>
-                  <span className="text-[10px] font-medium" style={{ color: category === c.value ? "var(--accent)" : "var(--foreground-dim)" }}>{c.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Fréquence + Rôle */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Fréquence</label>
-              <div className="flex flex-col gap-1.5">
-                {[{ value: "daily", label: "Quotidien" }, { value: "weekly", label: "Hebdomadaire" }].map(f => (
-                  <button key={f.value} onClick={() => setFrequency(f.value as "daily" | "weekly")}
-                    className="py-2 rounded-lg text-[12px] font-medium transition-all"
-                    style={frequency === f.value
-                      ? { background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
-                      : { background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Rôle</label>
-              <div className="flex flex-col gap-1.5 max-h-[120px] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-                {roleOptions.map(r => (
-                  <button key={r.value} onClick={() => setTargetRole(r.value as TaskTargetRole)}
-                    className="py-2 rounded-lg text-[12px] font-medium transition-all truncate"
-                    style={targetRole === r.value
-                      ? { background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.35)" }
-                      : { background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Étapes */}
           <div>
             <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
