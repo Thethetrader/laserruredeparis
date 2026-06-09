@@ -1735,12 +1735,12 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 </div>
                 <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
               </div>
-              {data.protocols.slice(0, 3).map((p, i) => {
+              {data.protocols.filter(p => !readProtocols.has(p.id)).slice(0, 3).map((p, i, arr) => {
                 const isRead = readProtocols.has(p.id);
                 return (
                   <button key={p.id} onClick={() => openProtocol(p)}
                     className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-75"
-                    style={{ background: "var(--background-elev)", borderBottom: i < Math.min(data.protocols.length, 3) - 1 ? "1px solid var(--border)" : "none" }}>
+                    style={{ background: "var(--background-elev)", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${isRead ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
                       {isRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
                     </div>
