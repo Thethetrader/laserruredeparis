@@ -13,22 +13,12 @@ const navLinks = [
 function KarafLogo() {
   return (
     <a href="#" className="flex items-center focus:outline-none" style={{ flexShrink: 0 }}>
-      {/* Container clips the large PNG to show only the centered icon */}
-      <div style={{ width: 56, height: 56, overflow: "hidden", position: "relative", flexShrink: 0 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/FONDCLAIRLOGO.png"
-          alt="Karaf"
-          style={{
-            position: "absolute",
-            height: 140,
-            width: "auto",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/FONDCLAIRLOGO.png"
+        alt="Karaf"
+        style={{ height: 52, width: "auto", mixBlendMode: "multiply" }}
+      />
     </a>
   );
 }
