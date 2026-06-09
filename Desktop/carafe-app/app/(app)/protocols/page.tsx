@@ -1126,6 +1126,8 @@ function ProtocolForm({
   fileInputRef, handleFileChange,
   isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
+  const [extractImage, setExtractImage] = useState(false);
+
   const updateStep = (index: number, field: keyof StepItem, value: string) => {
     const next = [...formSteps];
     next[index] = { ...next[index], [field]: value };
@@ -1161,7 +1163,19 @@ function ProtocolForm({
             onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
         </div>
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Pièce jointe <span style={{ fontWeight: 400, textTransform: "none" }}>PDF ou image (optionnel)</span></label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Pièce jointe <span style={{ fontWeight: 400, textTransform: "none" }}>PDF ou image (optionnel)</span></label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={extractImage}
+                onChange={e => setExtractImage(e.target.checked)}
+                className="rounded"
+                style={{ accentColor: "#A78BFA", width: 13, height: 13 }}
+              />
+              <span className="text-[11px]" style={{ color: "#A78BFA" }}>Extraire les étapes avec l'IA</span>
+            </label>
+          </div>
           <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
             onChange={handleFileChange} className="hidden" />
           {formFile ? (
@@ -1189,8 +1203,23 @@ function ProtocolForm({
                 </button>
               )}
               {formFile.type !== "application/pdf" && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={URL.createObjectURL(formFile)} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />
+                <div className="space-y-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={URL.createObjectURL(formFile)} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />
+                  {extractImage && formSteps.length === 0 && (
+                    <button onClick={onExtractSteps} disabled={extracting}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
+                      style={{
+                        background: extracting ? "rgba(139,92,246,0.06)" : "rgba(139,92,246,0.1)",
+                        border: "1px solid rgba(139,92,246,0.25)",
+                        color: "#A78BFA",
+                        opacity: extracting ? 0.7 : 1,
+                      }}>
+                      <Wand2 size={14} className={extracting ? "animate-spin" : ""} />
+                      {extracting ? "Analyse IA en cours…" : "Analyser avec l'IA"}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
