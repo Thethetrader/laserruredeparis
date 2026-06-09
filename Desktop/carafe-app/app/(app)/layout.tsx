@@ -124,9 +124,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const cookieStore = cookies();
   const activeId = cookieStore.get("active_establishment_id")?.value;
+  const activeCookieEst = activeId ? establishments.find(e => e.id === activeId) : null;
+  const employeeEst = establishments.find(e => e.role === "employee");
   const establishment =
-    (activeId && establishments.find(e => e.id === activeId)) ||
-    establishments.find(e => e.role === "employee") ||
+    // Si le cookie pointe sur un établissement employee → l'utiliser
+    (activeCookieEst?.role === "employee" ? activeCookieEst : null) ??
+    // Sinon préférer employee (évite qu'un serveur voie une vue manager par défaut)
+    employeeEst ??
+    // Sinon utiliser ce que le cookie dit (manager/owner explicite)
+    activeCookieEst ??
     establishments[0];
 
   return (

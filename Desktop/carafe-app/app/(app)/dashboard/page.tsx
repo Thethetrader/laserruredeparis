@@ -290,10 +290,20 @@ export default function DashboardPage() {
     const activeEstId = typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null;
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
-    let memberQ = supabase.from("establishment_members").select("role, job_title, establishment_id, establishments(tip_settings)")
+
+    // Charger tous les membres pour pouvoir préférer employee si nécessaire
+    const { data: allMembers } = await supabase.from("establishment_members")
+      .select("role, job_title, establishment_id, establishments(tip_settings)")
       .eq("profile_id", user.id).eq("is_active", true);
-    if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
-    const { data: memberData } = await memberQ.limit(1).maybeSingle();
+
+    const activeMember = validActiveId ? allMembers?.find(m => m.establishment_id === validActiveId) : null;
+    const employeeMember = allMembers?.find(m => (m.role as string) === "employee");
+    // Préférer: cookie→employee > premier employee > cookie→manager > premier membre
+    const memberData = (activeMember?.role === "employee" ? activeMember : null)
+      ?? employeeMember
+      ?? activeMember
+      ?? allMembers?.[0]
+      ?? null;
 
     if (!memberData) { setLoading(false); return; }
 

@@ -81,10 +81,13 @@ function SwitchEstablishmentInner() {
 
     const cookieMatch = document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/);
     const stored = cookieMatch ? cookieMatch[1] : null;
-    const validId = (stored && mapped.find(e => e.id === stored)) ? stored : mapped[0]?.id;
-    if (validId) {
-      setActiveId(validId);
-      document.cookie = `active_establishment_id=${validId}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+    const storedValid = stored && mapped.find(e => e.id === stored);
+    const defaultId = storedValid
+      ? stored
+      : (mapped.find(e => e.role === "employee")?.id ?? mapped[0]?.id);
+    if (defaultId) {
+      setActiveId(defaultId);
+      document.cookie = `active_establishment_id=${defaultId}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     }
 
     setLoading(false);
