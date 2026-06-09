@@ -768,7 +768,7 @@ export default function ProtocolsPage() {
           formSteps={formSteps} setFormSteps={setFormSteps}
           extracting={extracting} onExtractSteps={extractSteps}
           fileInputRef={fileInputRef} handleFileChange={handleFileChange}
-          submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
+          isEditing={!!editingProtocol} submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
           error={formError}
         />
       )}
@@ -910,7 +910,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
     <div className="rounded-xl overflow-hidden"
       style={{ background: "var(--background-elev)", border: `1px solid ${needsValidation && protocol.is_mandatory ? "rgba(239,68,68,0.3)" : "var(--border)"}` }}>
 
-      <button onClick={onToggle} className="w-full text-left px-5 py-4 flex items-start gap-3">
+      <div onClick={onToggle} className="w-full text-left px-5 py-4 flex items-start gap-3 cursor-pointer">
         {!isManager && (
           <div className="flex-shrink-0 rounded-full mt-1.5" style={{
             width: 7, height: 7,
@@ -984,7 +984,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </span>
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <div style={{ borderTop: "1px solid var(--border)" }}>
