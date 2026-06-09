@@ -889,29 +889,23 @@ export default function ShiftsTeamPage() {
               const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
-                  className="flex flex-col items-start overflow-hidden transition-colors text-left"
-                  style={{ minHeight: 80, padding: "3px 2px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.02)" : "transparent", cursor: "pointer" }}>
-                  <span className="text-[11px] font-medium w-5 h-5 flex items-center justify-center rounded-full mb-0.5 flex-shrink-0"
+                  className="flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
+                  style={{ minHeight: 80, padding: "6px 4px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "transparent", cursor: "pointer" }}>
+                  <span className="text-[11px] lg:text-[13px] font-semibold w-5 h-5 lg:w-6 lg:h-6 flex items-center justify-center rounded-full mb-1 flex-shrink-0"
                     style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
-                  <div className="w-full space-y-0.5">
+                  <div className="w-full space-y-0.5 px-0.5">
                     {dayShifts.slice(0, 3).map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
                       const fmt = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
                       const timeLabel = s.start_time && s.end_time ? `${fmt(s.start_time)}–${fmt(s.end_time)}` : null;
-                      return (
-                        <div key={s.id} className="w-full overflow-hidden min-w-0"
-                          style={{ borderLeft: `2px solid ${color}`, background: `${color}12`, opacity: s.tips_enabled ? 1 : 0.5, borderRadius: 2, paddingLeft: 2 }}>
-                          {timeLabel && (
-                            <p className="text-[7px] lg:text-[10px] font-mono leading-tight" style={{ color }}>{timeLabel}</p>
-                          )}
-                          {!s.tips_enabled && <Ban size={5} style={{ color, display: "inline" }} />}
-                        </div>
-                      );
+                      return timeLabel ? (
+                        <p key={s.id} className="text-[8px] lg:text-[11px] font-mono font-medium leading-tight" style={{ color, opacity: s.tips_enabled ? 1 : 0.5 }}>{timeLabel}</p>
+                      ) : null;
                     })}
-                    {dayShifts.length > 3 && <p className="text-[7px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
-                    {dayTips > 0 && <p className="text-[8px] lg:text-[11px] font-mono font-bold mt-0.5 leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
+                    {dayShifts.length > 3 && <p className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
+                    {dayTips > 0 && <p className="text-[8px] lg:text-[11px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
                   </div>
                 </button>
               );
