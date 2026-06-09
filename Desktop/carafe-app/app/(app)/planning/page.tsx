@@ -304,16 +304,18 @@ export default function PlanningPage() {
 
       const { data: ps } = await supabase
         .from("planning_shifts")
-        .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name, staff_status)")
+        .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status, profiles(first_name)")
         .eq("planning_week_id", pw.id)
         .order("shift_date")
         .order("start_time");
+
+      const empMap = Object.fromEntries((memberRows ?? []).map((m: any) => [m.profile_id, m.staff_status ?? null]));
 
       setPlanningShifts(
         (ps ?? []).map((s: any) => ({
           ...s,
           first_name: s.profiles?.first_name ?? null,
-          staff_status: s.profiles?.staff_status ?? null,
+          staff_status: empMap[s.user_id] ?? null,
         }))
       );
     } else {
