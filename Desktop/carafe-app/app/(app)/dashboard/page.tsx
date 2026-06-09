@@ -520,7 +520,7 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
               </div>
               <span className="text-sm" style={{ color: "var(--foreground-muted)" }}>Lecture obligatoire</span>
             </label>
-            <button onClick={submit} disabled={submitting || !title.trim()} className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !title.trim()) ? 0.5 : 1 }}>
+            <button onClick={submit} disabled={submitting || !title.trim()} className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (submitting || !title.trim()) ? 0.5 : 1 }}>
               {submitting ? "Création…" : "Créer le protocole"}
             </button>
           </div>
@@ -682,7 +682,7 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
               onClick={submitValidation}
               disabled={submitting || (validating.requiresPhoto && !photo)}
               className="w-full py-3 rounded-xl text-[13px] font-semibold transition-opacity"
-              style={{ background: "var(--success)", color: "#09090B", opacity: submitting || (validating.requiresPhoto && !photo) ? 0.5 : 1 }}
+              style={{ background: "var(--success)", color: "var(--primary-foreground)", opacity: submitting || (validating.requiresPhoto && !photo) ? 0.5 : 1 }}
             >
               {submitting ? "Validation…" : "Tâche validée ✓"}
             </button>
@@ -760,7 +760,7 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
             </div>
 
             <div className="px-5 py-3" style={{ borderTop: "1px solid var(--border)" }}>
-              <a href="/me/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
+              <a href="/me/tasks" className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
                 Voir toutes les tâches →
               </a>
             </div>
@@ -809,6 +809,50 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
+
+      {/* Protocoles à signer — en haut si non vides */}
+      {(() => {
+        const unsigned = protocols.filter(p => p.read_count < p.total_members || p.total_members === 0);
+        if (unsigned.length === 0) return null;
+        return (
+          <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.05)" }}>
+            <div className="px-5 py-3.5 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(239,68,68,0.2)" }}>
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} style={{ color: "var(--danger)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>Protocoles à signer</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setShowAddProtocol(true)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md transition-opacity hover:opacity-75" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
+                  <Plus size={12} /> Ajouter
+                </button>
+                <a href="/protocols" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Gérer</a>
+              </div>
+            </div>
+            <div>
+              {unsigned.map((p, i) => {
+                const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
+                return (
+                  <div key={p.id} className="px-5 py-3.5 flex items-center gap-4"
+                    style={{ borderBottom: i < unsigned.length - 1 ? "1px solid rgba(239,68,68,0.15)" : "none" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
+                        {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(239,68,68,0.15)" }}>
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--danger)" }} />
+                        </div>
+                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
@@ -901,21 +945,22 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 </div>
                 <a href="/protocols" className="text-[11px]" style={{ color: "var(--accent)" }}>Gérer</a>
               </div>
-              <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
-                {protocols.filter(p => p.show_on_dashboard).map(p => {
+              <div style={{ background: "var(--background-elev)" }}>
+                {protocols.filter(p => p.show_on_dashboard).map((p, i, arr) => {
                   const totalSteps = p.steps?.length ?? 0;
                   const doneSteps = totalSteps > 0 ? [...stepsDone].filter(k => k.startsWith(`${p.id}_`)).length : 0;
                   const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
                   return (
-                    <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left">
-                      <div className="flex items-center justify-between mb-1">
+                    <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left px-5 py-3.5"
+                      style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-soft)" : "none" }}>
+                      <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>{p.title}</span>
                           {p.is_mandatory && <span className="text-[9px] font-mono px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>Obligatoire</span>}
                         </div>
                         <span className="text-[11px] font-mono flex-shrink-0 ml-2" style={{ color: pct === 100 ? "var(--success)" : "var(--foreground-dim)" }}>{doneSteps}/{totalSteps}</span>
                       </div>
-                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
+                      <div className="rounded-full overflow-hidden" style={{ height: 4, background: "var(--border)" }}>
                         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: pct === 100 ? "var(--success)" : "var(--accent)" }} />
                       </div>
                     </button>
@@ -953,58 +998,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             </div>
           </div>
 
-          {/* 3. Protocoles */}
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              <div className="flex items-center gap-2">
-                <BookOpen size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Protocoles</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setShowAddProtocol(true)} className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md transition-opacity hover:opacity-75" style={{ background: "var(--accent)", color: "#09090B" }}>
-                  <Plus size={12} /> Ajouter
-                </button>
-                <a href="/protocols" className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Gérer</a>
-              </div>
-            </div>
-            {protocols.length === 0 ? (
-              <div className="px-5 py-10 text-center" style={{ background: "var(--background-elev)" }}>
-                <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun protocole pour le moment</p>
-                <button onClick={() => setShowAddProtocol(true)} className="mt-2 text-[12px]" style={{ color: "var(--accent)" }}>Créer le premier protocole</button>
-              </div>
-            ) : (
-              <div style={{ background: "var(--background-elev)" }}>
-                {protocols.map((p, i) => {
-                  const allRead = p.read_count >= p.total_members && p.total_members > 0;
-                  const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
-                  return (
-                    <div key={p.id} className="px-5 py-3.5 flex items-center gap-4" style={{ borderBottom: i < protocols.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: allRead ? "rgba(16,185,129,0.1)" : "rgba(6,182,212,0.08)", border: `1px solid ${allRead ? "rgba(16,185,129,0.25)" : "var(--border)"}` }}>
-                        {allRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--accent)" }} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                          {p.is_mandatory && <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Obligatoire</span>}
-                          {(() => {
-                            const updatedAt = (p as unknown as { updated_at?: string }).updated_at;
-                            const isNew = updatedAt && (Date.now() - new Date(updatedAt).getTime()) < 7*86400000;
-                            return isNew && <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)", color: "#F59E0B" }}>Mis à jour</span>;
-                          })()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: allRead ? "var(--success)" : "var(--accent)" }} />
-                          </div>
-                          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
         </div>
 
@@ -1184,7 +1177,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {!protocolPopup.content && (!protocolPopup.steps || protocolPopup.steps.length === 0) && <p className="text-sm text-center py-6" style={{ color: "var(--foreground-dim)" }}>Aucun contenu</p>}
             </div>
             <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
-              <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl" style={{ background: "var(--accent)", color: "#09090B" }}>Gérer les protocoles →</a>
+              <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>Gérer les protocoles →</a>
             </div>
           </div>
         </div>
@@ -1353,7 +1346,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               <a
                 href={kpiPopup === "delays" ? "/delays" : kpiPopup === "feedback" ? "/customer-feedback" : kpiPopup === "challenges" ? "/challenges" : "/protocols"}
                 className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg"
-                style={{ background: "var(--accent)", color: "#09090B" }}
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
                 onClick={() => setKpiPopup(null)}>
                 Voir tout →
               </a>
@@ -1831,7 +1824,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                   <option value="other">Autre</option>
                 </select>
               </div>
-              <button onClick={submitDelay} disabled={submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--warning)", color: "#09090B", opacity: (submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0) ? 0.5 : 1 }}>
+              <button onClick={submitDelay} disabled={submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--warning)", color: "var(--primary-foreground)", opacity: (submitting || !delayMinutes || parseInt(delayMinutes, 10) <= 0) ? 0.5 : 1 }}>
                 {submitting ? "Envoi…" : "Déclarer le retard"}
               </button>
             </div>
@@ -1940,7 +1933,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <div className="flex items-center justify-center gap-2 py-2"><Check size={14} style={{ color: "var(--success)" }} /><p className="text-sm font-medium" style={{ color: "var(--success)" }}>Lecture confirmée</p></div>
               ) : (
                 <button onClick={async () => { setReadProtocols(prev => new Set([...prev, protocolPopup.id])); setProtocolPopup(null); if (!DEV_MODE) { const sb = createClient(); const { data: { user } } = await sb.auth.getUser(); if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: protocolPopup.id, profile_id: user.id }); } }}
-                  className="w-full py-2.5 text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "#09090B" }}>
+                  className="w-full py-2.5 text-sm font-semibold rounded-lg" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
                   Confirmer la lecture ✓
                 </button>
               )}
