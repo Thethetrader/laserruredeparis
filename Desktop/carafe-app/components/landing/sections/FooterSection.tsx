@@ -23,7 +23,21 @@ export default function FooterSection() {
           <div>
             <div className="mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 40, width: "auto" }} />
+              <div style={{ width: 44, height: 44, overflow: "hidden", position: "relative" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/FONDCLAIRLOGO.png"
+                  alt="Karaf"
+                  style={{
+                    position: "absolute",
+                    height: 110,
+                    width: "auto",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                  }}
+                />
+              </div>
             </div>
             <p className="font-mono text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Tout coule. Rien ne se perd.</p>
             <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)", maxWidth: "20ch" }}>
