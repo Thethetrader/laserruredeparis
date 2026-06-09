@@ -880,9 +880,9 @@ export default function ShiftsTeamPage() {
         {loading ? (
           <div className="p-8 text-center text-[13px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</div>
         ) : (
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 gap-1 p-1" style={{ background: "var(--background-elev)" }}>
             {cells.map((day, i) => {
-              if (!day) return <div key={`e-${i}`} style={{ minHeight: 88, borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }} />;
+              if (!day) return <div key={`e-${i}`} style={{ minHeight: 80, borderRadius: 8 }} />;
               const dateStr = toDateStr(day);
               const dayShifts = shiftsByDate.get(dateStr) ?? [];
               const isToday = dateStr === toDateStr(today);
@@ -890,7 +890,7 @@ export default function ShiftsTeamPage() {
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
                   className="flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
-                  style={{ minHeight: 80, padding: "6px 4px", borderRight: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border)", borderBottom: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border)", borderTop: isToday ? "2px solid var(--foreground-muted)" : undefined, borderLeft: isToday ? "2px solid var(--foreground-muted)" : undefined, background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "transparent", cursor: "pointer" }}>
+                  style={{ minHeight: 80, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
                   <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
