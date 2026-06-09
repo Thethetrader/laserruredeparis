@@ -323,8 +323,10 @@ export default function ProtocolsPage() {
     const allowed = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) return;
     setFormFile(file);
-    // Auto-analyse dès qu'un fichier est sélectionné
-    setTimeout(() => extractStepsFromFile(file), 0);
+    // Auto-analyse uniquement pour les PDFs
+    if (file.type === "application/pdf") {
+      setTimeout(() => extractStepsFromFile(file), 0);
+    }
   };
 
   const extractStepsFromFile = async (file: File) => {
@@ -1034,7 +1036,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
               {allPhotos.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-2 mb-3 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
                   {allPhotos.map((url, idx) => (
-                    <button key={idx} onClick={() => window.open(url, "_blank")}
+                    <button key={idx} onClick={() => setLightboxUrl(url)}
                       className="flex-shrink-0 rounded-lg overflow-hidden"
                       style={{ width: 80, height: 60 }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1055,7 +1057,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
                     </span>
                     <div className="flex-1 min-w-0">
                       {step.photo_url && (
-                        <button onClick={() => window.open(step.photo_url, "_blank")} className="mb-1.5 rounded-lg overflow-hidden block" style={{ width: 120, height: 80 }}>
+                        <button onClick={() => setLightboxUrl(step.photo_url!)} className="mb-1.5 rounded-lg overflow-hidden block" style={{ width: 120, height: 80 }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={step.photo_url} alt="" className="w-full h-full object-cover" />
                         </button>
