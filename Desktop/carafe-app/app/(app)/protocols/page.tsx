@@ -368,17 +368,22 @@ export default function ProtocolsPage() {
     let attachmentName: string | null = null;
 
     if (formFile) {
-      attachmentType = getAttachmentType(formFile);
-      attachmentName = formFile.name;
-
       if (DEV_MODE) {
+        attachmentType = getAttachmentType(formFile);
+        attachmentName = formFile.name;
         attachmentUrl = URL.createObjectURL(formFile);
       } else {
         const path = `${establishmentId}/${Date.now()}_${formFile.name}`;
-        const { data: uploadData } = await supabase.storage.from("protocols").upload(path, formFile);
+        const { data: uploadData, error: uploadError } = await supabase.storage.from("protocol-attachments").upload(path, formFile);
         if (uploadData) {
-          const { data: { publicUrl } } = supabase.storage.from("protocols").getPublicUrl(path);
+          const { data: { publicUrl } } = supabase.storage.from("protocol-attachments").getPublicUrl(path);
           attachmentUrl = publicUrl;
+          attachmentType = getAttachmentType(formFile);
+          attachmentName = formFile.name;
+        } else if (uploadError) {
+          setFormError(`Erreur upload: ${uploadError.message}`);
+          setSubmitting(false);
+          return;
         }
       }
     }
