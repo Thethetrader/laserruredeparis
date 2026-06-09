@@ -25,6 +25,9 @@ interface Protocol {
   is_mandatory: boolean;
   show_on_dashboard?: boolean;
   steps?: Array<{ text: string; frequency?: string; photo_url?: string }> | null;
+  attachment_url?: string | null;
+  attachment_type?: string | null;
+  created_at?: string | null;
   is_read: boolean;
   read_count: number;
   total_members: number;
@@ -317,7 +320,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -329,7 +332,7 @@ export default function DashboardPage() {
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown; attachment_url?: string | null; attachment_type?: string | null; created_at?: string | null }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -381,6 +384,9 @@ export default function DashboardPage() {
       id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
       show_on_dashboard: p.show_on_dashboard ?? false,
       steps: Array.isArray(p.steps) ? (p.steps as Array<{ text: string; frequency?: string; photo_url?: string } | string>).map(s => typeof s === "string" ? { text: s } : s) : null,
+      attachment_url: p.attachment_url ?? null,
+      attachment_type: p.attachment_type ?? null,
+      created_at: p.created_at ?? null,
       is_read: myReadIds.has(p.id),
       read_count: readCountByProtocol[p.id] ?? 0,
       total_members: totalNonOwners,
@@ -1765,17 +1771,17 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 return (
                   <button key={p.id} onClick={() => openProtocol(p)}
                     className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-opacity hover:opacity-75"
-                    style={{ background: "var(--background-elev)", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${isRead ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                    style={{ background: isRead ? "var(--background-elev)" : "rgba(239,68,68,0.04)", borderBottom: i < arr.length - 1 ? `1px solid ${isRead ? "var(--border)" : "rgba(239,68,68,0.15)"}` : "none" }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: isRead ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${isRead ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}` }}>
                       {isRead ? <Check size={13} style={{ color: "var(--success)" }} /> : <BookOpen size={12} style={{ color: "var(--danger)" }} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate" style={{ color: "var(--foreground)" }}>{p.title}</p>
-                      <p className="text-[11px]" style={{ color: isRead ? "var(--success)" : "var(--foreground-dim)" }}>
+                      <p className="text-sm font-medium truncate" style={{ color: isRead ? "var(--foreground)" : "var(--danger)" }}>{p.title}</p>
+                      <p className="text-[11px]" style={{ color: isRead ? "var(--success)" : "rgba(239,68,68,0.7)" }}>
                         {p.is_mandatory && !isRead ? "⚠ Obligatoire · " : ""}{isRead ? "Lu ✓" : "Appuie pour lire"}
                       </p>
                     </div>
-                    <ChevronRight size={13} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                    <ChevronRight size={13} style={{ color: isRead ? "var(--foreground-dim)" : "var(--danger)", flexShrink: 0 }} />
                   </button>
                 );
               })}
@@ -2094,6 +2100,9 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
               <button onClick={() => setProtocolPopup(null)} style={{ color: "var(--foreground-dim)", flexShrink: 0, marginLeft: 8 }}><X size={18} /></button>
             </div>
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              {protocolPopup.attachment_type === "image" && protocolPopup.attachment_url && (
+                <img src={protocolPopup.attachment_url} alt="" className="w-full rounded-xl object-cover" style={{ maxHeight: 220 }} />
+              )}
               {protocolPopup.content && <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{ color: "var(--foreground-muted)" }}>{protocolPopup.content}</p>}
               {protocolPopup.steps && protocolPopup.steps.length > 0 && (
                 <div className="space-y-2">
