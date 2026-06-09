@@ -34,8 +34,8 @@ export default function CustomCursor() {
         dotRef.current.style.transform = `translate(${cur.x - size / 2}px, ${cur.y - size / 2}px)`;
         dotRef.current.style.width = `${size}px`;
         dotRef.current.style.height = `${size}px`;
-        dotRef.current.style.background = hovering ? "transparent" : "rgba(6,182,212,0.85)";
-        dotRef.current.style.border = hovering ? "1.5px solid rgba(6,182,212,0.85)" : "none";
+        dotRef.current.style.background = hovering ? "transparent" : "rgba(15,81,50,0.85)";
+        dotRef.current.style.border = hovering ? "1.5px solid rgba(15,81,50,0.85)" : "none";
       }
       rafId = requestAnimationFrame(tick);
     };

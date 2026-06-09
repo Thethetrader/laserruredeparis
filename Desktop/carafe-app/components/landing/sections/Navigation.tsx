@@ -62,7 +62,7 @@ export default function Navigation() {
       <header
         className="fixed top-0 inset-x-0 z-50 h-16 flex items-center transition-all duration-300"
         style={{
-          backgroundColor: scrolled ? "rgba(9,9,11,0.92)" : "transparent",
+          backgroundColor: scrolled ? "rgba(250,250,247,0.95)" : "transparent",
           backdropFilter: scrolled ? "blur(12px)" : "none",
           borderBottom: scrolled ? "1px solid var(--border-soft)" : "1px solid transparent",
         }}
@@ -87,7 +87,7 @@ export default function Navigation() {
             <a
               href="/signup"
               className="btn-shine text-sm font-medium px-4 py-2 rounded-md flex items-center gap-1.5 group active:scale-[0.98] transition-transform duration-100"
-              style={{ background: "var(--accent)", color: "#09090B" }}
+              style={{ background: "var(--accent)", color: "#fafaf7" }}
             >
               Commencer
               <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -134,7 +134,7 @@ export default function Navigation() {
                 href="/signup"
                 onClick={() => setMenuOpen(false)}
                 className="font-medium px-6 py-3 rounded-md text-center text-sm"
-                style={{ background: "var(--accent)", color: "#09090B" }}
+                style={{ background: "var(--accent)", color: "#fafaf7" }}
               >
                 Commencer
               </a>

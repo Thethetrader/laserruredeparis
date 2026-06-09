@@ -42,7 +42,7 @@ export default function AppPreviewSection() {
             style={{
               maxWidth: 1000,
               border: "1px solid var(--border)",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.1)",
             }}
           >
             <div
@@ -84,7 +84,7 @@ export default function AppPreviewSection() {
               width: 260,
               height: 480,
               border: "8px solid var(--background-elev)",
-              boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.5)",
+              boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.12)",
               overflow: "hidden",
               background: "var(--background)",
             }}

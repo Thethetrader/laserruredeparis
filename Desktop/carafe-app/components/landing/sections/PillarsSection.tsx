@@ -19,7 +19,7 @@ function ProtocolsPreview() {
         { label: "Hygiène cuisine", done: true },
         { label: "Nouvelle carte d'été", done: false },
       ].map(({ label, done }) => (
-        <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.1)" }}>
+        <div key={label} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-elev)", border: "1px solid rgba(15,81,50,0.1)" }}>
           <p className="text-[11px] flex-1" style={{ color: "var(--foreground-muted)" }}>{label}</p>
           {done ? (
             <Check size={10} strokeWidth={2.5} style={{ color: "#10b981" }} />
@@ -30,7 +30,7 @@ function ProtocolsPreview() {
           )}
         </div>
       ))}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(15,81,50,0.05)", border: "1px solid rgba(15,81,50,0.15)" }}>
         <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — PDF uploadé → étapes extraites automatiquement</span>
       </div>
     </div>
@@ -72,7 +72,7 @@ function ClientFeedbackPreview() {
   }, [feedbacks.length]);
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: "rgba(15,81,50,0.05)", border: "1px solid rgba(15,81,50,0.15)" }}>
         <span className="text-[9px]" style={{ color: "var(--accent)" }}>✦ IA — patterns détectés automatiquement</span>
       </div>
       {feedbacks.map(({ dish, comment, count, color }, i) => (
@@ -112,7 +112,7 @@ function LatePreview() {
       <motion.div
         animate={phase === "filling" ? { scale: 0.97 } : { scale: 1 }}
         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[11px] font-semibold"
-        style={{ color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)", background: "rgba(6,182,212,0.05)" }}
+        style={{ color: "var(--accent)", border: "1px solid rgba(15,81,50,0.25)", background: "rgba(15,81,50,0.05)" }}
       >
         <Plus size={11} strokeWidth={2} />
         Déclarer un retard
@@ -149,10 +149,10 @@ function ChallengesPreview() {
           <div key={init} className="flex flex-col items-center gap-1.5">
             <span className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>{pts}</span>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-semibold"
-              style={{ background: rank === 1 ? "rgba(6,182,212,0.18)" : "rgba(250,250,250,0.05)", border: rank === 1 ? "1px solid rgba(6,182,212,0.3)" : "1px solid var(--border)", color: rank === 1 ? "var(--accent)" : "var(--foreground-dim)" }}>
+              style={{ background: rank === 1 ? "rgba(15,81,50,0.18)" : "rgba(26,26,24,0.05)", border: rank === 1 ? "1px solid rgba(15,81,50,0.3)" : "1px solid var(--border)", color: rank === 1 ? "var(--accent)" : "var(--foreground-dim)" }}>
               {init}
             </div>
-            <div className="rounded-t" style={{ width: 28, height: rank === 1 ? 40 : rank === 2 ? 28 : 20, background: rank === 1 ? "rgba(6,182,212,0.12)" : "rgba(250,250,250,0.03)", border: rank === 1 ? "1px solid rgba(6,182,212,0.2)" : "1px solid var(--border)", borderBottom: "none" }} />
+            <div className="rounded-t" style={{ width: 28, height: rank === 1 ? 40 : rank === 2 ? 28 : 20, background: rank === 1 ? "rgba(15,81,50,0.12)" : "rgba(26,26,24,0.03)", border: rank === 1 ? "1px solid rgba(15,81,50,0.2)" : "1px solid var(--border)", borderBottom: "none" }} />
           </div>
         ))}
       </div>
@@ -186,9 +186,9 @@ function PlanningPreview() {
   ];
 
   const planning = [
-    { jour: "Ven.", heure: "20h", noms: ["Sofia", "Marc", "Julie"], color: "rgba(6,182,212,0.12)", border: "rgba(6,182,212,0.25)" },
+    { jour: "Ven.", heure: "20h", noms: ["Sofia", "Marc", "Julie"], color: "rgba(15,81,50,0.12)", border: "rgba(15,81,50,0.25)" },
     { jour: "Sam.", heure: "12h", noms: ["Marc", "Karim", "Aïcha", "Julie"], color: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)" },
-    { jour: "Dim.", heure: "20h", noms: ["Sofia", "Karim"], color: "rgba(6,182,212,0.12)", border: "rgba(6,182,212,0.25)" },
+    { jour: "Dim.", heure: "20h", noms: ["Sofia", "Karim"], color: "rgba(15,81,50,0.12)", border: "rgba(15,81,50,0.25)" },
   ];
 
   return (
@@ -207,7 +207,7 @@ function PlanningPreview() {
       {phase !== "done" && (
         <div
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-[11px] font-semibold"
-          style={{ color: "var(--accent)", border: "1px solid rgba(6,182,212,0.25)", background: phase === "generating" ? "rgba(6,182,212,0.1)" : "rgba(6,182,212,0.05)" }}
+          style={{ color: "var(--accent)", border: "1px solid rgba(15,81,50,0.25)", background: phase === "generating" ? "rgba(15,81,50,0.1)" : "rgba(15,81,50,0.05)" }}
         >
           {phase === "generating" ? (
             <>
@@ -412,7 +412,7 @@ export default function PillarsSection() {
                             {f.name}
                           </span>
                           {f.ai && (
-                            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded tracking-wider" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--accent)" }}>
+                            <span className="text-[8px] font-mono px-1.5 py-0.5 rounded tracking-wider" style={{ background: "rgba(15,81,50,0.08)", border: "1px solid rgba(15,81,50,0.2)", color: "var(--accent)" }}>
                               IA
                             </span>
                           )}
@@ -482,14 +482,14 @@ export default function PillarsSection() {
               >
                 {/* Panel header */}
                 <div className="flex items-center gap-2.5 px-5 py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)" }}>
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: "rgba(15,81,50,0.08)", border: "1px solid rgba(15,81,50,0.15)" }}>
                     {(() => { const Icon = features[active].icon; return <Icon size={12} strokeWidth={1.5} style={{ color: "var(--accent)" }} />; })()}
                   </div>
                   <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>
                     {features[active].name}
                   </span>
                   {features[active].ai && (
-                    <span className="ml-auto text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)", color: "var(--accent)" }}>
+                    <span className="ml-auto text-[8px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(15,81,50,0.08)", border: "1px solid rgba(15,81,50,0.2)", color: "var(--accent)" }}>
                       IA
                     </span>
                   )}

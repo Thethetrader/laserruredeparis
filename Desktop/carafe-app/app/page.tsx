@@ -11,7 +11,7 @@ import FooterSection from "@/components/landing/sections/FooterSection";
 
 export default function Home() {
   return (
-    <>
+    <div data-theme="light" style={{ background: "#fafaf7" }}>
       <CustomCursor />
       <Navigation />
       <main>
@@ -24,6 +24,6 @@ export default function Home() {
         <CTASection />
       </main>
       <FooterSection />
-    </>
+    </div>
   );
 }

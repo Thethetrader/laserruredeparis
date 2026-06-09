@@ -49,7 +49,7 @@
   }
 
   /* Mode clair — palette shyftips */
-  html[data-theme="light"] {
+  html[data-theme="light"], [data-theme="light"] {
     --background:        #fafaf7;
     --background-soft:   #f0efe8;
     --background-elev:   #ffffff;

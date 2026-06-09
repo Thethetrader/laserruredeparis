@@ -61,7 +61,7 @@ export default function PricingSection() {
           style={{
             maxWidth: 580,
             background: "var(--background)",
-            border: "1px solid rgba(6,182,212,0.3)",
+            border: "1px solid rgba(15,81,50,0.3)",
             padding: "48px",
           }}
         >
@@ -113,7 +113,7 @@ export default function PricingSection() {
           <a
             href="/signup"
             className="block w-full text-center py-3.5 rounded-xl text-[14px] font-semibold transition-opacity hover:opacity-90 mb-3"
-            style={{ background: "var(--accent)", color: "#09090B" }}
+            style={{ background: "var(--accent)", color: "#fafaf7" }}
           >
             Commencer maintenant
           </a>
@@ -179,7 +179,7 @@ export default function PricingSection() {
                     href="mailto:contact@karaf.fr"
                     className="font-mono text-[13px] text-right transition-all duration-150"
                     style={{ color: "var(--accent)" }}
-                    onMouseEnter={e => { e.currentTarget.style.color = "#22d3ee"; e.currentTarget.style.textDecoration = "underline"; }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "var(--accent-glow)"; e.currentTarget.style.textDecoration = "underline"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.textDecoration = "none"; }}
                   >
                     {row.total}
@@ -206,12 +206,12 @@ export default function PricingSection() {
 
       <style>{`
         .pricing-glow {
-          box-shadow: 0 0 40px rgba(6,182,212,0.08);
+          box-shadow: 0 0 40px rgba(15,81,50,0.1);
           animation: pricing-pulse 4s ease-in-out infinite;
         }
         @keyframes pricing-pulse {
-          0%, 100% { box-shadow: 0 0 40px rgba(6,182,212,0.08); }
-          50%       { box-shadow: 0 0 60px rgba(6,182,212,0.16); }
+          0%, 100% { box-shadow: 0 0 40px rgba(15,81,50,0.1); }
+          50%       { box-shadow: 0 0 60px rgba(15,81,50,0.2); }
         }
       `}</style>
     </section>

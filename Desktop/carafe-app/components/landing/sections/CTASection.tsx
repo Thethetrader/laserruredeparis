@@ -84,7 +84,7 @@ function TypingInput({
         onMouseEnter={() => setBtnHovered(true)}
         onMouseLeave={() => setBtnHovered(false)}
         className="btn-shine flex items-center justify-center gap-2 font-medium px-6 py-3 text-sm rounded-md group active:scale-[0.97] transition-transform duration-100"
-        style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6, whiteSpace: "nowrap" }}
+        style={{ background: "var(--accent)", color: "#fafaf7", borderRadius: 6, whiteSpace: "nowrap" }}
       >
         Je veux essayer
         <span style={{ display: "inline-block", transition: "transform 200ms", transform: btnHovered ? "rotate(-45deg)" : "none" }}>
@@ -124,8 +124,8 @@ export default function CTASection() {
       className="py-24"
       style={{
         background: "var(--background-soft)",
-        borderTop: "1px solid rgba(6,182,212,0.12)",
-        borderBottom: "1px solid rgba(6,182,212,0.12)",
+        borderTop: "1px solid rgba(15,81,50,0.12)",
+        borderBottom: "1px solid rgba(15,81,50,0.12)",
       }}
     >
       <div className="max-w-[1240px] mx-auto px-6 md:px-12 lg:px-20">
@@ -150,7 +150,7 @@ export default function CTASection() {
             <a
               href="/signup"
               className="btn-shine inline-flex items-center justify-center gap-2 font-medium px-7 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
-              style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
+              style={{ background: "var(--accent)", color: "#fafaf7", borderRadius: 6 }}
             >
               Commencer · dès 29€/mois
               <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
@@ -196,7 +196,7 @@ export default function CTASection() {
                   <div className="flex-1 px-4 py-3 rounded-md text-sm" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)", borderRadius: 6 }}>
                     {email}
                   </div>
-                  <button disabled className="btn-shine flex items-center justify-center gap-2 font-medium px-6 py-3 text-sm rounded-md opacity-60" style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6, whiteSpace: "nowrap" }}>
+                  <button disabled className="btn-shine flex items-center justify-center gap-2 font-medium px-6 py-3 text-sm rounded-md opacity-60" style={{ background: "var(--accent)", color: "#fafaf7", borderRadius: 6, whiteSpace: "nowrap" }}>
                     Envoi...
                   </button>
                 </div>

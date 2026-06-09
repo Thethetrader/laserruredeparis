@@ -13,7 +13,7 @@ function GridBackground() {
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      spotlightRef.current.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, rgba(6,182,212,0.07), transparent 70%)`;
+      spotlightRef.current.style.background = `radial-gradient(circle 220px at ${x}px ${y}px, rgba(15,81,50,0.07), transparent 70%)`;
     };
     window.addEventListener("mousemove", onMove, { passive: true });
     return () => window.removeEventListener("mousemove", onMove);
@@ -22,7 +22,7 @@ function GridBackground() {
   return (
     <div ref={containerRef} aria-hidden className="absolute inset-0 pointer-events-none">
       <div className="absolute inset-0" style={{
-        backgroundImage: "linear-gradient(rgba(250,250,250,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(250,250,250,0.015) 1px, transparent 1px)",
+        backgroundImage: "linear-gradient(rgba(26,26,24,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,24,0.06) 1px, transparent 1px)",
         backgroundSize: "64px 64px",
       }} />
       <div ref={spotlightRef} className="absolute inset-0" />
@@ -78,7 +78,7 @@ export default function HeroSection() {
             <a
               href="/signup"
               className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
-              style={{ background: "var(--accent)", color: "#09090B", borderRadius: 6 }}
+              style={{ background: "var(--accent)", color: "#fafaf7", borderRadius: 6 }}
             >
               Commencer
               <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
