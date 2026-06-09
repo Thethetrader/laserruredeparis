@@ -129,18 +129,17 @@ export default function MemberProfilePage() {
       role: string;
       job_title: string | null;
       hired_at: string | null;
-      availability: AvailabilitySlot[] | null;
       establishment_id: string;
-      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null; contract_type?: string | null } | null;
+      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null; contract_type?: string | null; availability?: AvailabilitySlot[] | null } | null;
       establishments: { name: string } | null;
     };
 
     const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
     const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let _pmq = supabase.from("establishment_members").select("role, job_title, hired_at, availability, establishment_id, profiles(first_name, last_name, email, avatar_url, phone, contract_type), establishments(name)").eq("profile_id", profileId).eq("is_active", true);
+    let _pmq = supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone, contract_type), establishments(name)").eq("profile_id", profileId).eq("is_active", true);
     if (_ceid && _re.test(_ceid)) _pmq = _pmq.eq("establishment_id", _ceid);
     let { data: memberDataRaw } = await _pmq.limit(1).maybeSingle();
-    if (!memberDataRaw && _ceid && _re.test(_ceid)) ({ data: memberDataRaw } = await supabase.from("establishment_members").select("role, job_title, hired_at, availability, establishment_id, profiles(first_name, last_name, email, avatar_url, phone, contract_type), establishments(name)").eq("profile_id", profileId).eq("is_active", true).limit(1).maybeSingle());
+    if (!memberDataRaw && _ceid && _re.test(_ceid)) ({ data: memberDataRaw } = await supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone, contract_type), establishments(name)").eq("profile_id", profileId).eq("is_active", true).limit(1).maybeSingle());
 
     if (!memberDataRaw) { setLoading(false); return; }
     const memberData = memberDataRaw as unknown as MemberRow;
@@ -158,7 +157,7 @@ export default function MemberProfilePage() {
       establishment_name: est?.name ?? "",
       phone: p?.phone ?? null,
       contract_type: p?.contract_type ?? null,
-      availability: memberData.availability ?? [],
+      availability: (p as any)?.availability ?? [],
     });
 
     const estId = memberData.establishment_id;

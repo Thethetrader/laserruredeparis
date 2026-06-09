@@ -85,7 +85,7 @@ export default function AccountPage() {
     if (!user) { router.push("/login"); return; }
 
     const [profileRes, memberRes] = await Promise.all([
-      supabase.from("profiles").select("id, first_name, last_name, avatar_url").eq("id", user.id).single(),
+      supabase.from("profiles").select("id, first_name, last_name, avatar_url, contract_type, availability").eq("id", user.id).single(),
       supabase.from("establishment_members")
         .select("id, establishment_id")
         .eq("profile_id", user.id).eq("is_active", true).single(),
@@ -96,6 +96,8 @@ export default function AccountPage() {
       setProfile(p);
       setFirstName(p.first_name ?? "");
       setLastName(p.last_name ?? "");
+      setContractType((profileRes.data as any).contract_type ?? null);
+      setAvailability((profileRes.data as any).availability ?? []);
     }
     if (memberRes.data) {
       setEstablishmentId(memberRes.data.establishment_id);
@@ -148,8 +150,8 @@ export default function AccountPage() {
 
   const saveAvailability = async () => {
     setSavingAvail(true);
-    if (!DEV_MODE && memberId) {
-      await supabase.from("establishment_members").update({ availability }).eq("id", memberId);
+    if (!DEV_MODE && profile) {
+      await supabase.from("profiles").update({ availability } as any).eq("id", profile.id);
     }
     setSavingAvail(false); setSavedAvail(true); setTimeout(() => setSavedAvail(false), 2500);
   };
