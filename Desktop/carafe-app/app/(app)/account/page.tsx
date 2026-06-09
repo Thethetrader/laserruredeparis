@@ -118,13 +118,13 @@ export default function AccountPage() {
     if (!DEV_MODE && profile) {
       setUploadingPhoto(true);
       const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const path = `avatars/${profile.id}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("profiles").upload(path, file, { upsert: true, contentType: file.type });
+      const path = `${profile.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
       if (uploadError) {
         console.error("Photo upload error:", uploadError);
         setPhotoError(`Erreur upload: ${uploadError.message}`);
       } else {
-        const { data: { publicUrl } } = supabase.storage.from("profiles").getPublicUrl(path);
+        const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
         const urlWithBust = `${publicUrl}?t=${Date.now()}`;
         const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithBust }).eq("id", profile.id);
         if (dbError) {
