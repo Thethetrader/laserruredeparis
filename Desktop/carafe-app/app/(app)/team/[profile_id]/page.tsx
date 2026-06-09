@@ -129,6 +129,8 @@ export default function MemberProfilePage() {
       role: string;
       job_title: string | null;
       hired_at: string | null;
+      contract_type: string | null;
+      availability: AvailabilitySlot[] | null;
       establishment_id: string;
       profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null } | null;
       establishments: { name: string } | null;
@@ -136,10 +138,10 @@ export default function MemberProfilePage() {
 
     const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
     const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let _pmq = supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true);
+    let _pmq = supabase.from("establishment_members").select("role, job_title, hired_at, contract_type, availability, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true);
     if (_ceid && _re.test(_ceid)) _pmq = _pmq.eq("establishment_id", _ceid);
     let { data: memberDataRaw } = await _pmq.limit(1).maybeSingle();
-    if (!memberDataRaw && _ceid && _re.test(_ceid)) ({ data: memberDataRaw } = await supabase.from("establishment_members").select("role, job_title, hired_at, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true).limit(1).maybeSingle());
+    if (!memberDataRaw && _ceid && _re.test(_ceid)) ({ data: memberDataRaw } = await supabase.from("establishment_members").select("role, job_title, hired_at, contract_type, availability, establishment_id, profiles(first_name, last_name, email, avatar_url, phone), establishments(name)").eq("profile_id", profileId).eq("is_active", true).limit(1).maybeSingle());
 
     if (!memberDataRaw) { setLoading(false); return; }
     const memberData = memberDataRaw as unknown as MemberRow;
@@ -156,6 +158,8 @@ export default function MemberProfilePage() {
       hired_at: memberData.hired_at,
       establishment_name: est?.name ?? "",
       phone: p?.phone ?? null,
+      contract_type: memberData.contract_type ?? null,
+      availability: memberData.availability ?? [],
     });
 
     const estId = memberData.establishment_id;
@@ -404,27 +408,31 @@ export default function MemberProfilePage() {
         </div>
 
         {/* Disponibilités */}
-        {member.availability && member.availability.length > 0 && (
-          <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid var(--border)" }}>
-            <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Disponibilités</p>
-            </div>
-            <div className="p-4 flex flex-wrap gap-2" style={{ background: "var(--background-elev)" }}>
-              {member.availability.map((slot, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                  style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                  <div>
-                    <p className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>{slot.day}</p>
-                    <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                      {slot.period}
-                      {slot.hour_start && slot.hour_end && ` · ${slot.hour_start}–${slot.hour_end}`}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid var(--border)" }}>
+          <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Disponibilités</p>
           </div>
-        )}
+          <div className="p-4" style={{ background: "var(--background-elev)" }}>
+            {member.availability && member.availability.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {member.availability.map((slot, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
+                    <div>
+                      <p className="text-[12px] font-medium" style={{ color: "var(--accent)" }}>{slot.day}</p>
+                      <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                        {slot.period}
+                        {slot.hour_start && slot.hour_end && ` · ${slot.hour_start}–${slot.hour_end}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Aucune disponibilité renseignée</p>
+            )}
+          </div>
+        </div>
 
         {/* Retards */}
         {stats && (
