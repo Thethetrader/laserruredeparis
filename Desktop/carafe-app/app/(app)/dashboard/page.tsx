@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { useTheme } from "@/components/ThemeProvider";
+import { NewFeedbackModal } from "@/components/NewFeedbackModal";
 
 const DEV_MODE = false;
 const DEV_PROFILE_ID = "dev-user";
@@ -1526,7 +1527,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
 }
 
 /* ─── EMPLOYEE VIEW ────────────────────────────────── */
-type QuickModal = "delay" | "feedback" | null;
+type QuickModal = "delay" | null;
 
 function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onTaskValidated: () => void }) {
   const supabase = createClient();
@@ -1538,6 +1539,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   useEffect(() => { const h = new Date().getHours(); setGreeting(h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"); }, []);
 
   const [modal, setModal] = useState<QuickModal>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set(data.my_confirmed_feedback));
@@ -1693,7 +1695,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
             <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Déclarer</p>
           </div>
         </button>
-        <button onClick={() => setModal("feedback")} className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 text-left transition-opacity active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <button onClick={() => setShowFeedbackModal(true)} className="flex items-center gap-2.5 rounded-xl px-4 py-3.5 text-left transition-opacity active:scale-[0.97]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)" }}>
             <MessageSquare size={15} style={{ color: "var(--accent)" }} />
           </div>
@@ -1853,7 +1855,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                   <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setModal("feedback")} className="text-[11px] px-2.5 py-1 rounded-md font-medium" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>+ Signaler</button>
+                  <button onClick={() => setShowFeedbackModal(true)} className="text-[11px] px-2.5 py-1 rounded-md font-medium" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>+ Signaler</button>
                   <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
                 </div>
               </div>
@@ -2039,40 +2041,14 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         </div>
       )}
 
-      {/* Feedback modal */}
-      {modal === "feedback" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
-          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Signaler un avis client</p>
-                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Compliment, plainte ou incident</p>
-              </div>
-              <button onClick={closeModal} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
-                <select value={fbCategory} onChange={e => setFbCategory(e.target.value as FeedbackCategory)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                  <option value="complaint">Plainte</option>
-                  <option value="compliment">Compliment</option>
-                  <option value="suggestion">Suggestion</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description</label>
-                <textarea value={fbContent} onChange={e => setFbContent(e.target.value)} placeholder="Décrivez le retour client…" rows={3} className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} autoFocus />
-              </div>
-              <div>
-                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Table <span style={{ fontWeight: 400 }}>(optionnel)</span></label>
-                <input value={fbTable} onChange={e => setFbTable(e.target.value)} placeholder="Ex: 12" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
-              </div>
-              <button onClick={submitFeedback} disabled={submitting || !fbContent.trim()} className="w-full py-3 mt-1 text-sm font-semibold rounded-lg transition-opacity" style={{ background: "var(--accent)", color: "#fff", opacity: (submitting || !fbContent.trim()) ? 0.5 : 1 }}>
-                {submitting ? "Envoi…" : "Enregistrer l'avis"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Feedback modal — full AI-powered modal */}
+      {showFeedbackModal && (
+        <NewFeedbackModal
+          establishmentId={data.establishment_id}
+          profileId={data.my_profile_id}
+          onClose={() => setShowFeedbackModal(false)}
+          onSuccess={() => showSuccess("Avis client enregistré ✓")}
+        />
       )}
 
 

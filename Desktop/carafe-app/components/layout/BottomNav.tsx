@@ -28,6 +28,7 @@ const managerNav: NavItem[] = [
 
 const employeeNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/customer-feedback",  icon: MessageSquare,   label: "Retours" },
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
   { href: "/shifts",             icon: CalendarDays,    label: "Mes shifts", exact: true },
