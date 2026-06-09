@@ -296,7 +296,7 @@ export default function TeamPage() {
       {/* Bonus success toast */}
       {bonusSuccess && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg"
-          style={{ background: "rgba(245,158,11,0.95)", color: "#09090B" }}>
+          style={{ background: "rgba(245,158,11,0.95)", color: "var(--primary-foreground)" }}>
           {bonusSuccess}
         </div>
       )}
@@ -313,7 +313,7 @@ export default function TeamPage() {
         {isManager && (
           <button onClick={() => setShowInviteForm(!showInviteForm)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md"
-            style={{ background: "var(--accent)", color: "#09090B" }}>
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
             <Plus size={14} /> Inviter
           </button>
         )}
@@ -608,7 +608,7 @@ export default function TeamPage() {
 
               <button onClick={sendInvite} disabled={inviting}
                 className="w-full py-2.5 text-sm font-medium rounded-md transition-opacity flex items-center justify-center gap-2"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: inviting ? 0.5 : 1 }}>
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: inviting ? 0.5 : 1 }}>
                 {inviting ? "Génération…" : <><Plus size={14} /> Générer le lien d&apos;invitation</>}
               </button>
             </div>
@@ -938,7 +938,7 @@ export default function TeamPage() {
 
             <button onClick={submitBonus} disabled={sendingBonus || bonusReason.trim().length < 10}
               className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity flex items-center justify-center gap-2"
-              style={{ background: "var(--warning)", color: "#09090B", opacity: (sendingBonus || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
+              style={{ background: "var(--warning)", color: "var(--primary-foreground)", opacity: (sendingBonus || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
               <Zap size={15} />
               {sendingBonus ? "Envoi…" : `Attribuer +${bonusPoints} pts à ${bonusTarget.first_name ?? "ce membre"}`}
             </button>

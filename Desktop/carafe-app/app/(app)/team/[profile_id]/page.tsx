@@ -293,7 +293,7 @@ export default function MemberProfilePage() {
             )}
             <button onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
-              style={{ background: "var(--accent)", color: "#09090B" }}>
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
               <Download size={14} /> Exporter PDF
             </button>
           </div>
@@ -342,7 +342,7 @@ export default function MemberProfilePage() {
               </div>
               <button onClick={saveEdit} disabled={saving}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-opacity"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: saving ? 0.5 : 1 }}>
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: saving ? 0.5 : 1 }}>
                 <Check size={14} /> {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </div>

@@ -168,7 +168,7 @@ export default function OnboardingPage() {
               type="submit"
               disabled={isSubmitting}
               className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: isSubmitting ? 0.6 : 1 }}
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: isSubmitting ? 0.6 : 1 }}
             >
               {isSubmitting ? "Création…" : "Créer mon établissement"}
             </button>
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
             <Link
               href="/dashboard"
               className="inline-block w-full py-2.5 text-sm font-medium rounded-base text-center transition-opacity"
-              style={{ background: "var(--accent)", color: "#09090B" }}
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
             >
               Accéder à l&apos;app
             </Link>

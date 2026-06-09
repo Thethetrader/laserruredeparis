@@ -132,7 +132,7 @@ function SignupInner() {
             </div>
           ))}
           {serverError && <p className="text-[12px] px-3 py-2 rounded-base" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>{serverError}</p>}
-          <button type="submit" disabled={isSubmitting} className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: isSubmitting ? 0.6 : 1 }}>
+          <button type="submit" disabled={isSubmitting} className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity" style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: isSubmitting ? 0.6 : 1 }}>
             {isSubmitting ? "Création…" : "Créer mon compte"}
           </button>
         </form>
@@ -167,7 +167,7 @@ function SignupInner() {
           </div>
         ))}
         {serverError && <p className="text-[12px] px-3 py-2 rounded-base" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>{serverError}</p>}
-        <button type="submit" disabled={isSubmitting} className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: isSubmitting ? 0.6 : 1 }}>
+        <button type="submit" disabled={isSubmitting} className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity" style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: isSubmitting ? 0.6 : 1 }}>
           {isSubmitting ? "Création…" : "Créer mon compte"}
         </button>
       </form>

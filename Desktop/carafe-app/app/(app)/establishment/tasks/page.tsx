@@ -281,7 +281,7 @@ export default function EstablishmentTasksPage() {
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-3 py-2 rounded-base text-[13px] font-medium transition-colors"
-          style={{ background: "var(--accent)", color: "#09090B" }}
+          style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
         >
           <Plus size={14} />
           Nouvelle tâche
@@ -297,7 +297,7 @@ export default function EstablishmentTasksPage() {
           message="Aucune tâche configurée"
           sub="Créez votre première tâche récurrente"
           action={
-            <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "#09090B" }}>
+            <button onClick={openCreate} className="px-4 py-2 rounded-base text-[13px] font-medium" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
               Créer une tâche
             </button>
           }

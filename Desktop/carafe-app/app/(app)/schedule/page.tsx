@@ -335,7 +335,7 @@ function CreatePollForm({ members, onSubmit, onCancel }: {
                 </div>
                 <span className="flex-1 text-sm" style={{ color: selected ? "var(--foreground)" : "var(--foreground-muted)" }}>{name}</span>
                 <div className="w-4 h-4 rounded flex items-center justify-center" style={{ background: selected ? "var(--accent)" : "transparent", border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}` }}>
-                  {selected && <Check size={10} strokeWidth={3} style={{ color: "#09090B" }} />}
+                  {selected && <Check size={10} strokeWidth={3} style={{ color: "var(--primary-foreground)" }} />}
                 </div>
               </button>
             );
@@ -519,7 +519,7 @@ export default function SchedulePage() {
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: "var(--accent)", color: "#09090B" }}
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
           >
             <Plus size={15} strokeWidth={2.5} />
             Nouveau

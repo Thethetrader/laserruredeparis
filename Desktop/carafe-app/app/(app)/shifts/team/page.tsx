@@ -181,7 +181,7 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
             </div>
             <button onClick={generate} disabled={loading || !from || !to}
               className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: loading ? 0.7 : 1 }}>
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: loading ? 0.7 : 1 }}>
               {loading ? "Calcul en cours…" : `Générer le récap (${periodDays}j)`}
             </button>
           </div>
@@ -654,7 +654,7 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
             )}
             <button onClick={handleAddShift} disabled={addSaving || !addUserId}
               className="w-full py-2.5 rounded-xl text-[13px] font-semibold"
-              style={{ background: "var(--success)", color: "#09090B", opacity: (addSaving || !addUserId) ? 0.5 : 1 }}>
+              style={{ background: "var(--success)", color: "var(--primary-foreground)", opacity: (addSaving || !addUserId) ? 0.5 : 1 }}>
               {addSaving ? "Enregistrement…" : "Enregistrer le shift"}
             </button>
           </div>

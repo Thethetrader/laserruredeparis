@@ -135,7 +135,7 @@ export default function AddEstablishmentPage() {
           type="submit"
           disabled={isSubmitting}
           className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity"
-          style={{ background: "var(--accent)", color: "#09090B", opacity: isSubmitting ? 0.6 : 1 }}
+          style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: isSubmitting ? 0.6 : 1 }}
         >
           {isSubmitting ? "Redirection…" : `Continuer · ${price}`}
         </button>

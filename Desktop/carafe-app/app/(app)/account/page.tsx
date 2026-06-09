@@ -111,19 +111,24 @@ export default function AccountPage() {
     if (!file) return;
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) return;
-    setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
     if (!DEV_MODE && profile) {
       setUploadingPhoto(true);
       const ext = file.name.split(".").pop();
       const path = `avatars/${profile.id}.${ext}`;
-      const { error } = await supabase.storage.from("profiles").upload(path, file, { upsert: true });
+      const { error } = await supabase.storage.from("profiles").upload(path, file, { upsert: true, contentType: file.type });
       if (!error) {
         const { data: { publicUrl } } = supabase.storage.from("profiles").getPublicUrl(path);
-        await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", profile.id);
-        setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : prev);
+        const urlWithBust = `${publicUrl}?t=${Date.now()}`;
+        await supabase.from("profiles").update({ avatar_url: urlWithBust }).eq("id", profile.id);
+        setProfile(prev => prev ? { ...prev, avatar_url: urlWithBust } : prev);
+        setAvatarPreview(urlWithBust);
+        router.refresh();
       }
       setUploadingPhoto(false);
+      setAvatarFile(null);
+    } else {
+      setAvatarFile(file);
     }
   };
 
@@ -189,7 +194,7 @@ export default function AccountPage() {
       <div className="flex flex-col items-center mb-8">
         <div className="relative">
           <KarafAvatar firstName={firstName || profile.first_name} lastName={lastName || profile.last_name} avatarUrl={displayAvatarUrl} size={80} />
-          <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 28, height: 28, background: "var(--accent)", color: "#09090B" }}>
+          <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full flex items-center justify-center" style={{ width: 28, height: 28, background: "var(--accent)", color: "var(--primary-foreground)" }}>
             {uploadingPhoto ? <div className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> : <Camera size={13} />}
           </button>
           <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
@@ -221,7 +226,7 @@ export default function AccountPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 mt-4">
-          <button onClick={saveProfile} disabled={saving || !hasChanges || !firstName.trim()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-opacity" style={{ background: "var(--accent)", color: "#09090B", opacity: (saving || !hasChanges || !firstName.trim()) ? 0.4 : 1 }}>
+          <button onClick={saveProfile} disabled={saving || !hasChanges || !firstName.trim()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-opacity" style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (saving || !hasChanges || !firstName.trim()) ? 0.4 : 1 }}>
             {saved ? <><CheckCircle size={14} /> Enregistré</> : saving ? "Enregistrement…" : "Enregistrer"}
           </button>
           {saved && <span className="text-[12px]" style={{ color: "var(--success)" }}>✓ Sauvegardé</span>}

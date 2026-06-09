@@ -729,7 +729,7 @@ export default function MyTasksPage() {
                 onClick={submitValidation}
                 disabled={submitting || (modalState.requiresPhoto && !modalPhoto && isOnline)}
                 className="flex-1 py-2.5 rounded-base text-[13px] font-semibold transition-colors"
-                style={{ background: "var(--success)", color: "#09090B", opacity: submitting ? 0.7 : 1 }}
+                style={{ background: "var(--success)", color: "var(--primary-foreground)", opacity: submitting ? 0.7 : 1 }}
               >
                 {submitting ? "Validation…" : "Tâche validée"}
               </button>

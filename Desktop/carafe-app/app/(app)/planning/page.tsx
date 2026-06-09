@@ -828,7 +828,7 @@ export default function PlanningPage() {
                 onClick={handleGenerate}
                 disabled={generating}
                 className="w-full py-3.5 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: generating ? 0.7 : 1 }}
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: generating ? 0.7 : 1 }}
               >
                 {generating
                   ? <><RefreshCw size={14} className="animate-spin" />Génération IA…</>
@@ -971,7 +971,7 @@ function DayConfigPanel({ dateStr, weekDates, config, onUpdate, onSave, saving }
         onClick={onSave}
         disabled={saving}
         className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-        style={{ background: "var(--success)", color: "#09090B", opacity: saving ? 0.7 : 1 }}
+        style={{ background: "var(--success)", color: "var(--primary-foreground)", opacity: saving ? 0.7 : 1 }}
       >
         {saving
           ? <><RefreshCw size={12} className="animate-spin" />Sauvegarde…</>

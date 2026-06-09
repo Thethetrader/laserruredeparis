@@ -87,7 +87,7 @@ export default function InvitePage() {
               : error ?? "Ce lien n'existe pas."}
           </p>
           <Link href="/login" className="inline-block px-5 py-2.5 text-sm font-medium rounded-md"
-            style={{ background: "var(--accent)", color: "#09090B" }}>
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
             Se connecter
           </Link>
         </div>
@@ -145,7 +145,7 @@ export default function InvitePage() {
             {isLoggedIn ? (
               <button onClick={accept} disabled={accepting}
                 className="w-full py-3 text-sm font-medium rounded-md transition-opacity"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: accepting ? 0.6 : 1 }}>
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: accepting ? 0.6 : 1 }}>
                 {accepting ? "Acceptation…" : "Rejoindre l'équipe"}
               </button>
             ) : (
@@ -155,7 +155,7 @@ export default function InvitePage() {
                 </p>
                 <Link href={`/signup?invite=${token}`}
                   className="block w-full py-3 text-sm font-medium rounded-md text-center"
-                  style={{ background: "var(--accent)", color: "#09090B" }}>
+                  style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
                   Créer un compte
                 </Link>
                 <Link href={`/login?invite=${token}`}

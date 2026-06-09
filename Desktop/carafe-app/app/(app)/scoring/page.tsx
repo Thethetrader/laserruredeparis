@@ -253,7 +253,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
         <button
           onClick={() => { setBonusTarget(scored.find(m => m.profile_id !== myProfileId)?.profile_id ?? null); setBonusReason(""); setBonusPoints(5); }}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
-          style={{ background: "var(--warning)", color: "#09090B" }}>
+          style={{ background: "var(--warning)", color: "var(--primary-foreground)" }}>
           <Plus size={14} /> Attribuer un bonus
         </button>
       </div>
@@ -404,7 +404,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
 
             <button onClick={submitBonus} disabled={submitting || bonusReason.trim().length < 10}
               className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity"
-              style={{ background: "var(--warning)", color: "#09090B", opacity: (submitting || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
+              style={{ background: "var(--warning)", color: "var(--primary-foreground)", opacity: (submitting || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
               {submitting ? "Envoi…" : `Attribuer +${bonusPoints} pts`}
             </button>
           </div>

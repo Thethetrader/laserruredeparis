@@ -47,7 +47,7 @@ export function PushNotificationSetup({ establishmentId }: { establishmentId: st
       className="text-xs px-3 py-1.5 rounded-md font-medium transition-opacity"
       style={{
         background: 'var(--accent)',
-        color: '#09090B',
+        color: 'var(--primary-foreground)',
         opacity: status === 'loading' ? 0.6 : 1,
       }}
     >

@@ -991,7 +991,7 @@ function AddTaskModal({ estId, protocols, tipSettings, onClose, onSaved }: {
             </button>
             <button onClick={handleSave} disabled={!canSave || saving}
               className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: (!canSave || saving) ? 0.5 : 1 }}>
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (!canSave || saving) ? 0.5 : 1 }}>
               {saving ? "Création…" : (() => {
                 const n = steps.length * (targetRoles.length || 1);
                 return n > 1 ? `Créer ${n} tâches` : "Créer la tâche";
@@ -1144,7 +1144,7 @@ function EditTaskModal({ task, tipSettings, onClose, onSaved }: {
             </button>
             <button onClick={handleSave} disabled={!title.trim() || saving}
               className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity"
-              style={{ background: "var(--accent)", color: "#09090B", opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
               {saving ? "Sauvegarde…" : "Enregistrer"}
             </button>
           </div>

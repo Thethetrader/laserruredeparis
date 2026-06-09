@@ -84,7 +84,7 @@ function SuccessInner() {
           onClick={handleCreate}
           disabled={status === "loading"}
           className="w-full py-2.5 text-sm font-medium rounded-base transition-opacity flex items-center justify-center gap-2"
-          style={{ background: "var(--accent)", color: "#09090B", opacity: status === "loading" ? 0.6 : 1 }}
+          style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: status === "loading" ? 0.6 : 1 }}
         >
           {status === "loading" ? <><Loader2 size={14} className="animate-spin" />Création…</> : "Créer mon compte"}
         </button>

@@ -153,7 +153,7 @@ function ShiftModal({ date, shift, onSave, onDelete, onClose, tipSettings, tipsE
         <div className="flex gap-2">
           {shift && <button onClick={onDelete} className="px-4 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>Supprimer</button>}
           <button onClick={onClose} className="flex-1 py-2.5 rounded-base text-[13px] font-medium" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>Annuler</button>
-          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-base text-[13px] font-semibold" style={{ background: "var(--success)", color: "#09090B", opacity: saving ? 0.7 : 1 }}>{saving ? "…" : "Enregistrer"}</button>
+          <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 rounded-base text-[13px] font-semibold" style={{ background: "var(--success)", color: "var(--primary-foreground)", opacity: saving ? 0.7 : 1 }}>{saving ? "…" : "Enregistrer"}</button>
         </div>
       </div>
     </div>
@@ -421,7 +421,7 @@ const days     = getDaysInMonth(year, month);
         </div>
       )}
 
-      <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "#09090B" }}>
+      <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
         <Plus size={22} strokeWidth={2.5} />
       </button>
 

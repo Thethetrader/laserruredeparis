@@ -279,7 +279,7 @@ export default function PayrollPage() {
 
         <button onClick={calculate} disabled={loading}
           className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-          style={{ background: "var(--accent)", color: "#09090B", opacity: loading ? 0.7 : 1 }}>
+          style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: loading ? 0.7 : 1 }}>
           <Calculator size={15} />
           {loading ? "Calcul en cours…" : "Calculer"}
         </button>

@@ -267,7 +267,7 @@ export default function ChallengesPage() {
           <button
             onClick={() => setShowForm(!showForm)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md"
-            style={{ background: "var(--accent)", color: "#09090B" }}
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
           >
             <Plus size={14} />
             Créer un défi
@@ -325,7 +325,7 @@ export default function ChallengesPage() {
             <div className="flex gap-2 pt-1">
               <button onClick={createChallenge} disabled={submitting || !formTitle.trim()}
                 className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
-                style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !formTitle.trim()) ? 0.5 : 1 }}>
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (submitting || !formTitle.trim()) ? 0.5 : 1 }}>
                 {submitting ? "Création…" : "Créer"}
               </button>
               <button onClick={resetForm}
@@ -445,7 +445,7 @@ export default function ChallengesPage() {
                             onClick={() => updateProgress(challenge.id)}
                             disabled={!progressInputs[challenge.id]}
                             className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
-                            style={{ background: "var(--accent)", color: "#09090B", opacity: !progressInputs[challenge.id] ? 0.4 : 1 }}
+                            style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: !progressInputs[challenge.id] ? 0.4 : 1 }}
                           >
                             Mettre à jour
                           </button>
@@ -482,7 +482,7 @@ export default function ChallengesPage() {
                             <button
                               onClick={() => closeChallenge(challenge.id)}
                               className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md"
-                              style={{ background: "var(--success)", color: "#09090B" }}
+                              style={{ background: "var(--success)", color: "var(--primary-foreground)" }}
                             >
                               <Trophy size={14} />
                               Clôturer le défi

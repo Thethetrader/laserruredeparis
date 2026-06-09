@@ -429,7 +429,7 @@ export default function CustomerFeedbackPage() {
           <button
             onClick={() => setShowNewModal(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-xl transition-opacity hover:opacity-80"
-            style={{ background: "var(--accent)", color: "#09090B" }}>
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
             <Plus size={15} /> Nouveau retour
           </button>
         </div>
@@ -441,7 +441,7 @@ export default function CustomerFeedbackPage() {
           <button key={f} onClick={() => setMonthFilter(f)}
             className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
             style={monthFilter === f
-              ? { background: "var(--accent)", color: "#09090B" }
+              ? { background: "var(--accent)", color: "var(--primary-foreground)" }
               : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
             {MONTH_LABELS[f]}
           </button>
@@ -546,7 +546,7 @@ export default function CustomerFeedbackPage() {
             <button key={key} onClick={() => toggleFilter(key)}
               className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
               style={active
-                ? { background: "var(--accent)", color: "#09090B" }
+                ? { background: "var(--accent)", color: "var(--primary-foreground)" }
                 : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
               {label}
             </button>
@@ -607,7 +607,7 @@ export default function CustomerFeedbackPage() {
               </p>
               <button onClick={() => setShowNewModal(true)}
                 className="flex items-center gap-2 px-5 py-3 text-sm font-semibold rounded-xl"
-                style={{ background: "var(--accent)", color: "#09090B" }}>
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
                 <Plus size={14} /> Nouveau retour
               </button>
             </>
@@ -1252,7 +1252,7 @@ function NewFeedbackModal({ establishmentId, profileId, onClose, onAdded, onEcho
                 </button>
                 <button onClick={handlePublish} disabled={!canSubmit || step === "checking"}
                   className="flex-1 py-3 text-sm font-semibold rounded-xl transition-opacity flex items-center justify-center gap-2"
-                  style={{ background: "var(--accent)", color: "#09090B", opacity: (!canSubmit || step === "checking") ? 0.6 : 1 }}>
+                  style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (!canSubmit || step === "checking") ? 0.6 : 1 }}>
                   {step === "checking" ? (
                     <>
                       <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />

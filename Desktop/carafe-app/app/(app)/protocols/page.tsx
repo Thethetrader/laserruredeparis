@@ -526,7 +526,7 @@ export default function ProtocolsPage() {
           {isManager && (
             <button onClick={() => setShowForm(!showForm)}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md"
-              style={{ background: "var(--accent)", color: "#09090B" }}>
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
               <Plus size={14} /> Nouveau
             </button>
           )}
@@ -648,7 +648,7 @@ export default function ProtocolsPage() {
         {isManager && (
           <button onClick={() => openFormForCategory(selectedCategory)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md flex-shrink-0"
-            style={{ background: "var(--accent)", color: "#09090B" }}>
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
             <Plus size={14} /> Nouveau
           </button>
         )}
@@ -1198,7 +1198,7 @@ function ProtocolForm({
         <div className="flex gap-2 pt-1">
           <button onClick={onSubmit} disabled={submitting || !formTitle.trim()}
             className="px-4 py-2 text-sm font-medium rounded-md transition-opacity"
-            style={{ background: "var(--accent)", color: "#09090B", opacity: (submitting || !formTitle.trim()) ? 0.5 : 1 }}>
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (submitting || !formTitle.trim()) ? 0.5 : 1 }}>
             {submitting ? "Enregistrement…" : isEditing ? "Enregistrer" : "Créer"}
           </button>
           <button onClick={onCancel} className="px-4 py-2 text-sm rounded-md"
