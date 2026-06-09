@@ -1092,13 +1092,13 @@ function ShiftChip({ shift, showStatus, onClick }: {
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold ${onClick ? "cursor-pointer hover:opacity-80" : ""}`}
+      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${onClick ? "cursor-pointer hover:opacity-80" : ""}`}
       style={{ background: `${color}18`, border: `1px solid ${color}40`, color }}
     >
-      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      <span className="truncate flex-1">{shift.first_name ?? "?"}</span>
+      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="truncate flex-1 min-w-0">{shift.first_name ?? "?"}</span>
       {showStatus && (
-        <span className="text-[10px] font-bold" style={{ color: statusColor }}>
+        <span className="text-[9px] font-bold flex-shrink-0" style={{ color: statusColor }}>
           {CONFIRM_ICON[shift.confirmation_status] ?? "·"}
         </span>
       )}
@@ -1129,41 +1129,39 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
   });
 
   const n       = activeDates.length;
-  const MIN_COL = 92;
-  const LABEL_W = 76;
+  const LABEL_W = n <= 3 ? 64 : n <= 5 ? 56 : 48;
 
   return (
-    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-      <div style={{ minWidth: LABEL_W + n * MIN_COL }}>
-        <div className="flex items-stretch" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-          <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0 }} />
-          {activeDates.map((date, i) => {
-            const isToday = toDateStr(new Date()) === toDateStr(date);
-            const dayIdx  = weekDates.indexOf(date);
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5"
-                style={{ minWidth: MIN_COL, borderLeft: "1px solid var(--border-soft)" }}>
-                <span className="text-[9px] font-mono font-bold uppercase tracking-widest"
-                  style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[dayIdx]}</span>
-                <span className="text-[18px] font-bold leading-none"
-                  style={{ color: isToday ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
-              </div>
-            );
-          })}
-        </div>
+    <div style={{ width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `${LABEL_W}px repeat(${n}, 1fr)` }}>
+        {/* Header row */}
+        <div style={{ borderBottom: "1px solid var(--border-soft)" }} />
+        {activeDates.map((date, i) => {
+          const isToday = toDateStr(new Date()) === toDateStr(date);
+          const dayIdx  = weekDates.indexOf(date);
+          return (
+            <div key={i} className="flex flex-col items-center justify-center py-2 gap-0.5"
+              style={{ borderBottom: "1px solid var(--border-soft)", borderLeft: "1px solid var(--border-soft)" }}>
+              <span className="text-[8px] font-mono font-bold uppercase tracking-widest"
+                style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[dayIdx]}</span>
+              <span className="text-[15px] font-bold leading-none"
+                style={{ color: isToday ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+            </div>
+          );
+        })}
+        {/* Service rows */}
         {serviceRows.map(({ key, label, color, time }, rowIdx) => (
-          <div key={key} className="flex items-stretch"
-            style={{ borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none" }}>
-            <div className="flex flex-col justify-center gap-0.5 px-3 py-3"
-              style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0, borderRight: "1px solid var(--border-soft)" }}>
-              <span className="text-[11px] font-black tracking-widest" style={{ color }}>{label}</span>
-              <span className="text-[9px] font-mono leading-snug" style={{ color: "var(--foreground-dim)" }}>{time}</span>
+          <>
+            <div key={`lbl-${key}`} className="flex flex-col justify-center gap-0.5 px-1.5 py-2"
+              style={{ borderRight: "1px solid var(--border-soft)", borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none" }}>
+              <span className="text-[9px] font-black tracking-wider truncate" style={{ color }}>{label}</span>
+              <span className="text-[8px] font-mono leading-snug" style={{ color: "var(--foreground-dim)" }}>{time}</span>
             </div>
             {activeDates.map((date, i) => {
               const cell = getShifts(date, key);
               return (
-                <div key={i} className="flex-1 flex flex-col gap-1 p-2"
-                  style={{ minWidth: MIN_COL, minHeight: 72, borderLeft: "1px solid var(--border-soft)", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
+                <div key={`${key}-${i}`} className="flex flex-col gap-0.5 p-1"
+                  style={{ minHeight: 60, borderLeft: "1px solid var(--border-soft)", borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--background-elev)" : "var(--background-soft)" }}>
                   {cell.map(s => (
                     <ShiftChip key={s.id} shift={s} showStatus={showStatus}
                       onClick={onShiftClick && s.confirmation_status === "modified" ? () => onShiftClick(s) : undefined} />
@@ -1171,7 +1169,7 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
                 </div>
               );
             })}
-          </div>
+          </>
         ))}
       </div>
     </div>
