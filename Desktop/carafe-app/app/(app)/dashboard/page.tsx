@@ -926,32 +926,32 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           )}
 
           {/* 2. Retours clients */}
-          {data.feedback_summary.total > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <div className="flex items-center gap-2">
-                  <MessageSquare size={14} style={{ color: "var(--accent)" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
-                </div>
-                <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <div className="flex items-center gap-2">
+                <MessageSquare size={14} style={{ color: "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
               </div>
-              <div className="grid grid-cols-2 gap-px" style={{ background: "var(--border)" }}>
-                {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map(cat => {
-                  const meta = CATEGORY_META[cat];
-                  const count = data.feedback_summary[cat];
-                  return (
-                    <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
-                      className="px-5 py-4 text-left transition-opacity"
-                      style={{ background: "var(--background-elev)", opacity: count === 0 ? 0.5 : 1, cursor: count > 0 ? "pointer" : "default" }}>
-                      <p className="text-2xl font-semibold mb-0.5" style={{ color: meta.color }}>{count}</p>
-                      <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{meta.label}</p>
-                      {count > 0 && <p className="text-[10px] mt-1" style={{ color: meta.color }}>Voir →</p>}
-                    </button>
-                  );
-                })}
-              </div>
+              <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
             </div>
-          )}
+            <div style={{ background: "var(--background-elev)" }}>
+              {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map((cat, i, arr) => {
+                const meta = CATEGORY_META[cat];
+                const count = data.feedback_summary[cat];
+                return (
+                  <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-opacity active:opacity-70"
+                    style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-soft)" : "none", cursor: count > 0 ? "pointer" : "default" }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+                      <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{meta.label}</p>
+                    </div>
+                    <p className="text-[15px] font-semibold" style={{ color: count > 0 ? meta.color : "var(--foreground-dim)" }}>{count}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* 3. Protocoles */}
           <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
