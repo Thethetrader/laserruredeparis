@@ -125,7 +125,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = cookies();
   const activeId = cookieStore.get("active_establishment_id")?.value;
   const establishment =
-    (activeId && establishments.find(e => e.id === activeId)) || establishments[0];
+    (activeId && establishments.find(e => e.id === activeId)) ||
+    establishments.find(e => e.role === "employee") ||
+    establishments[0];
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)" }}>
