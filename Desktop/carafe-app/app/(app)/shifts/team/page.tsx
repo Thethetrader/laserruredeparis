@@ -890,9 +890,9 @@ export default function ShiftsTeamPage() {
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
                   className="flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
-                  style={{ minHeight: 80, padding: "6px 4px", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "transparent", cursor: "pointer" }}>
-                  <span className="text-[11px] lg:text-[13px] font-semibold w-5 h-5 lg:w-6 lg:h-6 flex items-center justify-center rounded-full mb-1 flex-shrink-0"
-                    style={{ background: isToday ? "var(--accent)" : "transparent", color: isToday ? "#09090B" : "var(--foreground-muted)" }}>
+                  style={{ minHeight: 80, padding: "6px 4px", borderRight: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border)", borderBottom: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border)", borderTop: isToday ? "2px solid var(--foreground-muted)" : undefined, borderLeft: isToday ? "2px solid var(--foreground-muted)" : undefined, background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "transparent", cursor: "pointer" }}>
+                  <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
+                    style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
                   <div className="w-full space-y-0.5 px-0.5">

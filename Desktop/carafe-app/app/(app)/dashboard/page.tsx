@@ -832,7 +832,8 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {unsigned.map((p, i) => {
                 const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
                 return (
-                  <div key={p.id} className="px-5 py-3.5 flex items-center gap-4"
+                  <button key={p.id} onClick={() => setProtocolPopup(p)}
+                    className="w-full text-left px-5 py-3.5 flex items-center gap-4 transition-opacity active:opacity-70"
                     style={{ borderBottom: i < unsigned.length - 1 ? "1px solid rgba(239,68,68,0.15)" : "none" }}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
@@ -846,7 +847,8 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                         <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{p.read_count}/{p.total_members} signé{p.read_count > 1 ? "s" : ""}</span>
                       </div>
                     </div>
-                  </div>
+                    <ChevronRight size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+                  </button>
                 );
               })}
             </div>

@@ -28,7 +28,7 @@ const getCachedUserData = unstable_cache(
     return { profile: profileRes.data, members: membersRes.data };
   },
   ["layout-user-data"],
-  { revalidate: 60 }
+  { revalidate: 60, tags: ["layout-user-data"] }
 );
 
 const DEV_PROFILE: Profile = {

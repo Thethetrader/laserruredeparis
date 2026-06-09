@@ -8,6 +8,7 @@ import { Camera, CheckCircle, LogOut, X, Calendar, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PushNotificationSetup } from "@/components/PushNotificationSetup";
 import { useDevRole } from "@/hooks/useDevRole";
+import { revalidateLayoutCache } from "@/app/actions";
 
 const DEV_MODE = false;
 
@@ -123,6 +124,7 @@ export default function AccountPage() {
         await supabase.from("profiles").update({ avatar_url: urlWithBust }).eq("id", profile.id);
         setProfile(prev => prev ? { ...prev, avatar_url: urlWithBust } : prev);
         setAvatarPreview(urlWithBust);
+        await revalidateLayoutCache();
         router.refresh();
       }
       setUploadingPhoto(false);
