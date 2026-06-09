@@ -23,7 +23,7 @@ export default function FooterSection() {
           <div>
             <div className="mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="Karaf" style={{ height: 40, width: "auto" }} />
+              <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 40, width: "auto" }} />
             </div>
             <p className="font-mono text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Tout coule. Rien ne se perd.</p>
             <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)", maxWidth: "20ch" }}>

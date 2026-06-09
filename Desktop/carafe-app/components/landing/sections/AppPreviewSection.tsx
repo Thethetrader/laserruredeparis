@@ -47,7 +47,7 @@ export default function AppPreviewSection() {
           >
             <div
               className="flex items-center gap-2 px-4 py-3"
-              style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}
+              style={{ background: "#ffffff", borderBottom: "1px solid var(--border)" }}
             >
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full" style={{ background: "#EF4444", opacity: 0.7 }} />
@@ -56,7 +56,7 @@ export default function AppPreviewSection() {
               </div>
               <div
                 className="flex-1 mx-4 px-3 py-1 rounded text-[11px] font-mono text-center"
-                style={{ background: "var(--background)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
+                style={{ background: "#f5f5f0", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
               >
                 app.karaf.fr
               </div>
@@ -83,7 +83,7 @@ export default function AppPreviewSection() {
             style={{
               width: 260,
               height: 480,
-              border: "8px solid var(--background-elev)",
+              border: "8px solid #ffffff",
               boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.12)",
               overflow: "hidden",
               background: "var(--background)",
@@ -91,7 +91,7 @@ export default function AppPreviewSection() {
           >
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
-              style={{ width: 64, height: 18, background: "var(--background-elev)" }}
+              style={{ width: 64, height: 18, background: "#ffffff" }}
             />
             <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

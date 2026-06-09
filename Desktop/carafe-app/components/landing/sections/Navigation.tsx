@@ -14,7 +14,7 @@ function KarafLogo() {
   return (
     <a href="#" className="flex items-center focus:outline-none">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="Karaf" style={{ height: 56, width: "auto" }} />
+      <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 56, width: "auto" }} />
     </a>
   );
 }
