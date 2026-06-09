@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
@@ -1151,8 +1151,8 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
         })}
         {/* Service rows */}
         {serviceRows.map(({ key, label, color, time }, rowIdx) => (
-          <>
-            <div key={`lbl-${key}`} className="flex flex-col justify-center gap-0.5 px-1.5 py-2"
+          <Fragment key={key}>
+            <div className="flex flex-col justify-center gap-0.5 px-1.5 py-2"
               style={{ borderRight: "1px solid var(--border-soft)", borderBottom: rowIdx < serviceRows.length - 1 ? "1px solid var(--border)" : "none" }}>
               <span className="text-[9px] font-black tracking-wider truncate" style={{ color }}>{label}</span>
               <span className="text-[8px] font-mono leading-snug" style={{ color: "var(--foreground-dim)" }}>{time}</span>
@@ -1169,7 +1169,7 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
                 </div>
               );
             })}
-          </>
+          </Fragment>
         ))}
       </div>
     </div>
