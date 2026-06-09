@@ -1173,7 +1173,7 @@ function ProtocolForm({
                 <button onClick={() => { setFormFile(null); setFormSteps([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}
                   className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>✕</button>
               </div>
-              {formSteps.length === 0 && (
+              {formSteps.length === 0 && formFile.type === "application/pdf" && (
                 <button onClick={onExtractSteps} disabled={extracting}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
                   style={{
@@ -1185,6 +1185,10 @@ function ProtocolForm({
                   <Wand2 size={14} className={extracting ? "animate-spin" : ""} />
                   {extracting ? "Analyse IA en cours…" : "Analyser avec l'IA"}
                 </button>
+              )}
+              {formFile.type !== "application/pdf" && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={URL.createObjectURL(formFile)} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />
               )}
             </div>
           ) : (

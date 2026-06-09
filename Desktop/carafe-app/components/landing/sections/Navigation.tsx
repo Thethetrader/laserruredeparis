@@ -17,7 +17,7 @@ function KarafLogo() {
       <img
         src="/FONDCLAIRLOGO.png"
         alt="Karaf"
-        style={{ height: 52, width: "auto", mixBlendMode: "multiply" }}
+        style={{ height: 52, width: "auto", mixBlendMode: "multiply", filter: "brightness(1.4)" }}
       />
     </a>
   );

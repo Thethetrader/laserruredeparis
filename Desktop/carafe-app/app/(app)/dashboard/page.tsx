@@ -306,7 +306,7 @@ export default function DashboardPage() {
 
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("delays").select("employee_id").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
+      supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
@@ -318,7 +318,7 @@ export default function DashboardPage() {
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
-    const delays = (delaysRes.data ?? []) as Array<{ employee_id: string }>;
+    const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
     const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
@@ -406,10 +406,7 @@ export default function DashboardPage() {
     }));
 
     const todayStart = now.toISOString().split("T")[0];
-    const todayDelays = delays.filter(d => {
-      const delay = d as unknown as { employee_id: string; shift_date?: string };
-      return delay.shift_date === todayStart;
-    }).length;
+    const todayDelays = delays.filter(d => d.shift_date === todayStart).length;
     const todayFeedbackCount = rawFeedback.filter(f => f.created_at.startsWith(todayStart)).length;
 
     setData({
@@ -485,7 +482,7 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2">
@@ -636,7 +633,7 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) { if (validating) setValidating(null); else onClose(); } }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) { if (validating) setValidating(null); else onClose(); } }}>
       <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2">
@@ -1128,7 +1125,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
 
       {/* Modals */}
       {feedbackModal && modalMeta && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) setFeedbackModal(null); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2">
@@ -1171,7 +1168,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
       {/* Protocol popup manager */}
       {protocolPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
           <div className="w-full max-w-md rounded-2xl overflow-hidden"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
@@ -1231,7 +1228,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
       {/* KPI Popup */}
       {kpiPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setKpiPopup(null); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
@@ -1404,7 +1401,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
       {showAiPanel && (
         <div
           className="fixed inset-0 z-50"
-          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
+          style={{ background: "rgba(0,0,0,0.4)", WebkitBackdropFilter: "blur(2px)", backdropFilter: "blur(2px)" }}
           onClick={() => setShowAiPanel(false)}
         />
       )}
@@ -1940,7 +1937,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
 
       {/* Delay modal */}
       {modal === "delay" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -1977,7 +1974,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
 
       {/* Feedback modal */}
       {modal === "feedback" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -2015,7 +2012,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
       {/* Popup protocole */}
       {protocolPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.7)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setProtocolPopup(null); }}>
           <div className="w-full max-w-md rounded-2xl overflow-hidden"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
@@ -2088,7 +2085,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
       {/* Liste protocoles obligatoires */}
       {mandatoryListOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+          style={{ background: "rgba(0,0,0,0.7)", WebkitBackdropFilter: "blur(4px)", backdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setMandatoryListOpen(false); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>

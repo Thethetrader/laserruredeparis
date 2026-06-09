@@ -100,6 +100,8 @@ export default function ChallengesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+
   // Per-challenge state for manager actions
   const [progressInputs, setProgressInputs] = useState<Record<string, string>>({});
   const [winnerInputs, setWinnerInputs] = useState<Record<string, string>>({});
@@ -139,13 +141,19 @@ export default function ChallengesPage() {
     setRole(memberData.role);
     setEstablishmentId(memberData.establishment_id);
 
-    const { data } = await supabase
-      .from("challenges")
-      .select("*")
-      .eq("establishment_id", memberData.establishment_id)
-      .order("created_at", { ascending: false });
+    const [challengesRes, membersRes] = await Promise.all([
+      supabase.from("challenges").select("*").eq("establishment_id", memberData.establishment_id).order("created_at", { ascending: false }),
+      supabase.from("establishment_members").select("profile_id, profiles(first_name, last_name)").eq("establishment_id", memberData.establishment_id).eq("is_active", true),
+    ]);
 
-    setChallenges(data ?? []);
+    setChallenges(challengesRes.data ?? []);
+
+    type MemberRow = { profile_id: string; profiles: { first_name: string | null; last_name: string | null } | null };
+    setMembers(((membersRes.data ?? []) as MemberRow[]).map(m => ({
+      id: m.profile_id,
+      name: `${m.profiles?.first_name ?? ""} ${m.profiles?.last_name ?? ""}`.trim() || "Membre",
+    })).filter(m => m.name !== "Membre" || m.id));
+
     setLoading(false);
   }
 
@@ -469,15 +477,19 @@ export default function ChallengesPage() {
                           <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
                             Qui a gagné ? <span style={{ fontWeight: 400, textTransform: "none" }}>(optionnel)</span>
                           </p>
-                          <input
+                          <select
                             value={winnerInputs[challenge.id] ?? ""}
                             onChange={e => setWinnerInputs(prev => ({ ...prev, [challenge.id]: e.target.value }))}
-                            placeholder="Ex: Yasmine Benali"
                             className="w-full px-3 py-2 text-sm rounded-md outline-none"
-                            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: winnerInputs[challenge.id] ? "var(--foreground)" : "var(--foreground-dim)" }}
                             onFocus={e => e.currentTarget.style.borderColor = "var(--success)"}
                             onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-                          />
+                          >
+                            <option value="">— Aucun gagnant désigné —</option>
+                            {members.map(m => (
+                              <option key={m.id} value={m.name}>{m.name}</option>
+                            ))}
+                          </select>
                           <div className="flex gap-2">
                             <button
                               onClick={() => closeChallenge(challenge.id)}

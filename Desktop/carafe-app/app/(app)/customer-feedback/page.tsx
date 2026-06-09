@@ -122,9 +122,10 @@ const DEV_FEEDBACKS: FeedbackView[] = [
   },
 ];
 
-type MonthFilter = "week" | "month" | "lastmonth";
+type MonthFilter = "all" | "week" | "month" | "lastmonth";
 
 const MONTH_LABELS: Record<MonthFilter, string> = {
+  all: "Tous",
   week: "Cette semaine",
   month: "Ce mois",
   lastmonth: "Mois dernier",
@@ -184,20 +185,25 @@ export default function CustomerFeedbackPage() {
     setUserRole(memberData.role);
 
     const now = new Date();
-    let rangeStart: string;
+    let rangeStart: string | null = null;
+    let rangeEnd: string | null = null;
     if (monthFilter === "week") {
       rangeStart = new Date(Date.now() - 7 * 86400000).toISOString();
     } else if (monthFilter === "month") {
       rangeStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    } else {
+    } else if (monthFilter === "lastmonth") {
       rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      rangeEnd = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     }
-    const sevenDaysAgo = rangeStart;
     const [feedbackRes, confirmedRes, membersRes] = await Promise.all([
-      supabase.from("customer_feedback").select("*")
-        .eq("establishment_id", memberData.establishment_id)
-        .gte("created_at", sevenDaysAgo)
-        .order("created_at", { ascending: false }),
+      (() => {
+        let q = supabase.from("customer_feedback").select("*")
+          .eq("establishment_id", memberData.establishment_id)
+          .order("created_at", { ascending: false });
+        if (rangeStart) q = q.gte("created_at", rangeStart);
+        if (rangeEnd) q = q.lt("created_at", rangeEnd);
+        return q;
+      })(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
       supabase.from("establishment_members")
         .select("profile_id, profiles(first_name, last_name, avatar_url)")
@@ -437,7 +443,7 @@ export default function CustomerFeedbackPage() {
 
       {/* Month filter */}
       <div className="flex gap-2 mb-5">
-        {(["week", "month", "lastmonth"] as MonthFilter[]).map(f => (
+        {(["all", "week", "month", "lastmonth"] as MonthFilter[]).map(f => (
           <button key={f} onClick={() => setMonthFilter(f)}
             className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
             style={monthFilter === f

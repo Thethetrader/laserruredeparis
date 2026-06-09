@@ -27,7 +27,7 @@ export default function FooterSection() {
               <img
                 src="/FONDCLAIRLOGO.png"
                 alt="Karaf"
-                style={{ height: 44, width: "auto", mixBlendMode: "multiply" }}
+                style={{ height: 44, width: "auto", mixBlendMode: "multiply", filter: "brightness(1.4)" }}
               />
             </div>
             <p className="font-mono text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Tout coule. Rien ne se perd.</p>
