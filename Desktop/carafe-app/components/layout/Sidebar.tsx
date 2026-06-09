@@ -6,7 +6,8 @@ import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Setting
 
 type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import type { EstablishmentWithRole } from "@/lib/types/database";
+import { LiveAvatar } from "@/components/layout/LiveAvatar";
+import type { EstablishmentWithRole, Profile } from "@/lib/types/database";
 
 const managerNav: NavItem[] = [
   { href: "/dashboard",          icon: LayoutDashboard, label: "Dashboard" },
@@ -37,11 +38,12 @@ const employeeNav: NavItem[] = [
 ];
 
 interface SidebarProps {
+  profile: Profile;
   establishment: EstablishmentWithRole;
   establishments: EstablishmentWithRole[];
 }
 
-export function Sidebar({ establishment, establishments }: SidebarProps) {
+export function Sidebar({ profile, establishment, establishments }: SidebarProps) {
   const pathname = usePathname();
   const nav = establishment.role === "employee" ? employeeNav : managerNav;
 
@@ -52,8 +54,17 @@ export function Sidebar({ establishment, establishments }: SidebarProps) {
     >
       {/* Header */}
       <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Karaf" style={{ height: 44, width: "auto", marginBottom: 12 }} />
+        <Link href="/account" className="flex items-center gap-3 mb-3">
+          <LiveAvatar
+            firstName={profile.first_name}
+            lastName={profile.last_name}
+            serverAvatarUrl={profile.avatar_url}
+            size={40}
+          />
+          <span className="text-[13px] font-medium truncate" style={{ color: "var(--foreground-muted)" }}>
+            {profile.first_name} {profile.last_name}
+          </span>
+        </Link>
 
         {/* Establishment selector */}
         {establishments.length > 1 ? (

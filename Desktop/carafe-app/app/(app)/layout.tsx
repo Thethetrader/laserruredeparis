@@ -129,7 +129,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen" style={{ background: "var(--background)" }}>
-      <Sidebar establishment={establishment} establishments={establishments} />
+      <Sidebar profile={profile} establishment={establishment} establishments={establishments} />
       <TopBar profile={profile} establishment={establishment} establishments={establishments} />
 
       <main className="pt-topbar-safe lg:pl-[240px] app-main-safe-pb">
