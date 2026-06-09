@@ -96,15 +96,16 @@ export default function AppPreviewSection() {
             <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/karaf-app-demo-desktop.gif"
+                src="/karaf-pwa-mobile.gif"
                 alt="Aperçu Karaf"
                 style={{
                   position: "absolute",
                   top: 0,
-                  left: "-19%",
+                  left: 0,
+                  width: "100%",
                   height: "100%",
-                  width: "auto",
-                  maxWidth: "none",
+                  objectFit: "cover",
+                  objectPosition: "top",
                 }}
               />
             </div>
