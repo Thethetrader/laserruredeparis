@@ -1619,11 +1619,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [delayDate, setDelayDate] = useState(new Date().toISOString().split("T")[0]);
   const [delayMinutes, setDelayMinutes] = useState("15");
   const [delayReason, setDelayReason] = useState<"transport" | "personal" | "health" | "other">("transport");
-  const [fbCategory, setFbCategory] = useState<FeedbackCategory>("complaint");
-  const [fbContent, setFbContent] = useState("");
-  const [fbTable, setFbTable] = useState("");
-
-  const closeModal = () => { setModal(null); setSubmitting(false); setDelayMinutes("15"); setDelayDate(new Date().toISOString().split("T")[0]); setDelayReason("transport"); setFbCategory("compliment"); setFbContent(""); setFbTable(""); };
+  const closeModal = () => { setModal(null); setSubmitting(false); setDelayMinutes("15"); setDelayDate(new Date().toISOString().split("T")[0]); setDelayReason("transport"); };
   const showSuccess = (msg: string) => { setSuccessMsg(msg); closeModal(); setTimeout(() => setSuccessMsg(null), 3000); };
 
   const submitDelay = async () => {
@@ -1633,14 +1629,6 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     if (DEV_MODE) { showSuccess("Retard déclaré ✓"); return; }
     await supabase.from("delays").insert({ establishment_id: data.establishment_id, employee_id: data.my_profile_id, shift_date: delayDate, delay_minutes: mins, reason: delayReason });
     showSuccess("Retard déclaré ✓");
-  };
-
-  const submitFeedback = async () => {
-    if (!fbContent.trim()) return;
-    setSubmitting(true);
-    if (DEV_MODE) { showSuccess("Avis client enregistré ✓"); return; }
-    await supabase.from("customer_feedback").insert({ establishment_id: data.establishment_id, reported_by: data.my_profile_id, category: fbCategory, content: fbContent, table_number: fbTable || null });
-    showSuccess("Avis client enregistré ✓");
   };
 
   const todayStat = data.task_stats.find(s => s.period === "today");

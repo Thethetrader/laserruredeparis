@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, Sunrise, Sunset, Check, CalendarDays, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Euro, FileText, Trophy, Sunrise, Sunset, Check, CalendarDays } from "lucide-react";
 import {
   Shift, ShiftProfile, toDateStr, getDaysInMonth, isoWeekday, monthLabel,
   calcTotalHours, calcTotalTips, formatHours, formatTips, shiftsToMap, calcNetHours,
-  changePercent, monthlyContractHours, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings,
+  monthlyContractHours, parseTipSettings, DEFAULT_TIP_SETTINGS, type TipSettings,
   STAFF_STATUSES, type StaffStatus,
 } from "@/lib/shifts";
 
@@ -510,8 +510,7 @@ const days     = getDaysInMonth(year, month);
   const todayStr = toDateStr(today);
   const tHours   = calcTotalHours(shifts);
   const tTips    = calcTotalTips(shifts);
-  const cHrs     = changePercent(tHours, calcTotalHours(prevShifts));
-  const cTps     = changePercent(tTips, calcTotalTips(prevShifts));
+
   const cntHrs   = profile ? monthlyContractHours(profile.weekly_hours) : 0;
   const pctW     = cntHrs > 0 ? Math.min(Math.round((tHours/cntHrs)*100), 100) : 0;
   const firstDay = isoWeekday(days[0]) - 1;
