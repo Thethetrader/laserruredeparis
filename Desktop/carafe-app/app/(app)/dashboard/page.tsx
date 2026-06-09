@@ -1532,11 +1532,11 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [fbDismissed, setFbDismissed] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem("karaf-fb-dismissed");
-      if (!stored) return new Set();
-      const ids = JSON.parse(stored) as string[];
+      const localIds = stored ? (JSON.parse(stored) as string[]) : [];
       const validIds = new Set(data.feedback_items.map(f => f.id));
-      return new Set(ids.filter(id => validIds.has(id)));
-    } catch { return new Set(); }
+      const allDismissed = [...localIds, ...data.my_confirmed_feedback].filter(id => validIds.has(id));
+      return new Set(allDismissed);
+    } catch { return new Set(data.my_confirmed_feedback); }
   });
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
@@ -1573,6 +1573,12 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         try { localStorage.setItem("karaf-fb-dismissed", JSON.stringify([...next])); } catch {}
         return next;
       });
+      if (!DEV_MODE) {
+        const sb = createClient();
+        sb.auth.getUser().then(({ data: { user } }) => {
+          if (user) (sb.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ feedback_id: id, profile_id: user.id });
+        });
+      }
     }
     setFbSwipeX(prev => ({ ...prev, [id]: 0 }));
   };
