@@ -375,7 +375,8 @@ export default function DashboardPage() {
       .map(m => {
         const del = delayCounts[m.profile_id] ?? 0;
         const read = readsByProfile[m.profile_id] ?? 0;
-        const score = totalProtocols > 0 ? Math.round((read / totalProtocols) * 100) : 0;
+        const bonus = totalProtocols > 0 ? Math.round((read / totalProtocols) * 40) : 0;
+        const score = Math.max(0, 100 - del * 10 + bonus);
         const p = m.profiles;
         const fn = p?.first_name ?? "";
         const ln = p?.last_name ?? "";
@@ -1518,7 +1519,15 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     Object.fromEntries(data.feedback_items.map(f => [f.id, f.confirmation_count]))
   );
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
-  const [fbDismissed, setFbDismissed] = useState<Set<string>>(new Set());
+  const [fbDismissed, setFbDismissed] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("karaf-fb-dismissed");
+      if (!stored) return new Set();
+      const ids = JSON.parse(stored) as string[];
+      const validIds = new Set(data.feedback_items.map(f => f.id));
+      return new Set(ids.filter(id => validIds.has(id)));
+    } catch { return new Set(); }
+  });
   const [mandatoryListOpen, setMandatoryListOpen] = useState(false);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [readProtocols, setReadProtocols] = useState<Set<string>>(new Set(data.protocols.filter(p => p.is_read).map(p => p.id)));
@@ -1549,7 +1558,11 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   };
   const handleFbTouchEnd = (id: string) => {
     if ((fbSwipeX[id] ?? 0) < -SWIPE_THRESHOLD) {
-      setFbDismissed(prev => new Set([...prev, id]));
+      setFbDismissed(prev => {
+        const next = new Set([...prev, id]);
+        try { localStorage.setItem("karaf-fb-dismissed", JSON.stringify([...next])); } catch {}
+        return next;
+      });
     }
     setFbSwipeX(prev => ({ ...prev, [id]: 0 }));
   };
@@ -1661,14 +1674,15 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         </div>
       )}
 
-      {/* Alert protocoles */}
+      {/* Alert protocoles — obligatoires OU épinglés sur dashboard non lus */}
       {(() => {
-        const unreadMandatory = data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id));
-        return unreadMandatory.length > 0 && (
+        const unreadPriority = data.protocols.filter(p => (p.is_mandatory || p.show_on_dashboard) && !readProtocols.has(p.id));
+        const hasMandatory = unreadPriority.some(p => p.is_mandatory);
+        return unreadPriority.length > 0 && (
           <button
             onClick={() => {
-              if (unreadMandatory.length === 1) {
-                openProtocol(unreadMandatory[0]);
+              if (unreadPriority.length === 1) {
+                openProtocol(unreadPriority[0]);
               } else {
                 setMandatoryListOpen(true);
               }
@@ -1678,10 +1692,10 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
             <AlertCircle size={18} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 1 }} />
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                {unreadMandatory.length} protocole{unreadMandatory.length > 1 ? "s" : ""} obligatoire{unreadMandatory.length > 1 ? "s" : ""} à lire
+                {unreadPriority.length} protocole{unreadPriority.length > 1 ? "s" : ""} {hasMandatory ? "obligatoire" : "publié"}{unreadPriority.length > 1 ? "s" : ""} à lire
               </p>
               <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-                Appuie pour {unreadMandatory.length === 1 ? "lire et confirmer" : "voir la liste"}
+                Appuie pour {unreadPriority.length === 1 ? "lire et confirmer" : "voir la liste"}
               </p>
             </div>
             <ChevronRight size={16} style={{ color: "var(--danger)", flexShrink: 0, marginTop: 2 }} />
@@ -2094,13 +2108,13 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 <AlertCircle size={14} style={{ color: "var(--danger)" }} />
                 <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Lectures obligatoires</p>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>
-                  {data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id)).length} restant{data.protocols.filter(p => p.is_mandatory && !readProtocols.has(p.id)).length > 1 ? "s" : ""}
+                  {data.protocols.filter(p => (p.is_mandatory || p.show_on_dashboard) && !readProtocols.has(p.id)).length} restant{data.protocols.filter(p => (p.is_mandatory || p.show_on_dashboard) && !readProtocols.has(p.id)).length > 1 ? "s" : ""}
                 </span>
               </div>
               <button onClick={() => setMandatoryListOpen(false)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
             </div>
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {data.protocols.filter(p => p.is_mandatory).map(p => {
+              {data.protocols.filter(p => p.is_mandatory || p.show_on_dashboard).map(p => {
                 const isRead = readProtocols.has(p.id);
                 return (
                   <button key={p.id}
