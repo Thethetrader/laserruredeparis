@@ -102,7 +102,7 @@ export default function AppPreviewSection() {
               {/* GIF centré — rempli en hauteur, crop gauche/droite */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/karaf-pwa-mobile.gif"
+                src="/karaf-mobile-preview.gif"
                 alt="Aperçu Karaf PWA"
                 style={{
                   position: "absolute",
