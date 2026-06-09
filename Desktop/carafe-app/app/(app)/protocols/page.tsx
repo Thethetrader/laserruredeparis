@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2, LayoutDashboard } from "lucide-react";
+import { LucideIcon, Plus, ChevronDown, ChevronUp, CheckCircle, BookOpen, AlertCircle, FileText, Image, Upload, ExternalLink, ChevronLeft, ChevronRight, X, UtensilsCrossed, Wine, Users, ShieldCheck, Sunrise, Sunset, Sparkles, LayoutGrid, Wand2, Trash2, LayoutDashboard } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = false;
@@ -28,6 +28,26 @@ interface StepItem {
 function parseSteps(raw: unknown): StepItem[] {
   if (!raw || !Array.isArray(raw)) return [];
   return raw.map(s => typeof s === "string" ? { text: s } : s as StepItem);
+}
+
+interface ProtocolStepData { gallery: string[]; steps: StepItem[] }
+function parseProtocolSteps(raw: unknown): ProtocolStepData {
+  if (!raw) return { gallery: [], steps: [] };
+  if (Array.isArray(raw)) return { gallery: [], steps: raw.map(s => typeof s === "string" ? { text: s } : s as StepItem) };
+  if (typeof raw === "object" && raw !== null) {
+    const obj = raw as { gallery?: unknown; items?: unknown };
+    return {
+      gallery: Array.isArray(obj.gallery) ? (obj.gallery as string[]) : [],
+      steps: Array.isArray(obj.items) ? (obj.items as unknown[]).map(s => typeof s === "string" ? { text: s as string } : s as StepItem) : [],
+    };
+  }
+  return { gallery: [], steps: [] };
+}
+
+function buildStepsPayload(steps: StepItem[], gallery: string[]): unknown {
+  if (steps.length === 0 && gallery.length === 0) return null;
+  if (gallery.length === 0) return steps;
+  return { items: steps, gallery };
 }
 
 const STEP_FREQ_LABELS: Record<string, string> = {
@@ -227,6 +247,7 @@ export default function ProtocolsPage() {
   const [formMandatory, setFormMandatory] = useState(false);
   const [formFile, setFormFile] = useState<File | null>(null);
   const [formSteps, setFormSteps] = useState<StepItem[]>([]);
+  const [formGallery, setFormGallery] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -419,7 +440,7 @@ export default function ProtocolsPage() {
         content: formContent || "",
         category: formCategory as unknown as undefined,
         is_mandatory: formMandatory,
-        steps: formSteps.length > 0 ? formSteps as unknown as undefined : null,
+        steps: buildStepsPayload(formSteps, formGallery) as unknown as undefined,
         updated_at: new Date().toISOString(),
         ...(attachmentUrl ? { attachment_url: attachmentUrl, attachment_type: attachmentType ?? undefined, attachment_name: attachmentName ?? undefined } : {}),
       };
@@ -442,7 +463,7 @@ export default function ProtocolsPage() {
       attachment_url: attachmentUrl ?? undefined,
       attachment_type: attachmentType ?? undefined,
       attachment_name: attachmentName ?? undefined,
-      steps: formSteps.length > 0 ? formSteps : null,
+      steps: buildStepsPayload(formSteps, formGallery),
     }).select().single();
 
     if (error) {
@@ -457,7 +478,7 @@ export default function ProtocolsPage() {
 
   const resetForm = () => {
     setFormTitle(""); setFormContent(""); setFormCategory("salle");
-    setFormMandatory(false); setFormFile(null); setFormSteps([]);
+    setFormMandatory(false); setFormFile(null); setFormSteps([]); setFormGallery([]);
     setFormError(null); setEditingProtocol(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     setShowForm(false);
@@ -469,7 +490,9 @@ export default function ProtocolsPage() {
     setFormContent(protocol.content ?? "");
     setFormCategory(protocol.category as ProtocolCategory);
     setFormMandatory(protocol.is_mandatory);
-    setFormSteps(parseSteps(protocol.steps));
+    const parsed = parseProtocolSteps(protocol.steps);
+    setFormSteps(parsed.steps);
+    setFormGallery(parsed.gallery);
     setFormFile(null);
     setFormError(null);
     setShowForm(true);
@@ -591,6 +614,8 @@ export default function ProtocolsPage() {
             formMandatory={formMandatory} setFormMandatory={setFormMandatory}
             formFile={formFile} setFormFile={setFormFile}
             formSteps={formSteps} setFormSteps={setFormSteps}
+            formGallery={formGallery} setFormGallery={setFormGallery}
+            establishmentId={establishmentId}
             extracting={extracting} onExtractSteps={extractSteps}
             fileInputRef={fileInputRef} handleFileChange={handleFileChange}
             isEditing={!!editingProtocol} submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
@@ -774,6 +799,8 @@ export default function ProtocolsPage() {
           formMandatory={formMandatory} setFormMandatory={setFormMandatory}
           formFile={formFile} setFormFile={setFormFile}
           formSteps={formSteps} setFormSteps={setFormSteps}
+          formGallery={formGallery} setFormGallery={setFormGallery}
+          establishmentId={establishmentId}
           extracting={extracting} onExtractSteps={extractSteps}
           fileInputRef={fileInputRef} handleFileChange={handleFileChange}
           isEditing={!!editingProtocol} submitting={submitting} onSubmit={createProtocol} onCancel={resetForm}
@@ -906,14 +933,22 @@ interface ProtocolCardProps {
 }
 
 function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMarkRead, onEdit, onDelete, onToggleDashboard }: ProtocolCardProps) {
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const needsValidation = !isManager && !isRead;
   const hasPdf = protocol.attachment_type === "pdf";
-  const hasImage = protocol.attachment_type === "image";
-  const hasSteps = Array.isArray(protocol.steps) && protocol.steps.length > 0;
-  const parsedSteps = hasSteps ? parseSteps(protocol.steps) : [];
+  const { gallery, steps: parsedSteps } = parseProtocolSteps(protocol.steps);
+  const hasSteps = parsedSteps.length > 0;
   const stepPhotos = parsedSteps.filter(s => s.photo_url).map(s => s.photo_url!);
-  const allPhotos = [...(protocol.attachment_type === "image" && protocol.attachment_url ? [protocol.attachment_url] : []), ...stepPhotos];
+  const allPhotos = [
+    ...(protocol.attachment_type === "image" && protocol.attachment_url ? [protocol.attachment_url] : []),
+    ...gallery,
+    ...stepPhotos,
+  ];
+  const hasImage = allPhotos.length > 0;
+  const openLightbox = (url: string) => {
+    const idx = allPhotos.indexOf(url);
+    setLightbox({ urls: allPhotos, index: idx >= 0 ? idx : 0 });
+  };
 
   return (
     <div className="rounded-xl overflow-hidden"
@@ -944,13 +979,13 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
             {hasImage && (
               <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded"
                 style={{ background: "rgba(6,182,212,0.08)", color: "#A1A1AA" }}>
-                <Image size={9} /> Photo
+                <Image size={9} /> {allPhotos.length > 1 ? `${allPhotos.length} photos` : "Photo"}
               </span>
             )}
             {hasSteps && (
               <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded"
                 style={{ background: "rgba(139,92,246,0.08)", color: "#A78BFA" }}>
-                <CheckCircle size={9} /> {protocol.steps!.length} étapes
+                <CheckCircle size={9} /> {parsedSteps.length} étapes
               </span>
             )}
             {isRead && !isManager && <CheckCircle size={12} style={{ color: "var(--success)" }} />}
@@ -997,21 +1032,35 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
 
       {isExpanded && (
         <div style={{ borderTop: "1px solid var(--border)" }}>
-          {hasImage && protocol.attachment_url && (
-            <div className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={protocol.attachment_url}
-                alt={protocol.attachment_name ?? protocol.title}
-                className="w-full object-cover"
-                style={{ maxHeight: 320 }}
-              />
-              <button
-                onClick={() => setLightboxUrl(protocol.attachment_url!)}
-                className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium backdrop-blur-sm"
-                style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
-                <ExternalLink size={11} /> Ouvrir
-              </button>
+          {hasImage && allPhotos.length > 0 && (
+            <div>
+              {/* Photo principale */}
+              <div className="relative cursor-pointer" onClick={() => openLightbox(allPhotos[0])}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={allPhotos[0]}
+                  alt={protocol.attachment_name ?? protocol.title}
+                  className="w-full object-cover"
+                  style={{ maxHeight: 320 }}
+                />
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium backdrop-blur-sm"
+                  style={{ background: "rgba(0,0,0,0.55)", color: "#fff" }}>
+                  <ExternalLink size={11} /> {allPhotos.length > 1 ? `1 / ${allPhotos.length}` : "Ouvrir"}
+                </div>
+              </div>
+              {/* Miniatures si plusieurs photos */}
+              {allPhotos.length > 1 && (
+                <div className="flex gap-2 px-3 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                  {allPhotos.map((url, idx) => (
+                    <button key={idx} onClick={() => openLightbox(url)}
+                      className="flex-shrink-0 rounded-lg overflow-hidden"
+                      style={{ width: 72, height: 52, opacity: idx === 0 ? 1 : 0.75, outline: idx === 0 ? "2px solid var(--accent)" : "none" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {hasPdf && protocol.attachment_url && (
@@ -1040,19 +1089,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
           )}
           {hasSteps && (
             <div className="px-5 py-4" style={{ borderTop: hasPdf || hasImage ? "1px solid var(--border)" : undefined }}>
-              {/* Photo slider des étapes */}
-              {allPhotos.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2 mb-3 -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-                  {allPhotos.map((url, idx) => (
-                    <button key={idx} onClick={() => setLightboxUrl(url)}
-                      className="flex-shrink-0 rounded-lg overflow-hidden"
-                      style={{ width: 80, height: 60 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* (slider géré dans la section photos principale) */}
               <p className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>
                 Étapes
               </p>
@@ -1065,7 +1102,7 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
                     </span>
                     <div className="flex-1 min-w-0">
                       {step.photo_url && (
-                        <button onClick={() => setLightboxUrl(step.photo_url!)} className="mb-1.5 rounded-lg overflow-hidden block" style={{ width: 120, height: 80 }}>
+                        <button onClick={() => openLightbox(step.photo_url!)} className="mb-1.5 rounded-lg overflow-hidden block" style={{ width: 120, height: 80 }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={step.photo_url} alt="" className="w-full h-full object-cover" />
                         </button>
@@ -1107,25 +1144,54 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
           )}
         </div>
       )}
-      {lightboxUrl && (
+      {lightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(6px)" }}
-          onClick={() => setLightboxUrl(null)}>
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.93)", backdropFilter: "blur(8px)" }}
+          onClick={() => setLightbox(null)}>
           <button
-            onClick={() => setLightboxUrl(null)}
+            onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 rounded-full flex items-center justify-center"
             style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)", color: "#fff" }}>
             <X size={18} />
           </button>
+          {/* Navigation gauche */}
+          {lightbox.urls.length > 1 && lightbox.index > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: lb.index - 1 } : null); }}
+              className="absolute left-3 rounded-full flex items-center justify-center"
+              style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff" }}>
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          {/* Image */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightboxUrl}
+            src={lightbox.urls[lightbox.index]}
             alt=""
-            className="max-w-full max-h-full rounded-xl"
-            style={{ objectFit: "contain", maxHeight: "90vh" }}
+            className="max-w-full rounded-xl"
+            style={{ objectFit: "contain", maxHeight: "85vh", maxWidth: "90vw" }}
             onClick={e => e.stopPropagation()}
           />
+          {/* Navigation droite */}
+          {lightbox.urls.length > 1 && lightbox.index < lightbox.urls.length - 1 && (
+            <button
+              onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: lb.index + 1 } : null); }}
+              className="absolute right-3 rounded-full flex items-center justify-center"
+              style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff" }}>
+              <ChevronRight size={20} />
+            </button>
+          )}
+          {/* Compteur */}
+          {lightbox.urls.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+              {lightbox.urls.map((_, i) => (
+                <button key={i} onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: i } : null); }}
+                  className="rounded-full transition-all"
+                  style={{ width: i === lightbox.index ? 18 : 6, height: 6, background: i === lightbox.index ? "#fff" : "rgba(255,255,255,0.35)" }} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1140,6 +1206,8 @@ interface ProtocolFormProps {
   formMandatory: boolean; setFormMandatory: (v: boolean) => void;
   formFile: File | null; setFormFile: (v: File | null) => void;
   formSteps: StepItem[]; setFormSteps: (v: StepItem[]) => void;
+  formGallery: string[]; setFormGallery: (v: string[]) => void;
+  establishmentId: string;
   extracting: boolean; onExtractSteps: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -1151,12 +1219,33 @@ interface ProtocolFormProps {
 function ProtocolForm({
   formTitle, setFormTitle, formContent, setFormContent,
   formCategory, setFormCategory, categories, formMandatory, setFormMandatory,
-  formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
+  formFile, setFormFile, formSteps, setFormSteps, formGallery, setFormGallery,
+  establishmentId, extracting, onExtractSteps,
   fileInputRef, handleFileChange,
   isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
   const [extractImage, setExtractImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploadingGallery(true);
+    const urls: string[] = [];
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("establishmentId", establishmentId);
+      const res = await fetch("/api/protocols/upload-attachment", { method: "POST", body: fd });
+      const json = await res.json();
+      if (res.ok && json.url) urls.push(json.url);
+    }
+    setFormGallery([...formGallery, ...urls]);
+    setUploadingGallery(false);
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+  };
 
   useEffect(() => {
     if (!formFile || formFile.type === "application/pdf") {
@@ -1269,6 +1358,39 @@ function ProtocolForm({
               <Upload size={14} />
               Importer un PDF ou une image
             </button>
+          )}
+        </div>
+
+        {/* Galerie photos */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
+              Photos <span style={{ fontWeight: 400, textTransform: "none" }}>({formGallery.length} ajoutée{formGallery.length !== 1 ? "s" : ""})</span>
+            </label>
+            <button type="button"
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={uploadingGallery}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md transition-opacity"
+              style={{ background: "rgba(6,182,212,0.1)", color: "#67E8F9", border: "1px solid rgba(6,182,212,0.2)", opacity: uploadingGallery ? 0.6 : 1 }}>
+              {uploadingGallery ? <span className="animate-spin inline-block" style={{ fontSize: 11 }}>⟳</span> : <Plus size={11} />}
+              {uploadingGallery ? "Upload…" : "Ajouter"}
+            </button>
+          </div>
+          <input ref={galleryInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.heic" multiple onChange={handleGalleryChange} className="hidden" />
+          {formGallery.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {formGallery.map((url, i) => (
+                <div key={i} className="relative flex-shrink-0 rounded-lg overflow-hidden" style={{ width: 80, height: 60 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button onClick={() => setFormGallery(formGallery.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 rounded-full flex items-center justify-center"
+                    style={{ width: 18, height: 18, background: "rgba(0,0,0,0.7)", color: "#fff" }}>
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
