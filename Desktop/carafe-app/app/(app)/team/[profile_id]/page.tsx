@@ -218,16 +218,24 @@ export default function MemberProfilePage() {
   async function saveEdit() {
     if (!member) return;
     setSaving(true);
-    await supabase.from("establishment_members").update({
-      job_title: editJobTitle || null,
-      hired_at: editHiredAt || null,
-    }).eq("profile_id", profileId).eq("establishment_id", estId);
-    await supabase.from("profiles").update({
-      first_name: editFirstName || null,
-      last_name: editLastName || null,
-      phone: editPhone || null,
-      contract_type: editContract || null,
-    }).eq("id", profileId);
+    await fetch("/api/team/update-member", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        profile_id: profileId,
+        establishment_id: estId,
+        profile_updates: {
+          first_name: editFirstName || null,
+          last_name: editLastName || null,
+          phone: editPhone || null,
+          contract_type: editContract || null,
+        },
+        member_updates: {
+          job_title: editJobTitle || null,
+          hired_at: editHiredAt || null,
+        },
+      }),
+    });
     setMember(prev => prev ? { ...prev, first_name: editFirstName || null, last_name: editLastName || null, job_title: editJobTitle || null, phone: editPhone || null, contract_type: editContract || null, hired_at: editHiredAt || null } : prev);
     setSaving(false);
     setEditing(false);

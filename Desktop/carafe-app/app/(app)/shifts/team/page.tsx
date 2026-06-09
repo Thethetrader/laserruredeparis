@@ -226,12 +226,8 @@ function PayrollModal({ estId, supabase, caSettings, onClose }: {
                   <Row label="Heures contractuelles" value={formatHours(emp.contractHours)} dim />
                   <Row label="Heures travaillées" value={formatHours(emp.totalHours)} bold />
                   <Row label="Heures normales" value={formatHours(emp.normalHours)} color="var(--success)" />
-                  <Row label="Sup +25%"
-                    value={emp.overtime25 > 0 ? formatHours(emp.overtime25) : "—"}
-                    color={emp.overtime25 > 0 ? "#F59E0B" : undefined} />
-                  <Row label="Sup +50%"
-                    value={emp.overtime50 > 0 ? formatHours(emp.overtime50) : "—"}
-                    color={emp.overtime50 > 0 ? "#EF4444" : undefined} />
+                  {emp.overtime25 > 0 && <Row label="Sup +25%" value={formatHours(emp.overtime25)} color="#F59E0B" />}
+                  {emp.overtime50 > 0 && <Row label="Sup +50%" value={formatHours(emp.overtime50)} color="#EF4444" />}
                   {emp.tipsEnabled && (
                     <Row label="Pourboires" value={formatTips(emp.totalTips)} color="#F59E0B" bold />
                   )}
@@ -827,13 +823,6 @@ export default function ShiftsTeamPage() {
           <div>
             <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>{estName || "Mon établissement"}</h1>
           </div>
-          {/* Récap paie button — desktop only */}
-          <button onClick={() => setShowPayroll(true)}
-            className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-semibold flex-shrink-0"
-            style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.25)" }}>
-            <FileText size={14} />
-            Récap paie
-          </button>
         </div>
       </div>
 
@@ -889,7 +878,7 @@ export default function ShiftsTeamPage() {
               const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
-                  className="flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
+                  className="relative flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
                   style={{ minHeight: 80, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
                   <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
@@ -905,8 +894,12 @@ export default function ShiftsTeamPage() {
                       ) : null;
                     })}
                     {dayShifts.length > 3 && <p className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
-                    {dayTips > 0 && <p className="text-[8px] lg:text-[11px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(dayTips)}</p>}
                   </div>
+                  {dayTips > 0 && (
+                    <span className="absolute bottom-1 right-1 text-[7px] lg:text-[10px] font-mono font-bold" style={{ color: "#F59E0B" }}>
+                      {formatTips(dayTips)}
+                    </span>
+                  )}
                 </button>
               );
             })}

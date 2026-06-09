@@ -921,15 +921,15 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               )}
               {data.overdue_weekly_tasks.length > 0 && (
                 <div className="pt-3 mt-1" style={{ borderTop: "1px solid var(--border)" }}>
-                  <p className="text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--warning)" }}>
+                  <p className="text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--danger)" }}>
                     À faire cette semaine · {data.overdue_weekly_tasks.length}
                   </p>
                   <div className="space-y-1.5">
                     {data.overdue_weekly_tasks.map(t => (
                       <a key={t.id} href="/tasks"
                         className="flex items-center gap-2 px-3 py-2 rounded-lg transition-opacity hover:opacity-80"
-                        style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                        <span className="text-[11px]" style={{ color: "var(--warning)" }}>⚠</span>
+                        style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        <AlertCircle size={12} style={{ color: "var(--danger)", flexShrink: 0 }} />
                         <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{t.title}</span>
                       </a>
                     ))}

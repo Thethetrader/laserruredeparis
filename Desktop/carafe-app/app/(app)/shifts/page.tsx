@@ -356,7 +356,7 @@ const days     = getDaysInMonth(year, month);
               const hasCoupure = shift && shift.start_time_2;
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
-                  className="flex flex-col items-start justify-start overflow-hidden lg:min-h-[96px]"
+                  className="relative flex flex-col items-start justify-start overflow-hidden lg:min-h-[96px]"
                   style={{ minHeight: 72, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: shift ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
                   <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
@@ -373,10 +373,14 @@ const days     = getDaysInMonth(year, month);
                       <div className="w-full space-y-0.5 px-0.5">
                         {time1 && <p className="text-[8px] lg:text-[11px] font-mono font-medium leading-tight" style={{ color }}>{time1}</p>}
                         {time2 && <p className="text-[8px] lg:text-[11px] font-mono leading-tight" style={{ color, opacity: 0.65 }}>{time2}</p>}
-                        {totalTips > 0 && <p className="text-[8px] lg:text-[11px] font-mono font-bold leading-tight" style={{ color: "#F59E0B" }}>{formatTips(totalTips)}</p>}
                       </div>
                     );
                   })()}
+                  {totalTips > 0 && (
+                    <span className="absolute bottom-1 right-1 text-[7px] lg:text-[10px] font-mono font-bold" style={{ color: "#F59E0B" }}>
+                      {formatTips(totalTips)}
+                    </span>
+                  )}
                 </button>
               );
             })}
