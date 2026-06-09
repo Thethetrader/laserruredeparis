@@ -762,6 +762,7 @@ export default function ProtocolsPage() {
           formTitle={formTitle} setFormTitle={setFormTitle}
           formContent={formContent} setFormContent={setFormContent}
           formCategory={formCategory} setFormCategory={setFormCategory}
+          categories={categories}
           formMandatory={formMandatory} setFormMandatory={setFormMandatory}
           formFile={formFile} setFormFile={setFormFile}
           formSteps={formSteps} setFormSteps={setFormSteps}
