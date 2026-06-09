@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, X, RotateCcw, MoreHorizontal, Trash2, Eye, EyeOff, BarChart2, ChevronDown, Sparkles, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { Plus, X, Trash2, Sparkles, Activity, RotateCcw, MoreHorizontal, Eye, EyeOff } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 
@@ -143,12 +143,7 @@ export default function CustomerFeedbackPage() {
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
-  const [showSummary, setShowSummary] = useState(false);
-  const [showDismissed, setShowDismissed] = useState(false);
-  const [summaryPopup, setSummaryPopup] = useState<{ cat: string | null; tonality: "positive" | "negative" } | null>(null);
   const [userRole, setUserRole] = useState<string>("employee");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -252,16 +247,6 @@ export default function CustomerFeedbackPage() {
       };
     });
 
-    const allIds = views.map(f => f.id);
-    if (allIds.length > 0) {
-      const [readsRes, dismissalsRes] = await Promise.all([
-        supabase.from("feedback_reads").select("feedback_id").eq("profile_id", user.id).in("feedback_id", allIds),
-        supabase.from("feedback_dismissals").select("feedback_id").eq("profile_id", user.id).in("feedback_id", allIds),
-      ]);
-      setReadIds(new Set((readsRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
-      setDismissedIds(new Set((dismissalsRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id)));
-    }
-
     setFeedbacks(views);
     setLoading(false);
   }
@@ -302,39 +287,6 @@ export default function CustomerFeedbackPage() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
-  };
-
-  const markAsRead = async (id: string) => {
-    setReadIds(prev => { const next = new Set(prev); next.add(id); return next; });
-    if (!DEV_MODE && profileId) {
-      await supabase.from("feedback_reads").upsert(
-        { profile_id: profileId, feedback_id: id },
-        { onConflict: "profile_id,feedback_id" }
-      );
-    }
-  };
-
-  const markAllRead = async () => {
-    const ids = feedbacks.map(f => f.id);
-    setReadIds(new Set(ids));
-    showToast("Tous les retours marqués comme lus ✓");
-    if (!DEV_MODE && profileId && ids.length > 0) {
-      await supabase.from("feedback_reads").upsert(
-        ids.map(id => ({ profile_id: profileId, feedback_id: id })),
-        { onConflict: "profile_id,feedback_id" }
-      );
-    }
-  };
-
-  const unreadCount = feedbacks.filter(f => !readIds.has(f.id)).length;
-  const dismissFeedback = async (id: string) => {
-    setDismissedIds(prev => new Set([...prev, id]));
-    if (!DEV_MODE && profileId) {
-      await supabase.from("feedback_dismissals").upsert(
-        { profile_id: profileId, feedback_id: id },
-        { onConflict: "profile_id,feedback_id" }
-      );
-    }
   };
 
   const toggleEcho = async (id: string) => {
@@ -454,95 +406,6 @@ export default function CustomerFeedbackPage() {
         ))}
       </div>
 
-      {/* Read status + summary (manager only) */}
-      {isManager && feedbacks.length > 0 && (
-        <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-          <button
-            onClick={() => setShowSummary(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3"
-            style={{ background: "var(--background-elev)" }}>
-            <div className="flex items-center gap-2">
-              <BarChart2 size={13} style={{ color: "var(--accent)" }} />
-              <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Récapitulatif</span>
-              {unreadCount > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.12)", color: "var(--danger)" }}>
-                  {unreadCount} non lu{unreadCount > 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <button onClick={e => { e.stopPropagation(); markAllRead(); }}
-                  className="text-[11px] px-2.5 py-1 rounded-md"
-                  style={{ background: "rgba(16,185,129,0.1)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                  Tout marquer lu
-                </button>
-              )}
-              <ChevronDown size={14} style={{ color: "var(--foreground-dim)", transform: showSummary ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-            </div>
-          </button>
-          {showSummary && (
-            <div className="p-4" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)" }}>
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr style={{ color: "var(--foreground-dim)" }}>
-                    <th className="text-left font-mono uppercase text-[10px] tracking-widest pb-2">Catégorie</th>
-                    <th className="text-center font-mono uppercase text-[10px] tracking-widest pb-2" style={{ color: "var(--success)" }}>▲ Pos</th>
-                    <th className="text-center font-mono uppercase text-[10px] tracking-widest pb-2" style={{ color: "var(--warning)" }}>▼ Nég</th>
-                    <th className="text-right font-mono uppercase text-[10px] tracking-widest pb-2">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {["plat", "service", "boisson", "ambiance", "autre"].map(cat => {
-                    const catFbs = feedbacks.filter(f => f.item_cat === cat);
-                    const pos = catFbs.filter(f => f.tonality === "positive").length;
-                    const neg = catFbs.filter(f => f.tonality === "negative").length;
-                    if (catFbs.length === 0) return null;
-                    return (
-                      <tr key={cat} style={{ borderTop: "1px solid var(--border)" }}>
-                        <td className="py-2 font-medium capitalize" style={{ color: "var(--foreground)" }}>{cat}</td>
-                        <td className="py-2 text-center">
-                          {pos > 0 ? (
-                            <button onClick={() => setSummaryPopup({ cat, tonality: "positive" })}
-                              className="font-mono px-1.5 py-0.5 rounded transition-all hover:opacity-80"
-                              style={{ color: "var(--success)", background: "rgba(16,185,129,0.08)" }}>{pos}</button>
-                          ) : <span className="font-mono" style={{ color: "var(--foreground-dim)" }}>—</span>}
-                        </td>
-                        <td className="py-2 text-center">
-                          {neg > 0 ? (
-                            <button onClick={() => setSummaryPopup({ cat, tonality: "negative" })}
-                              className="font-mono px-1.5 py-0.5 rounded transition-all hover:opacity-80"
-                              style={{ color: "var(--warning)", background: "rgba(245,158,11,0.08)" }}>{neg}</button>
-                          ) : <span className="font-mono" style={{ color: "var(--foreground-dim)" }}>—</span>}
-                        </td>
-                        <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{catFbs.length}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr style={{ borderTop: "2px solid var(--border)" }}>
-                    <td className="py-2 font-semibold text-[11px] font-mono uppercase" style={{ color: "var(--foreground-dim)" }}>Total</td>
-                    <td className="py-2 text-center">
-                      <button onClick={() => setSummaryPopup({ cat: null, tonality: "positive" })}
-                        className="font-mono font-semibold px-1.5 py-0.5 rounded transition-all hover:opacity-80"
-                        style={{ color: "var(--success)", background: "rgba(16,185,129,0.08)" }}>
-                        {feedbacks.filter(f => f.tonality === "positive").length}
-                      </button>
-                    </td>
-                    <td className="py-2 text-center">
-                      <button onClick={() => setSummaryPopup({ cat: null, tonality: "negative" })}
-                        className="font-mono font-semibold px-1.5 py-0.5 rounded transition-all hover:opacity-80"
-                        style={{ color: "var(--warning)", background: "rgba(245,158,11,0.08)" }}>
-                        {feedbacks.filter(f => f.tonality === "negative").length}
-                      </button>
-                    </td>
-                    <td className="py-2 text-right font-mono font-semibold" style={{ color: "var(--foreground)" }}>{feedbacks.length}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: "none" }}>
@@ -594,13 +457,13 @@ export default function CustomerFeedbackPage() {
         </button>
       </div>
 
-      {/* List */}
+      {/* Table */}
       {sorted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <p className="text-base font-medium mb-2" style={{ color: "var(--foreground)" }}>
             {activeFilters.size > 0
-              ? "Aucun retour dans cette catégorie cette semaine."
-              : "Aucun retour pour l'instant cette semaine."}
+              ? "Aucun retour dans cette catégorie."
+              : "Aucun retour pour l'instant."}
           </p>
           {activeFilters.size > 0 ? (
             <button onClick={() => setActiveFilters(new Set())} className="text-sm" style={{ color: "var(--accent)" }}>
@@ -620,93 +483,63 @@ export default function CustomerFeedbackPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {sorted.filter(f => !dismissedIds.has(f.id)).map(f => (
-            <FeedbackCard key={f.id} feedback={f}
-              isRead={readIds.has(f.id)}
-              isManager={isManager}
-              onEcho={() => toggleEcho(f.id)}
-              onDelete={() => setDeleteTarget(f.id)}
-              onMarkRead={() => markAsRead(f.id)}
-              onDismiss={() => dismissFeedback(f.id)} />
-          ))}
-        </div>
-      )}
-
-      {/* Dismissed feedbacks — collapsible section for all users */}
-      {dismissedIds.size > 0 && (
-        <div className="mt-8">
-          <button
-            onClick={() => setShowDismissed(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <span className="text-[12px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
-              Pas eu ce retour · {dismissedIds.size}
-            </span>
-            <ChevronDown size={14} style={{ color: "var(--foreground-dim)", transform: showDismissed ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-          </button>
-          {showDismissed && (
-            <div className="space-y-3 mt-3" style={{ opacity: 0.55 }}>
-              {feedbacks.filter(f => dismissedIds.has(f.id)).map(f => (
-                <FeedbackCard key={f.id} feedback={f}
-                  isRead={readIds.has(f.id)}
-                  isManager={isManager}
-                  onEcho={() => toggleEcho(f.id)}
-                  onDelete={() => setDeleteTarget(f.id)}
-                  onMarkRead={() => markAsRead(f.id)}
-                  onDismiss={() => dismissFeedback(f.id)} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Summary popup */}
-      {summaryPopup && (() => {
-        const popupFbs = feedbacks.filter(f =>
-          f.tonality === summaryPopup.tonality &&
-          (summaryPopup.cat === null || f.item_cat === summaryPopup.cat)
-        );
-        const isPos = summaryPopup.tonality === "positive";
-        const title = summaryPopup.cat
-          ? `${isPos ? "▲ Positifs" : "▼ Négatifs"} · ${summaryPopup.cat}`
-          : `${isPos ? "▲ Tous les positifs" : "▼ Tous les négatifs"}`;
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
-            onClick={e => { if (e.target === e.currentTarget) setSummaryPopup(null); }}>
-            <div className="w-full max-w-md rounded-2xl overflow-hidden"
-              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "80vh", overflowY: "auto" }}>
-              <div className="flex items-center justify-between px-5 py-4 sticky top-0"
-                style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <p className="text-sm font-semibold capitalize" style={{ color: isPos ? "var(--success)" : "var(--warning)" }}>{title}</p>
-                <button onClick={() => setSummaryPopup(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
-              </div>
-              <div className="p-4 space-y-3">
-                {popupFbs.map(f => (
-                  <div key={f.id} className="rounded-xl p-3.5"
-                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <KarafAvatar firstName={f.reporter_first} lastName={f.reporter_last} avatarUrl={f.reporter_avatar} size={22} />
-                      <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{f.reporter_name}</span>
-                      <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>· {formatRelativeTime(f.created_at)}</span>
-                      {f.echo_count > 0 && (
-                        <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded"
-                          style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>
-                          +{f.echo_count}
-                        </span>
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+          {/* Header */}
+          <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: "1fr 80px 36px", background: "var(--background-soft)", borderBottom: "1px solid var(--border)" }}>
+            <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Sujet</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Ressenti</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest text-right" style={{ color: "var(--foreground-dim)" }}>+1</span>
+          </div>
+          {sorted.map((f, i) => {
+            const isPos = f.tonality === "positive";
+            return (
+              <div key={f.id} className="px-4 py-3" style={{ borderBottom: i < sorted.length - 1 ? "1px solid var(--border)" : "none", background: "var(--background-elev)" }}>
+                <div className="grid items-start" style={{ gridTemplateColumns: "1fr 80px 36px" }}>
+                  <div className="min-w-0 pr-3">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{f.item || f.content.slice(0, 40)}</p>
+                      <span className="flex-shrink-0 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border-soft)" }}>
+                        {CAT_LABELS[f.item_cat]}
+                      </span>
+                    </div>
+                    {f.item && (
+                      <p className="text-[12px] leading-snug mb-1" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>
+                        {f.content}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{f.reporter_name}</span>
+                      {f.table_number && <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>· Table {f.table_number}</span>}
+                      <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>· {formatRelativeTime(f.created_at)}</span>
+                      {isManager && (
+                        <button onClick={() => setDeleteTarget(f.id)} className="ml-auto opacity-40 hover:opacity-100 transition-opacity" style={{ color: "var(--danger)" }}>
+                          <Trash2 size={11} />
+                        </button>
                       )}
                     </div>
-                    {f.item && <p className="text-[14px] font-medium mb-0.5" style={{ color: "var(--foreground)" }}>{f.item}</p>}
-                    <p className="text-[13px] leading-relaxed" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>« {f.content} »</p>
-                    {f.table_number && <p className="text-[10px] mt-1" style={{ color: "var(--foreground-dim)" }}>Table {f.table_number}</p>}
                   </div>
-                ))}
+                  <div className="pt-0.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: isPos ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)", color: isPos ? "var(--success)" : "var(--warning)" }}>
+                      {isPos ? "▲ positif" : "▼ négatif"}
+                    </span>
+                  </div>
+                  <div className="text-right pt-0.5">
+                    {f.is_mine ? (
+                      <span className="text-[12px] font-mono" style={{ color: "var(--foreground-dim)" }}>{f.echo_count > 0 ? `${f.echo_count}×` : "—"}</span>
+                    ) : (
+                      <button onClick={() => toggleEcho(f.id)}
+                        className="text-[12px] font-mono font-semibold transition-opacity hover:opacity-80"
+                        style={{ color: f.is_echoed ? "var(--accent)" : f.echo_count > 0 ? "var(--foreground-muted)" : "var(--foreground-dim)" }}>
+                        {f.echo_count > 0 ? `${f.echo_count}×` : "—"}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        );
-      })()}
+            );
+          })}
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (

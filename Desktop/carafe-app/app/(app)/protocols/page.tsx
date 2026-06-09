@@ -900,6 +900,7 @@ interface ProtocolCardProps {
 }
 
 function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMarkRead, onEdit, onDelete, onToggleDashboard }: ProtocolCardProps) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const needsValidation = !isManager && !isRead;
   const hasPdf = protocol.attachment_type === "pdf";
   const hasImage = protocol.attachment_type === "image";
@@ -999,11 +1000,12 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
                 className="w-full object-cover"
                 style={{ maxHeight: 320 }}
               />
-              <a href={protocol.attachment_url} target="_blank" rel="noopener noreferrer"
+              <button
+                onClick={() => setLightboxUrl(protocol.attachment_url!)}
                 className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-medium backdrop-blur-sm"
                 style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>
                 <ExternalLink size={11} /> Ouvrir
-              </a>
+              </button>
             </div>
           )}
           {hasPdf && protocol.attachment_url && (
@@ -1099,6 +1101,27 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
           )}
         </div>
       )}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(6px)" }}
+          onClick={() => setLightboxUrl(null)}>
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 rounded-full flex items-center justify-center"
+            style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)", color: "#fff" }}>
+            <X size={18} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="max-w-full max-h-full rounded-xl"
+            style={{ objectFit: "contain", maxHeight: "90vh" }}
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -1127,6 +1150,17 @@ function ProtocolForm({
   isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
   const [extractImage, setExtractImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!formFile || formFile.type === "application/pdf") {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(formFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [formFile]);
 
   const updateStep = (index: number, field: keyof StepItem, value: string) => {
     const next = [...formSteps];
@@ -1205,7 +1239,7 @@ function ProtocolForm({
               {formFile.type !== "application/pdf" && (
                 <div className="space-y-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={URL.createObjectURL(formFile)} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />
+                  {previewUrl && <img src={previewUrl} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />}
                   {extractImage && formSteps.length === 0 && (
                     <button onClick={onExtractSteps} disabled={extracting}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
