@@ -132,11 +132,6 @@ const DEV_ONE_SHOTS: TaskOneShot[] = [
   { id: "os1", title: "Vérifier livraison vin", description: "Commercial Durand vers 10h", target_role: "manager", due_date: new Date().toISOString().split("T")[0], requires_photo: false, is_validated: false, assigned_to: null, protocol_id: null },
 ];
 
-function isWindowOpen(category: TaskCategory, hour: number): boolean {
-  if (category === "opening") return hour >= 5;
-  if (category === "closing") return hour >= 14;
-  return true;
-}
 
 function relTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -168,7 +163,6 @@ export default function MyTasksPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
-  const currentHour = new Date().getHours();
 
   useEffect(() => {
     const update = () => setIsOnline(navigator.onLine);
@@ -356,9 +350,9 @@ export default function MyTasksPage() {
   const pendingSync = completions.filter(c => c.pending_sync).length;
 
   const getTasksForCategory = (cat: TaskCategory) =>
-    templates.filter(t => t.category === cat && isWindowOpen(t.category, currentHour));
+    templates.filter(t => t.category === cat);
 
-  const allTasks = templates.filter(t => isWindowOpen(t.category, currentHour));
+  const allTasks = [...templates];
   const allDone = allTasks.length > 0 && allTasks.every(t => completionMap.has(t.id)) && oneShots.every(s => s.is_validated);
 
   return (
