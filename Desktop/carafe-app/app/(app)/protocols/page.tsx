@@ -283,7 +283,8 @@ export default function ProtocolsPage() {
 
   const saveCats = async (updated: CustomCategory[]) => {
     setSavingCats(true);
-    await supabase.from("establishments").update({ protocol_categories: updated as unknown as never }).eq("id", establishmentId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await supabase.from("establishments").update({ protocol_categories: updated as any }).eq("id", establishmentId);
     setCategories(updated);
     setSavingCats(false);
   };

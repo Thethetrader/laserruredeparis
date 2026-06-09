@@ -37,6 +37,7 @@ type EstablishmentRow = {
   trial_ends_at: string;
   weekly_recap_day: string;
   weekly_recap_enabled: boolean;
+  protocol_categories: unknown | null;
   created_at: string;
 };
 
