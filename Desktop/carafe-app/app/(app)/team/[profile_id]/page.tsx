@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, BookOpen, Award, Phone, Mail, Calendar, Briefcase } from "lucide-react";
+import { ArrowLeft, Download, ThumbsUp, ThumbsDown, Star, Clock, Award, Phone, Mail, Calendar, Pencil, X, Check } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = false;
@@ -98,6 +98,16 @@ export default function MemberProfilePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [myProfileId, setMyProfileId] = useState<string>("");
+  const [myRole, setMyRole] = useState<string>("");
+  const [estId, setEstId] = useState<string>("");
+  const [editing, setEditing] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editContract, setEditContract] = useState("");
+  const [editHiredAt, setEditHiredAt] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -149,6 +159,11 @@ export default function MemberProfilePage() {
     });
 
     const estId = memberData.establishment_id;
+    setEstId(estId);
+
+    const { data: myMember } = await supabase.from("establishment_members").select("role").eq("profile_id", user.id).eq("establishment_id", estId).maybeSingle();
+    setMyRole((myMember as { role: string } | null)?.role ?? "employee");
+
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
 
@@ -187,7 +202,37 @@ export default function MemberProfilePage() {
 
   const handlePrint = () => window.print();
 
+  function startEdit() {
+    if (!member) return;
+    setEditFirstName(member.first_name ?? "");
+    setEditLastName(member.last_name ?? "");
+    setEditJobTitle(member.job_title ?? "");
+    setEditPhone(member.phone ?? "");
+    setEditContract(member.contract_type ?? "");
+    setEditHiredAt(member.hired_at ?? "");
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!member) return;
+    setSaving(true);
+    await supabase.from("establishment_members").update({
+      job_title: editJobTitle || null,
+      hired_at: editHiredAt || null,
+      contract_type: editContract || null,
+    }).eq("profile_id", profileId).eq("establishment_id", estId);
+    await supabase.from("profiles").update({
+      first_name: editFirstName || null,
+      last_name: editLastName || null,
+      phone: editPhone || null,
+    }).eq("id", profileId);
+    setMember(prev => prev ? { ...prev, first_name: editFirstName || null, last_name: editLastName || null, job_title: editJobTitle || null, phone: editPhone || null, contract_type: editContract || null, hired_at: editHiredAt || null } : prev);
+    setSaving(false);
+    setEditing(false);
+  }
+
   const isMe = myProfileId === profileId;
+  const isManager = myRole === "owner" || myRole === "manager";
   const badge = stats ? (stats.rank === 1 ? "gold" : stats.rank === 2 ? "silver" : stats.rank === 3 ? "bronze" : null) as keyof typeof BADGE_CONFIG | null : null;
   const badgeConfig = badge ? BADGE_CONFIG[badge] : null;
   const positiveKudos = kudos.filter(k => k.type === "positive");
@@ -231,17 +276,76 @@ export default function MemberProfilePage() {
       `}</style>
 
       <div ref={printRef} className="print-page px-4 py-8 lg:px-8 max-w-2xl">
-        {/* Back + Export */}
+        {/* Back + Actions */}
         <div className="no-print flex items-center justify-between mb-6">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-sm" style={{ color: "var(--foreground-dim)" }}>
             <ArrowLeft size={16} /> Retour
           </button>
-          <button onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
-            style={{ background: "var(--accent)", color: "#09090B" }}>
-            <Download size={14} /> Exporter PDF
-          </button>
+          <div className="flex items-center gap-2">
+            {isManager && !editing && (
+              <button onClick={startEdit}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg"
+                style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+                <Pencil size={13} /> Modifier
+              </button>
+            )}
+            <button onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
+              style={{ background: "var(--accent)", color: "#09090B" }}>
+              <Download size={14} /> Exporter PDF
+            </button>
+          </div>
         </div>
+
+        {/* Edit form */}
+        {editing && isManager && (
+          <div className="print-card rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.3)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Modifier les infos</p>
+              <button onClick={() => setEditing(false)} style={{ color: "var(--foreground-dim)" }}><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Prénom</label>
+                  <input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Nom</label>
+                  <input value={editLastName} onChange={e => setEditLastName(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Poste</label>
+                <input value={editJobTitle} onChange={e => setEditJobTitle(e.target.value)} placeholder="Ex: Chef de rang" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Téléphone</label>
+                <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="06 XX XX XX XX" className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Contrat</label>
+                  <select value={editContract} onChange={e => setEditContract(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                    <option value="">Non précisé</option>
+                    <option value="cdi">CDI</option>
+                    <option value="cdd">CDD</option>
+                    <option value="extra">Extra</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Date d&apos;arrivée</label>
+                  <input type="date" value={editHiredAt} onChange={e => setEditHiredAt(e.target.value)} className="w-full px-3 py-2 text-sm rounded-lg outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+                </div>
+              </div>
+              <button onClick={saveEdit} disabled={saving}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-opacity"
+                style={{ background: "var(--accent)", color: "#09090B", opacity: saving ? 0.5 : 1 }}>
+                <Check size={14} /> {saving ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Hero */}
         <div className="print-card rounded-2xl p-5 mb-4 flex items-center gap-4"
@@ -322,46 +426,16 @@ export default function MemberProfilePage() {
           </div>
         )}
 
-        {/* Score + Stats */}
+        {/* Retards */}
         {stats && (
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="print-card rounded-xl p-4 col-span-2"
-              style={{ background: badgeConfig ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${badgeConfig ? "rgba(245,158,11,0.25)" : "var(--border)"}` }}>
-              <p className="text-[11px] font-mono uppercase tracking-widest mb-2 print-dim" style={{ color: "var(--foreground-dim)" }}>Score ce mois</p>
-              <div className="flex items-end gap-4">
-                <p className="text-3xl font-bold print-text" style={{ color: badgeConfig?.color ?? "var(--foreground)" }}>{stats.score}</p>
-                <div className="pb-0.5">
-                  <p className="text-sm print-text" style={{ color: "var(--foreground)" }}>
-                    {stats.rank}{stats.rank === 1 ? "er" : "ème"} sur {stats.total_members}
-                    {badgeConfig && <span className="ml-2 text-[11px] font-mono" style={{ color: badgeConfig.color }}>{badgeConfig.label}</span>}
-                  </p>
-                  <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>protocoles · bravos · défis · bonus</p>
-                </div>
-              </div>
+          <div className="print-card rounded-xl p-4 mb-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Clock size={13} style={{ color: "var(--warning)" }} />
+              <p className="text-[11px] font-mono uppercase tracking-widest print-dim" style={{ color: "var(--foreground-dim)" }}>Retards ce mois</p>
             </div>
-
-            <div className="print-card rounded-xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Clock size={13} style={{ color: "var(--warning)" }} />
-                <p className="text-[11px] font-mono uppercase tracking-widest print-dim" style={{ color: "var(--foreground-dim)" }}>Retards</p>
-              </div>
-              <p className="text-2xl font-bold print-text" style={{ color: stats.delays_this_month === 0 ? "var(--success)" : "var(--warning)" }}>
-                {stats.delays_this_month === 0 ? "✓ 0" : stats.delays_this_month}
-              </p>
-              <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>ce mois</p>
-            </div>
-
-            <div className="print-card rounded-xl p-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen size={13} style={{ color: "var(--accent)" }} />
-                <p className="text-[11px] font-mono uppercase tracking-widest print-dim" style={{ color: "var(--foreground-dim)" }}>Protocoles</p>
-              </div>
-              <p className="text-2xl font-bold print-text" style={{ color: "var(--foreground)" }}>
-                {stats.protocols_read}
-                <span className="text-base font-normal print-dim" style={{ color: "var(--foreground-dim)" }}>/{stats.protocols_total}</span>
-              </p>
-              <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>lus</p>
-            </div>
+            <p className="text-2xl font-bold print-text" style={{ color: stats.delays_this_month === 0 ? "var(--success)" : "var(--warning)" }}>
+              {stats.delays_this_month === 0 ? "✓ 0" : stats.delays_this_month}
+            </p>
           </div>
         )}
 
@@ -428,10 +502,28 @@ export default function MemberProfilePage() {
         )}
 
         {kudos.length === 0 && (
-          <div className="rounded-xl py-10 flex flex-col items-center"
+          <div className="rounded-xl py-10 flex flex-col items-center mb-4"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
             <Star size={28} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 10 }} />
             <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun avis reçu pour le moment</p>
+          </div>
+        )}
+
+        {/* Score — en bas */}
+        {stats && (
+          <div className="print-card rounded-xl p-5 mb-4"
+            style={{ background: badgeConfig ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${badgeConfig ? "rgba(245,158,11,0.25)" : "var(--border)"}` }}>
+            <p className="text-[11px] font-mono uppercase tracking-widest mb-2 print-dim" style={{ color: "var(--foreground-dim)" }}>Score ce mois</p>
+            <div className="flex items-end gap-4">
+              <p className="text-3xl font-bold print-text" style={{ color: badgeConfig?.color ?? "var(--foreground)" }}>{stats.score}</p>
+              <div className="pb-0.5">
+                <p className="text-sm print-text" style={{ color: "var(--foreground)" }}>
+                  {stats.rank}{stats.rank === 1 ? "er" : "ème"} sur {stats.total_members}
+                  {badgeConfig && <span className="ml-2 text-[11px] font-mono" style={{ color: badgeConfig.color }}>{badgeConfig.label}</span>}
+                </p>
+                <p className="text-[11px] print-dim" style={{ color: "var(--foreground-dim)" }}>protocoles · bravos · défis · bonus</p>
+              </div>
+            </div>
           </div>
         )}
 

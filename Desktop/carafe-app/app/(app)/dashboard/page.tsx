@@ -891,7 +891,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               <div className="p-5 space-y-3" style={{ background: "var(--background-elev)" }}>
                 {protocols.filter(p => p.show_on_dashboard).map(p => {
                   const totalSteps = p.steps?.length ?? 0;
-                  const doneSteps = totalSteps > 0 ? [...stepsDone].filter(k => k.startsWith(`${p.id}-`)).length : 0;
+                  const doneSteps = totalSteps > 0 ? [...stepsDone].filter(k => k.startsWith(`${p.id}_`)).length : 0;
                   const pct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
                   return (
                     <button key={p.id} onClick={() => setProtocolPopup(p)} className="w-full text-left">

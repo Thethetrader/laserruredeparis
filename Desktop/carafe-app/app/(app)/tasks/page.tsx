@@ -239,6 +239,19 @@ export default function TasksManagerPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (DEV_MODE || !estId || estId === DEV_ESTABLISHMENT_ID) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("task_claims_rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_claims", filter: `establishment_id=eq.${estId}` }, async () => {
+        const { data: fresh } = await supabase.from("task_claims").select("id, task_template_id, task_one_shot_id, profile_id, first_name, service_date").eq("establishment_id", estId).eq("service_date", today);
+        setClaims((fresh ?? []) as { id: string; task_template_id: string | null; task_one_shot_id: string | null; profile_id: string; first_name: string | null }[]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [estId, today]);
+
   const isManager = userRole === "owner" || userRole === "manager";
 
   async function validateTask(templateId: string, oneShotId?: string) {
@@ -497,7 +510,7 @@ export default function TasksManagerPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {(["opening", "continuous", "closing"] as TaskCategory[]).map(cat => {
+          {(["opening", "continuous", "closing", "custom"] as TaskCategory[]).map(cat => {
             const tasks = byCategory(cat);
             if (tasks.length === 0) return null;
             const catIcon = cat === "opening" ? Sunrise : cat === "closing" ? Sunset : Zap;
@@ -625,7 +638,73 @@ export default function TasksManagerPage() {
             );
           })}
 
-          {filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).length === 0 && (
+          {/* Tâches ponctuelles (one-shots) */}
+          {oneShots.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--background-elev)" }}>
+                <div className="flex items-center gap-2">
+                  <Zap size={14} style={{ color: "var(--foreground-dim)" }} />
+                  <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Ponctuelles</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: oneShots.filter(s => completionMap.has(s.id)).length === oneShots.length ? "rgba(16,185,129,0.12)" : "var(--background)", color: oneShots.filter(s => completionMap.has(s.id)).length === oneShots.length ? "var(--success)" : "var(--foreground-dim)" }}>
+                    {oneShots.filter(s => completionMap.has(s.id)).length}/{oneShots.length}
+                  </span>
+                </div>
+              </div>
+              <div className="divide-y" style={{ borderTop: "1px solid var(--border-soft)", borderColor: "var(--border-soft)" }}>
+                {oneShots.map(shot => {
+                  const comp = completionMap.get(shot.id);
+                  const isDone = !!comp;
+                  const isValidatingThis = validating === shot.id;
+                  const claim = claims.find(c => c.task_one_shot_id === shot.id);
+                  const claimedByMe = claim?.profile_id === userId;
+                  const isClaimingThis = claiming === shot.id || claiming === claim?.id;
+                  return (
+                    <div key={shot.id} className="flex items-start gap-3 px-4 py-3 transition-colors"
+                      style={{ background: isDone ? "rgba(16,185,129,0.04)" : claim && !claimedByMe ? "rgba(245,158,11,0.02)" : "var(--background)" }}>
+                      <div className="mt-0.5 flex-shrink-0">
+                        {isDone ? <CheckCircle2 size={18} style={{ color: "var(--success)" }} /> : <Circle size={18} style={{ color: claim && !claimedByMe ? "#F59E0B" : "var(--foreground-dim)" }} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[13px] font-medium" style={{ color: isDone ? "var(--foreground-muted)" : "var(--foreground)", textDecoration: isDone ? "line-through" : "none" }}>{shot.title}</span>
+                          {shot.is_critical && <span className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}><AlertTriangle size={9} />HACCP</span>}
+                        </div>
+                        {isDone && comp ? (
+                          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{comp.validator_name} · {relTime(comp.validated_at)}</p>
+                        ) : (
+                          <>
+                            {claim && <p className="text-[11px] mt-0.5" style={{ color: claimedByMe ? "var(--accent)" : "#F59E0B" }}>{claimedByMe ? `En cours · ${myFirstName || "moi"}` : `Pris par ${claim.first_name ?? "quelqu'un"}`}</p>}
+                            {shot.description && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{shot.description}</p>}
+                            <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>par {shot.creator_name}</p>
+                          </>
+                        )}
+                      </div>
+                      {!isDone && (
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          {!claim && (
+                            <button onClick={() => claimTask(undefined, shot.id)} disabled={isClaimingThis}
+                              className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                              style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)", opacity: isClaimingThis ? 0.5 : 1 }}>
+                              Je prends
+                            </button>
+                          )}
+                          {(!claim || claimedByMe) && (
+                            <button onClick={() => validateTask("", shot.id)} disabled={isValidatingThis}
+                              className="px-2.5 py-1 rounded-base text-[11px] font-medium"
+                              style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)", opacity: isValidatingThis ? 0.5 : 1 }}>
+                              {isValidatingThis ? <RefreshCw size={11} className="animate-spin" /> : "Valider"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).length === 0 && oneShots.length === 0 && (
             <EmptyState message="Aucune tâche pour le moment." sub="Profite-en." />
           )}
         </div>
