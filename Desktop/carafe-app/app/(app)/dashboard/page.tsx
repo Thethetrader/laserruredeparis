@@ -322,7 +322,7 @@ export default function DashboardPage() {
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
-      supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
+      supabase.from("feedback_reads").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency, target_role").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
@@ -1601,7 +1601,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
       if (!DEV_MODE) {
         const sb = createClient();
         sb.auth.getUser().then(({ data: { user } }) => {
-          if (user) (sb.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ feedback_id: id, profile_id: user.id });
+          if (user) (sb.from("feedback_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ feedback_id: id, profile_id: user.id });
         });
       }
     }
@@ -1646,9 +1646,9 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     setConfirmCounts(prev => ({ ...prev, [feedbackId]: (prev[feedbackId] ?? 0) + delta }));
     if (!DEV_MODE) {
       if (isConfirmed) {
-        await supabase.from("feedback_confirmations").delete().eq("profile_id", data.my_profile_id).eq("feedback_id", feedbackId);
+        await supabase.from("feedback_reads").delete().eq("profile_id", data.my_profile_id).eq("feedback_id", feedbackId);
       } else {
-        await (supabase.from("feedback_confirmations") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: data.my_profile_id, feedback_id: feedbackId });
+        await (supabase.from("feedback_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ profile_id: data.my_profile_id, feedback_id: feedbackId });
       }
     }
   };
