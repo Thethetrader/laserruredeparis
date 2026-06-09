@@ -290,7 +290,7 @@ export default function DashboardPage() {
     const activeEstId = typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null;
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const validActiveId = activeEstId && uuidRe.test(activeEstId) ? activeEstId : null;
-    let memberQ = supabase.from("establishment_members").select("role, establishment_id, establishments(tip_settings)")
+    let memberQ = supabase.from("establishment_members").select("role, job_title, establishment_id, establishments(tip_settings)")
       .eq("profile_id", user.id).eq("is_active", true);
     if (validActiveId) memberQ = memberQ.eq("establishment_id", validActiveId);
     const { data: memberData } = await memberQ.limit(1).maybeSingle();
@@ -313,7 +313,7 @@ export default function DashboardPage() {
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_confirmations").select("feedback_id").eq("profile_id", user.id),
-      supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency, target_role").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
     ]);
@@ -324,14 +324,20 @@ export default function DashboardPage() {
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
-    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean; frequency: string }>;
+    const rawTasks = (taskTmplRes.data ?? []) as Array<{ id: string; title: string; category: string; is_active: boolean; requires_photo: boolean; frequency: string; target_role: string }>;
     const completedTodayIds = new Set(((taskCompRes.data ?? []) as Array<{ task_template_id: string | null }>).map(c => c.task_template_id));
+
+    // For employees, only show tasks matching their job or "all"; managers see everything
+    const myJobTitle = (memberData as unknown as { job_title?: string | null }).job_title ?? null;
+    const relevantTasks = memberData.role === "employee"
+      ? rawTasks.filter(t => t.target_role === "all" || (myJobTitle ? t.target_role === myJobTitle : t.target_role !== "manager"))
+      : rawTasks;
 
     // Compute overdue weekly tasks (not completed since Monday)
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     const mondayStr = monday.toISOString().split("T")[0];
-    const weeklyTaskIds = rawTasks.filter(t => t.frequency === "weekly").map(t => t.id);
+    const weeklyTaskIds = relevantTasks.filter(t => t.frequency === "weekly").map(t => t.id);
     let completedThisWeekIds = new Set<string>();
     if (weeklyTaskIds.length > 0) {
       const { data: weekComps } = await supabase.from("task_completions")
@@ -342,7 +348,7 @@ export default function DashboardPage() {
         .in("task_template_id", weeklyTaskIds);
       completedThisWeekIds = new Set((weekComps ?? []).map((c: { task_template_id: string | null }) => c.task_template_id).filter(Boolean) as string[]);
     }
-    const overdue_weekly_tasks = rawTasks
+    const overdue_weekly_tasks = relevantTasks
       .filter(t => t.frequency === "weekly" && !completedThisWeekIds.has(t.id))
       .map(t => ({ id: t.id, title: t.title, category: t.category }));
 
@@ -357,7 +363,7 @@ export default function DashboardPage() {
     const unreadMandatory = rawProtocols.filter(p => p.is_mandatory && !myReadIds.has(p.id)).length;
     const unreadTotal = rawProtocols.filter(p => !myReadIds.has(p.id)).length;
 
-    const totalNonOwners = members.filter(m => m.role !== "owner").length;
+    const totalNonOwners = members.filter(m => m.role === "employee").length;
     const readCountByProtocol: Record<string, number> = {};
     reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
 
@@ -395,7 +401,7 @@ export default function DashboardPage() {
     const tasksByCategory = CATEGORY_ORDER.map(cat => ({
       cat,
       label: CATEGORY_LABELS[cat] ?? cat,
-      tasks: rawTasks.filter(t => t.category === cat),
+      tasks: relevantTasks.filter(t => t.category === cat),
     })).filter(g => g.tasks.length > 0);
 
     const task_stats: TaskStat[] = tasksByCategory.map(g => ({
@@ -475,7 +481,7 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
       const newP: Protocol = { id: `p-${Date.now()}`, title, content, category, is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length };
       onAdded(newP); onClose(); return;
     }
-    const { data: inserted } = await supabase.from("protocols").insert({ establishment_id: data.establishment_id, author_id: data.my_profile_id, title, content: content || "", category: category as unknown as undefined, is_mandatory: mandatory }).select().single();
+    const { data: inserted } = await supabase.from("protocols").insert({ establishment_id: data.establishment_id, author_id: data.my_profile_id, title, content: content || "", category: category as unknown as undefined, is_mandatory: mandatory, show_on_dashboard: true }).select().single();
     if (inserted) {
       onAdded({ id: (inserted as { id: string }).id, title, content, category, is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length });
     }
@@ -853,7 +859,11 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
 
       {/* Protocoles à signer — en haut si non vides */}
       {(() => {
-        const unsigned = protocols.filter(p => p.read_count < p.total_members || p.total_members === 0);
+        const unsigned = protocols.filter(p =>
+          (p.show_on_dashboard || p.is_mandatory) &&
+          p.total_members > 0 &&
+          p.read_count < p.total_members
+        );
         if (unsigned.length === 0) return null;
         return (
           <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.05)" }}>

@@ -202,10 +202,16 @@ export default function MyTasksPage() {
     if (!member) { setLoading(false); return; }
 
     const estId = member.establishment_id;
-    const role = (member.role as "owner" | "manager" | "employee") === "employee" ? "salle" : "manager";
+    const isEmployee = (member.role as string) === "employee";
+    const jobTitle = (member as unknown as { job_title?: string | null }).job_title ?? null;
 
-    const forMe = (t: { assigned_to: string | null; target_role: TaskTargetRole }) =>
-      t.assigned_to === userId || (!t.assigned_to && (t.target_role === role || t.target_role === "all"));
+    const forMe = (t: { assigned_to: string | null; target_role: TaskTargetRole }) => {
+      if (t.assigned_to === userId) return true;
+      if (t.assigned_to) return false;
+      if (t.target_role === "all") return true;
+      if (isEmployee) return jobTitle ? t.target_role === jobTitle : t.target_role !== "manager";
+      return t.target_role === "manager";
+    };
 
     const [{ data: tmpl }, { data: comp }, { data: yesterday }, { data: shots }, { data: protos }] = await Promise.all([
       supabase.from("task_templates").select("*").eq("establishment_id", estId).eq("is_active", true).order("display_order"),
