@@ -367,6 +367,11 @@ export default function ProtocolsPage() {
   const extractSteps = async () => {
     if (!formFile) return;
     await extractStepsFromFile(formFile);
+    // L'image servait uniquement à l'analyse — ne pas la conserver comme pièce jointe
+    if (formFile.type.startsWith("image/")) {
+      setFormFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const getAttachmentType = (file: File): AttachmentType => {
@@ -1227,6 +1232,7 @@ function ProtocolForm({
   const [extractImage, setExtractImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [uploadingStepIndex, setUploadingStepIndex] = useState<number | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleGalleryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1245,6 +1251,20 @@ function ProtocolForm({
     setFormGallery([...formGallery, ...urls]);
     setUploadingGallery(false);
     if (galleryInputRef.current) galleryInputRef.current.value = "";
+  };
+
+  const handleStepPhotoUpload = async (stepIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingStepIndex(stepIndex);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("establishmentId", establishmentId);
+    const res = await fetch("/api/protocols/upload-attachment", { method: "POST", body: fd });
+    const json = await res.json();
+    if (res.ok && json.url) updateStep(stepIndex, "photo_url", json.url);
+    setUploadingStepIndex(null);
+    e.target.value = "";
   };
 
   useEffect(() => {
@@ -1439,10 +1459,28 @@ function ProtocolForm({
                       <option value="closing">Fermeture</option>
                       <option value="continuous">Continu</option>
                     </select>
-                    <input type="text" value={step.photo_url ?? ""} onChange={e => updateStep(i, "photo_url", e.target.value)}
-                      placeholder="URL photo (optionnel)"
-                      className="flex-1 text-[11px] px-2 py-1 rounded-base outline-none"
-                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
+                    {/* Photo par étape */}
+                    {step.photo_url ? (
+                      <div className="flex items-center gap-1.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={step.photo_url} alt="" className="rounded object-cover flex-shrink-0" style={{ width: 36, height: 26 }} />
+                        <button onClick={() => updateStep(i, "photo_url", "")}
+                          className="flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-1 text-[11px] px-2 py-1 rounded cursor-pointer flex-shrink-0"
+                        style={{ background: "rgba(6,182,212,0.08)", color: uploadingStepIndex === i ? "rgba(103,232,249,0.5)" : "#67E8F9", border: "1px solid rgba(6,182,212,0.15)" }}>
+                        {uploadingStepIndex === i
+                          ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                          : <Image size={11} />}
+                        Photo
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => handleStepPhotoUpload(i, e)}
+                          disabled={uploadingStepIndex !== null} />
+                      </label>
+                    )}
                   </div>
                 </div>
               ))}
