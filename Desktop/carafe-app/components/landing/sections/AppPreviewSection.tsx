@@ -71,41 +71,53 @@ export default function AppPreviewSection() {
           </div>
         </motion.div>
 
-        {/* Preview mobile — iPhone avec GIF desktop cropé sur le contenu */}
+        {/* Preview mobile — iPhone frame, GIF PWA centré */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           className="flex justify-center md:hidden"
         >
-          <div
-            className="relative rounded-[36px]"
-            style={{
-              width: 260,
-              height: 480,
-              border: "8px solid #ffffff",
-              boxShadow: "0 0 0 1px var(--border), 0 32px 64px rgba(0,0,0,0.12)",
-              overflow: "hidden",
-              background: "var(--background)",
-            }}
-          >
+          {/* iPhone body */}
+          <div className="relative" style={{ width: 280, height: 580 }}>
             <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 z-10 rounded-b-xl"
-              style={{ width: 64, height: 18, background: "#ffffff" }}
+              className="absolute inset-0 rounded-[44px]"
+              style={{ background: "#1C1C1E", boxShadow: "0 0 0 1px rgba(0,0,0,0.15), inset 0 0 0 1px rgba(255,255,255,0.08), 0 32px 64px rgba(0,0,0,0.22)" }}
             />
-            <div style={{ width: "100%", height: "100%", overflow: "hidden", position: "relative" }}>
+            {/* Side buttons */}
+            <div className="absolute rounded-r-sm" style={{ left: -3, top: 120, width: 3, height: 32, background: "#3A3A3C" }} />
+            <div className="absolute rounded-r-sm" style={{ left: -3, top: 164, width: 3, height: 52, background: "#3A3A3C" }} />
+            <div className="absolute rounded-r-sm" style={{ left: -3, top: 228, width: 3, height: 52, background: "#3A3A3C" }} />
+            <div className="absolute rounded-l-sm" style={{ right: -3, top: 164, width: 3, height: 76, background: "#3A3A3C" }} />
+            {/* Screen */}
+            <div
+              className="absolute overflow-hidden rounded-[36px]"
+              style={{ inset: 10 }}
+            >
+              {/* Dynamic Island */}
+              <div
+                className="absolute z-20 rounded-full"
+                style={{ top: 12, left: "50%", transform: "translateX(-50%)", width: 108, height: 30, background: "#000" }}
+              />
+              {/* GIF centré — rempli en hauteur, crop gauche/droite */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/karaf-app-demo-desktop.gif"
-                alt="Aperçu Karaf"
+                src="/karaf-pwa-mobile.gif"
+                alt="Aperçu Karaf PWA"
                 style={{
                   position: "absolute",
                   top: 0,
-                  left: "-19%",
+                  left: "50%",
+                  transform: "translateX(-50%)",
                   height: "100%",
                   width: "auto",
                   maxWidth: "none",
                 }}
+              />
+              {/* Home indicator */}
+              <div
+                className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full z-10"
+                style={{ width: 100, height: 4, background: "rgba(255,255,255,0.3)" }}
               />
             </div>
           </div>
