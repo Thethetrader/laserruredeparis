@@ -192,7 +192,10 @@ export default function MyTasksPage() {
 
     const supabase = createClient();
     const userId = (await supabase.auth.getUser()).data.user?.id;
-    const { data: member } = await supabase.from("establishment_members").select("establishment_id, role, job_title").eq("profile_id", userId ?? "").eq("is_active", true).limit(1).maybeSingle();
+    const activeEstId = typeof document !== "undefined" ? (document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) ?? [])[1] ?? null : null;
+    const memberQuery = supabase.from("establishment_members").select("establishment_id, role, job_title").eq("profile_id", userId ?? "").eq("is_active", true);
+    if (activeEstId) memberQuery.eq("establishment_id", activeEstId);
+    const { data: member } = await memberQuery.limit(1).maybeSingle();
     if (!member) { setLoading(false); return; }
 
     const estId = member.establishment_id;
