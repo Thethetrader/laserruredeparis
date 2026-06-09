@@ -791,11 +791,23 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const todayStat = data.task_stats.find(s => s.period === "today");
   const weekStat = data.task_stats.find(s => s.period === "week");
 
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <div className="px-4 py-8 lg:px-10 max-w-7xl">
-      <div className="mb-8">
-        <MonoLabel size="xs" className="mb-2 block">Vue d'ensemble</MonoLabel>
-        <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <MonoLabel size="xs" className="mb-2 block">Vue d'ensemble</MonoLabel>
+          <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
+        </div>
+        <button
+          onClick={toggleTheme}
+          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
+          title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
 
       {/* KPIs */}
