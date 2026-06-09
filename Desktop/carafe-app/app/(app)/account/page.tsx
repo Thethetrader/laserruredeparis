@@ -47,6 +47,7 @@ export default function AccountPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Contrat + disponibilités
@@ -112,20 +113,31 @@ export default function AccountPage() {
     if (!file) return;
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) return;
+    setPhotoError(null);
     setAvatarPreview(URL.createObjectURL(file));
     if (!DEV_MODE && profile) {
       setUploadingPhoto(true);
-      const ext = file.name.split(".").pop();
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
       const path = `avatars/${profile.id}.${ext}`;
-      const { error } = await supabase.storage.from("profiles").upload(path, file, { upsert: true, contentType: file.type });
-      if (!error) {
+      const { error: uploadError } = await supabase.storage.from("profiles").upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) {
+        console.error("Photo upload error:", uploadError);
+        setPhotoError(`Erreur upload: ${uploadError.message}`);
+      } else {
         const { data: { publicUrl } } = supabase.storage.from("profiles").getPublicUrl(path);
         const urlWithBust = `${publicUrl}?t=${Date.now()}`;
-        await supabase.from("profiles").update({ avatar_url: urlWithBust }).eq("id", profile.id);
-        setProfile(prev => prev ? { ...prev, avatar_url: urlWithBust } : prev);
-        setAvatarPreview(urlWithBust);
-        await revalidateLayoutCache();
-        router.refresh();
+        const { error: dbError } = await supabase.from("profiles").update({ avatar_url: urlWithBust }).eq("id", profile.id);
+        if (dbError) {
+          console.error("Profile update error:", dbError);
+          setPhotoError(`Erreur sauvegarde: ${dbError.message}`);
+        } else {
+          setProfile(prev => prev ? { ...prev, avatar_url: urlWithBust } : prev);
+          setAvatarPreview(urlWithBust);
+          localStorage.setItem("karaf-avatar-url", urlWithBust);
+          window.dispatchEvent(new CustomEvent("karaf-avatar-updated", { detail: urlWithBust }));
+          await revalidateLayoutCache();
+          router.refresh();
+        }
       }
       setUploadingPhoto(false);
       setAvatarFile(null);
@@ -202,6 +214,7 @@ export default function AccountPage() {
           <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
         </div>
         <p className="text-[11px] mt-3" style={{ color: "var(--foreground-dim)" }}>Appuie sur la caméra pour changer la photo</p>
+        {photoError && <p className="text-[11px] mt-1 text-center" style={{ color: "#ef4444" }}>{photoError}</p>}
         {contractType && (
           <span className="mt-2 text-[11px] font-mono px-2 py-0.5 rounded"
             style={{ background: contractType === "extra" ? "rgba(245,158,11,0.1)" : "rgba(6,182,212,0.08)", color: contractType === "extra" ? "var(--warning)" : "var(--accent)" }}>
