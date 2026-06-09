@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
+import { compressImage } from "@/lib/utils/compress-image";
 import { EmptyState } from "@/components/ui/custom/EmptyState";
 import {
   CheckCircle2, Circle, Camera, AlertTriangle, RefreshCw,
@@ -310,8 +311,9 @@ export default function MyTasksPage() {
     if (!member) { setSubmitting(false); return; }
 
     if (modalPhoto && isOnline) {
-      const fileName = `${member.establishment_id}/${today}/${modalState.taskId}-${Date.now()}.${modalPhoto.name.split(".").pop()}`;
-      const { data: uploadData } = await supabase.storage.from("task-photos").upload(fileName, modalPhoto);
+      const compressed = await compressImage(modalPhoto);
+      const fileName = `${member.establishment_id}/${today}/${modalState.taskId}-${Date.now()}.jpg`;
+      const { data: uploadData } = await supabase.storage.from("task-photos").upload(fileName, compressed, { contentType: "image/jpeg" });
       if (uploadData) {
         const { data: urlData } = supabase.storage.from("task-photos").getPublicUrl(fileName);
         photoUrl = urlData.publicUrl;

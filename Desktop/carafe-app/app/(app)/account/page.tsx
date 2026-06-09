@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/utils/compress-image";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { Camera, CheckCircle, LogOut, X, Calendar, Check } from "lucide-react";
@@ -117,9 +118,9 @@ export default function AccountPage() {
     setAvatarPreview(URL.createObjectURL(file));
     if (!DEV_MODE && profile) {
       setUploadingPhoto(true);
-      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const path = `${profile.id}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      const compressed = await compressImage(file, 400, 0.82);
+      const path = `${profile.id}.jpg`;
+      const { error: uploadError } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
       if (uploadError) {
         console.error("Photo upload error:", uploadError);
         setPhotoError(`Erreur upload: ${uploadError.message}`);

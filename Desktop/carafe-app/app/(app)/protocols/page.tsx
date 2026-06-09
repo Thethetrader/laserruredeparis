@@ -10,7 +10,13 @@ const DEV_MODE = false;
 const DEV_ESTABLISHMENT_ID = "dev-establishment";
 const DEV_PROFILE_ID = "dev-user";
 
-type ProtocolCategory = "salle" | "cuisine" | "bar" | "accueil" | "hygiene" | "securite" | "ouverture" | "fermeture";
+type ProtocolCategory = string;
+
+interface CustomCategory {
+  id: string;
+  name: string;
+  color: string;
+}
 type AttachmentType = "pdf" | "image" | null;
 
 interface StepItem {
@@ -47,49 +53,29 @@ interface Protocol {
   show_on_dashboard?: boolean;
 }
 
-const CATEGORY_LABELS: Record<ProtocolCategory, string> = {
-  salle: "Salle",
-  cuisine: "Cuisine",
-  bar: "Bar",
-  accueil: "Accueil",
-  hygiene: "Hygiène",
-  securite: "Sécurité",
-  ouverture: "Ouverture",
-  fermeture: "Fermeture",
-};
+const DEFAULT_CATEGORIES: CustomCategory[] = [
+  { id: "salle",     name: "Salle",      color: "rgba(113,113,122,0.18)" },
+  { id: "cuisine",   name: "Cuisine",    color: "rgba(245,158,11,0.15)" },
+  { id: "bar",       name: "Bar",        color: "rgba(6,182,212,0.15)" },
+  { id: "accueil",   name: "Accueil",    color: "rgba(16,185,129,0.15)" },
+  { id: "hygiene",   name: "Hygiène",    color: "rgba(99,102,241,0.15)" },
+  { id: "securite",  name: "Sécurité",   color: "rgba(239,68,68,0.15)" },
+  { id: "ouverture", name: "Ouverture",  color: "rgba(16,185,129,0.12)" },
+  { id: "fermeture", name: "Fermeture",  color: "rgba(245,158,11,0.12)" },
+];
 
-const CATEGORY_ICONS: Record<ProtocolCategory, LucideIcon> = {
-  salle: LayoutGrid,
-  cuisine: UtensilsCrossed,
-  bar: Wine,
-  accueil: Users,
-  hygiene: Sparkles,
-  securite: ShieldCheck,
-  ouverture: Sunrise,
-  fermeture: Sunset,
-};
+const ICON_POOL: LucideIcon[] = [LayoutGrid, UtensilsCrossed, Wine, Users, Sparkles, ShieldCheck, Sunrise, Sunset, BookOpen, FileText, Wand2, LayoutDashboard];
 
-const CATEGORY_COLORS: Record<ProtocolCategory, string> = {
-  salle: "rgba(113,113,122,0.15)",
-  cuisine: "rgba(245,158,11,0.13)",
-  bar: "rgba(6,182,212,0.13)",
-  accueil: "rgba(16,185,129,0.13)",
-  hygiene: "rgba(6,182,212,0.12)",
-  securite: "rgba(239,68,68,0.12)",
-  ouverture: "rgba(16,185,129,0.12)",
-  fermeture: "rgba(245,158,11,0.12)",
-};
-
-const CATEGORY_TEXT: Record<ProtocolCategory, string> = {
-  salle: "#A1A1AA",
-  cuisine: "#FBBF24",
-  bar: "var(--accent)",
-  accueil: "var(--success)",
-  hygiene: "var(--accent)",
-  securite: "var(--danger)",
-  ouverture: "var(--success)",
-  fermeture: "var(--warning)",
-};
+const COLOR_PALETTE = [
+  "rgba(113,113,122,0.18)",
+  "rgba(245,158,11,0.15)",
+  "rgba(6,182,212,0.15)",
+  "rgba(16,185,129,0.15)",
+  "rgba(99,102,241,0.15)",
+  "rgba(239,68,68,0.15)",
+  "rgba(251,146,60,0.15)",
+  "rgba(168,85,247,0.15)",
+];
 
 const DEV_PROTOCOLS: Protocol[] = [
   {
@@ -244,6 +230,13 @@ export default function ProtocolsPage() {
   const [extracting, setExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [categories, setCategories] = useState<CustomCategory[]>(DEFAULT_CATEGORIES);
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [catInput, setCatInput] = useState("");
+  const [catColor, setCatColor] = useState(COLOR_PALETTE[0]);
+  const [catEditId, setCatEditId] = useState<string | null>(null);
+  const [savingCats, setSavingCats] = useState(false);
+
   useEffect(() => {
     if (DEV_MODE) {
       setRole(devRole);
@@ -272,17 +265,42 @@ export default function ProtocolsPage() {
     setRole(memberData.role);
     setEstablishmentId(memberData.establishment_id);
 
-    const [{ data: protocolData }, { data: readData }] = await Promise.all([
+    const [{ data: protocolData }, { data: readData }, { data: estData }] = await Promise.all([
       supabase.from("protocols").select("*").eq("establishment_id", memberData.establishment_id).order("created_at", { ascending: false }),
       supabase.from("protocol_reads").select("protocol_id").eq("profile_id", user.id),
+      supabase.from("establishments").select("protocol_categories").eq("id", memberData.establishment_id).single(),
     ]);
 
     setProtocols((protocolData ?? []) as Protocol[]);
     setReads(new Set(Array.from((readData ?? []).map((r: { protocol_id: string }) => r.protocol_id))));
+    if (estData?.protocol_categories && Array.isArray(estData.protocol_categories)) {
+      setCategories(estData.protocol_categories as CustomCategory[]);
+    }
     setLoading(false);
   }
 
   const isManager = role === "owner" || role === "manager";
+
+  const saveCats = async (updated: CustomCategory[]) => {
+    setSavingCats(true);
+    await supabase.from("establishments").update({ protocol_categories: updated as unknown as never }).eq("id", establishmentId);
+    setCategories(updated);
+    setSavingCats(false);
+  };
+
+  const addOrUpdateCat = async () => {
+    if (!catInput.trim()) return;
+    const id = catEditId ?? catInput.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const updated = catEditId
+      ? categories.map(c => c.id === catEditId ? { ...c, name: catInput.trim(), color: catColor } : c)
+      : [...categories, { id, name: catInput.trim(), color: catColor }];
+    await saveCats(updated);
+    setCatInput(""); setCatEditId(null); setCatColor(COLOR_PALETTE[0]);
+  };
+
+  const deleteCat = async (id: string) => {
+    await saveCats(categories.filter(c => c.id !== id));
+  };
 
   const toggleExpanded = (id: string) => {
     setExpanded(prev => {
@@ -467,11 +485,14 @@ export default function ProtocolsPage() {
     setProtocols(prev => prev.map(p => p.id === protocol.id ? { ...p, show_on_dashboard: newValue } : p));
   }
 
-  const allCategories = Object.keys(CATEGORY_LABELS) as ProtocolCategory[];
+  const allCategories = categories.map(c => c.id);
 
-  const categoryProtocols = (cat: ProtocolCategory) => protocols.filter(p => p.category === cat);
+  const getCat = (id: string) => categories.find(c => c.id === id) ?? { id, name: id, color: "rgba(113,113,122,0.15)" };
+  const getCatIcon = (id: string): LucideIcon => ICON_POOL[categories.findIndex(c => c.id === id) % ICON_POOL.length] ?? BookOpen;
 
-  const categoryUnread = (cat: ProtocolCategory) =>
+  const categoryProtocols = (cat: string) => protocols.filter(p => p.category === cat);
+
+  const categoryUnread = (cat: string) =>
     categoryProtocols(cat).filter(p => !reads.has(p.id)).length;
 
   const filteredProtocols = selectedCategory
@@ -524,11 +545,18 @@ export default function ProtocolsPage() {
             </p>
           </div>
           {isManager && (
-            <button onClick={() => setShowForm(!showForm)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md"
-              style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
-              <Plus size={14} /> Nouveau
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowCatManager(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
+                <Wand2 size={13} /> Catégories
+              </button>
+              <button onClick={() => setShowForm(!showForm)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md"
+                style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
+                <Plus size={14} /> Nouveau
+              </button>
+            </div>
           )}
         </div>
 
@@ -550,6 +578,7 @@ export default function ProtocolsPage() {
             formTitle={formTitle} setFormTitle={setFormTitle}
             formContent={formContent} setFormContent={setFormContent}
             formCategory={formCategory} setFormCategory={setFormCategory}
+            categories={categories}
             formMandatory={formMandatory} setFormMandatory={setFormMandatory}
             formFile={formFile} setFormFile={setFormFile}
             formSteps={formSteps} setFormSteps={setFormSteps}
@@ -563,16 +592,17 @@ export default function ProtocolsPage() {
         {/* Category grid */}
         <div className="grid grid-cols-2 gap-3">
           {allCategories.map(cat => {
+            const catData = getCat(cat);
             const count = categoryProtocols(cat).length;
             const unread = categoryUnread(cat);
-            const Icon = CATEGORY_ICONS[cat];
+            const Icon = getCatIcon(cat);
             return (
               <button key={cat} onClick={() => setSelectedCategory(cat)}
                 className="rounded-xl p-4 text-left transition-all active:scale-[0.98]"
                 style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
                 <div className="flex items-start justify-between mb-3">
-                  <div className="rounded-lg p-2" style={{ background: CATEGORY_COLORS[cat] }}>
-                    <Icon size={16} strokeWidth={1.5} style={{ color: CATEGORY_TEXT[cat] }} />
+                  <div className="rounded-lg p-2" style={{ background: catData.color }}>
+                    <Icon size={16} strokeWidth={1.5} style={{ color: "var(--foreground-muted)" }} />
                   </div>
                   {!isManager && unread > 0 && (
                     <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full"
@@ -582,7 +612,7 @@ export default function ProtocolsPage() {
                   )}
                 </div>
                 <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--foreground)" }}>
-                  {CATEGORY_LABELS[cat]}
+                  {catData.name}
                 </p>
                 <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
                   {count} protocole{count !== 1 ? "s" : ""}
@@ -600,15 +630,74 @@ export default function ProtocolsPage() {
             {isManager && <button onClick={() => setShowForm(true)} className="mt-4 text-sm" style={{ color: "var(--accent)" }}>Créer le premier protocole</button>}
           </div>
         )}
+
+        {/* Category manager modal */}
+        {showCatManager && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+            <div className="w-full max-w-md rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold" style={{ color: "var(--foreground)" }}>Gérer les catégories</h2>
+                <button onClick={() => { setShowCatManager(false); setCatInput(""); setCatEditId(null); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+              </div>
+
+              {/* Existing categories */}
+              <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                {categories.map((c, idx) => (
+                  <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: c.color.replace(/[\d.]+\)$/, "1)") }} />
+                    <span className="flex-1 text-sm" style={{ color: "var(--foreground)" }}>{c.name}</span>
+                    <button onClick={() => { setCatEditId(c.id); setCatInput(c.name); setCatColor(c.color); }}
+                      className="text-[11px] px-2 py-0.5 rounded" style={{ color: "var(--accent)", background: "rgba(6,182,212,0.08)" }}>Modifier</button>
+                    <button onClick={() => deleteCat(c.id)} style={{ color: "var(--foreground-dim)" }}><Trash2 size={14} /></button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add/edit form */}
+              <div className="border-t pt-4" style={{ borderColor: "var(--border)" }}>
+                <p className="text-[11px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--foreground-dim)" }}>
+                  {catEditId ? "Modifier la catégorie" : "Nouvelle catégorie"}
+                </p>
+                <div className="flex gap-2 mb-3">
+                  <input value={catInput} onChange={e => setCatInput(e.target.value)}
+                    placeholder="Nom de la catégorie"
+                    className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                </div>
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {COLOR_PALETTE.map(col => (
+                    <button key={col} onClick={() => setCatColor(col)}
+                      className="w-6 h-6 rounded-full border-2 transition-all"
+                      style={{ background: col.replace(/[\d.]+\)$/, "1)"), borderColor: catColor === col ? "var(--foreground)" : "transparent" }} />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  {catEditId && (
+                    <button onClick={() => { setCatEditId(null); setCatInput(""); setCatColor(COLOR_PALETTE[0]); }}
+                      className="flex-1 py-2 rounded-lg text-sm"
+                      style={{ background: "var(--background-soft)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+                      Annuler
+                    </button>
+                  )}
+                  <button onClick={addOrUpdateCat} disabled={savingCats || !catInput.trim()}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium"
+                    style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (!catInput.trim() || savingCats) ? 0.5 : 1 }}>
+                    {savingCats ? "Sauvegarde…" : catEditId ? "Enregistrer" : "Ajouter"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   /* ── Category detail view ── */
-  const catLabel = CATEGORY_LABELS[selectedCategory];
-  const catIcon = CATEGORY_ICONS[selectedCategory];
-  const CatIcon = catIcon;
-  const catUnread = categoryUnread(selectedCategory);
+  const catData = getCat(selectedCategory!);
+  const catLabel = catData.name;
+  const CatIcon = getCatIcon(selectedCategory!);
+  const catUnread = categoryUnread(selectedCategory!);
   const catUnreadMandatory = filteredProtocols.filter(p => !reads.has(p.id) && p.is_mandatory).length;
   const catAttachments = filteredProtocols.filter(p => p.attachment_url);
 
@@ -625,8 +714,8 @@ export default function ProtocolsPage() {
           <div>
             <MonoLabel size="xs" className="mb-1 block">Protocoles</MonoLabel>
             <div className="flex items-center gap-2">
-              <div className="rounded-md p-1.5" style={{ background: CATEGORY_COLORS[selectedCategory] }}>
-                <CatIcon size={14} strokeWidth={1.5} style={{ color: CATEGORY_TEXT[selectedCategory] }} />
+              <div className="rounded-md p-1.5" style={{ background: catData.color }}>
+                <CatIcon size={14} strokeWidth={1.5} style={{ color: "var(--foreground-muted)" }} />
               </div>
               <h1 className="text-xl font-semibold" style={{ color: "var(--foreground)" }}>{catLabel}</h1>
               {!isManager && catUnread > 0 && (
@@ -689,7 +778,7 @@ export default function ProtocolsPage() {
             <button key={mode} onClick={() => setViewMode(mode)}
               className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
               style={viewMode === mode
-                ? { background: CATEGORY_COLORS[selectedCategory], color: CATEGORY_TEXT[selectedCategory], border: `1px solid ${CATEGORY_TEXT[selectedCategory]}33` }
+                ? { background: catData.color, color: "var(--foreground)", border: "1px solid var(--border)" }
                 : { background: "transparent", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
               {mode === "list" ? "Protocoles" : `Photos · ${catAttachments.length}`}
             </button>
@@ -1013,7 +1102,8 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
 interface ProtocolFormProps {
   formTitle: string; setFormTitle: (v: string) => void;
   formContent: string; setFormContent: (v: string) => void;
-  formCategory: ProtocolCategory; setFormCategory: (v: ProtocolCategory) => void;
+  formCategory: string; setFormCategory: (v: string) => void;
+  categories: CustomCategory[];
   formMandatory: boolean; setFormMandatory: (v: boolean) => void;
   formFile: File | null; setFormFile: (v: File | null) => void;
   formSteps: StepItem[]; setFormSteps: (v: StepItem[]) => void;
@@ -1027,7 +1117,7 @@ interface ProtocolFormProps {
 
 function ProtocolForm({
   formTitle, setFormTitle, formContent, setFormContent,
-  formCategory, setFormCategory, formMandatory, setFormMandatory,
+  formCategory, setFormCategory, categories, formMandatory, setFormMandatory,
   formFile, setFormFile, formSteps, setFormSteps, extracting, onExtractSteps,
   fileInputRef, handleFileChange,
   isEditing, submitting, onSubmit, onCancel, error,
@@ -1169,10 +1259,10 @@ function ProtocolForm({
         <div className="flex gap-3">
           <div className="flex-1">
             <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Catégorie</label>
-            <select value={formCategory} onChange={e => setFormCategory(e.target.value as ProtocolCategory)}
+            <select value={formCategory} onChange={e => setFormCategory(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-md outline-none"
               style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-              {(Object.entries(CATEGORY_LABELS) as [ProtocolCategory, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="flex items-end pb-0.5">

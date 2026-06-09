@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
+import { compressImage } from "@/lib/utils/compress-image";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
@@ -607,8 +608,9 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
 
     let photoUrl: string | null = null;
     if (photo) {
-      const fileName = `${establishmentId}/${today}/${validating.id}-${Date.now()}.${photo.name.split(".").pop()}`;
-      const { data: uploadData } = await supabase.storage.from("task-photos").upload(fileName, photo);
+      const compressed = await compressImage(photo);
+      const fileName = `${establishmentId}/${today}/${validating.id}-${Date.now()}.jpg`;
+      const { data: uploadData } = await supabase.storage.from("task-photos").upload(fileName, compressed, { contentType: "image/jpeg" });
       if (uploadData) {
         const { data: urlData } = supabase.storage.from("task-photos").getPublicUrl(fileName);
         photoUrl = urlData.publicUrl;
