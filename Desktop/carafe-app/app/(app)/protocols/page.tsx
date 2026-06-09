@@ -373,18 +373,19 @@ export default function ProtocolsPage() {
         attachmentName = formFile.name;
         attachmentUrl = URL.createObjectURL(formFile);
       } else {
-        const path = `${establishmentId}/${Date.now()}_${formFile.name}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage.from("protocol-attachments").upload(path, formFile);
-        if (uploadData) {
-          const { data: { publicUrl } } = supabase.storage.from("protocol-attachments").getPublicUrl(path);
-          attachmentUrl = publicUrl;
-          attachmentType = getAttachmentType(formFile);
-          attachmentName = formFile.name;
-        } else if (uploadError) {
-          setFormError(`Erreur upload: ${uploadError.message}`);
+        const fd = new FormData();
+        fd.append("file", formFile);
+        fd.append("establishmentId", establishmentId);
+        const res = await fetch("/api/protocols/upload-attachment", { method: "POST", body: fd });
+        const json = await res.json();
+        if (!res.ok || !json.url) {
+          setFormError(json.error ?? "Erreur upload. Réessayez.");
           setSubmitting(false);
           return;
         }
+        attachmentUrl = json.url;
+        attachmentType = getAttachmentType(formFile);
+        attachmentName = formFile.name;
       }
     }
 
