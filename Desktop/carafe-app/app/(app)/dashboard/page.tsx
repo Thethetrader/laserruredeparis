@@ -1557,6 +1557,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   };
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
   const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
+  const [fbMouseDown, setFbMouseDown] = useState<Record<string, boolean>>({});
   const SWIPE_THRESHOLD = 90;
 
   const handleFbTouchStart = (id: string, clientX: number) => {
@@ -1565,6 +1566,20 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const handleFbTouchMove = (id: string, clientX: number) => {
     const dx = clientX - (fbTouchStartX[id] ?? clientX);
     if (dx < 0) setFbSwipeX(prev => ({ ...prev, [id]: dx }));
+  };
+  const handleFbMouseDown = (id: string, clientX: number) => {
+    setFbMouseDown(prev => ({ ...prev, [id]: true }));
+    setFbTouchStartX(prev => ({ ...prev, [id]: clientX }));
+  };
+  const handleFbMouseMove = (id: string, clientX: number) => {
+    if (!fbMouseDown[id]) return;
+    const dx = clientX - (fbTouchStartX[id] ?? clientX);
+    if (dx < 0) setFbSwipeX(prev => ({ ...prev, [id]: dx }));
+  };
+  const handleFbMouseUp = (id: string) => {
+    if (!fbMouseDown[id]) return;
+    setFbMouseDown(prev => ({ ...prev, [id]: false }));
+    handleFbTouchEnd(id);
   };
   const handleFbTouchEnd = (id: string) => {
     if ((fbSwipeX[id] ?? 0) < -SWIPE_THRESHOLD) {
@@ -1845,14 +1860,20 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                       {/* Carte */}
                       <div
                         className="px-5 py-3.5"
+                        onTouchStart={e => handleFbTouchStart(item.id, e.touches[0].clientX)}
+                        onTouchMove={e => handleFbTouchMove(item.id, e.touches[0].clientX)}
+                        onTouchEnd={() => handleFbTouchEnd(item.id)}
+                        onMouseDown={e => handleFbMouseDown(item.id, e.clientX)}
+                        onMouseMove={e => handleFbMouseMove(item.id, e.clientX)}
+                        onMouseUp={() => handleFbMouseUp(item.id)}
+                        onMouseLeave={() => handleFbMouseUp(item.id)}
                         style={{
                           transform: `translateX(${swipeX}px)`,
                           transition: swipeX === 0 ? "transform 0.2s ease" : "none",
                           background: "var(--background-elev)",
+                          cursor: fbMouseDown[item.id] ? "grabbing" : "grab",
+                          userSelect: "none",
                         }}
-                        onTouchStart={e => handleFbTouchStart(item.id, e.touches[0].clientX)}
-                        onTouchMove={e => handleFbTouchMove(item.id, e.touches[0].clientX)}
-                        onTouchEnd={() => handleFbTouchEnd(item.id)}
                       >
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>{meta.label}</span>
