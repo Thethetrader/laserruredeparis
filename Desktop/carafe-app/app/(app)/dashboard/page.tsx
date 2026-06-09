@@ -9,7 +9,7 @@ import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
   Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
   Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
-  BarChart2, Sun, Moon,
+  BarChart2, Sun, Moon, BrainCircuit, Loader2,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { useTheme } from "@/components/ThemeProvider";
@@ -785,6 +785,36 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
   const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiContent, setAiContent] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  async function runAiAnalysis() {
+    setShowAiPanel(true);
+    setAiContent("");
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ establishment_id: data.establishment_id }),
+      });
+      if (!res.ok || !res.body) { setAiContent("Erreur lors de l'analyse."); setAiLoading(false); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let result = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        result += decoder.decode(value, { stream: true });
+        setAiContent(result);
+      }
+    } catch {
+      setAiContent("Erreur de connexion.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -802,14 +832,25 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           <MonoLabel size="xs" className="mb-2 block">Vue d'ensemble</MonoLabel>
           <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
         </div>
-        <button
-          onClick={toggleTheme}
-          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
-          title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-        >
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={runAiAnalysis}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-95"
+            style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
+            title="Analyse IA du mois"
+          >
+            <BrainCircuit size={15} />
+            <span className="hidden sm:inline">Analyse IA</span>
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
+            title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
       </div>
 
       {/* Protocoles à signer — en haut si non vides */}
@@ -1358,6 +1399,104 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           </div>
         </div>
       )}
+
+      {/* ─── AI ANALYSIS PANEL ─────────────────────────── */}
+      {showAiPanel && (
+        <div
+          className="fixed inset-0 z-50"
+          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)" }}
+          onClick={() => setShowAiPanel(false)}
+        />
+      )}
+      <div
+        className="fixed top-0 right-0 h-full z-50 flex flex-col transition-transform duration-300"
+        style={{
+          width: "min(480px, 100vw)",
+          background: "var(--background)",
+          borderLeft: "1px solid var(--border)",
+          transform: showAiPanel ? "translateX(0)" : "translateX(100%)",
+          boxShadow: showAiPanel ? "-4px 0 32px rgba(0,0,0,0.15)" : "none",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--accent)" }}>
+              <BrainCircuit size={16} style={{ color: "var(--primary-foreground)" }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Analyse IA</p>
+              <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>30 derniers jours</p>
+            </div>
+          </div>
+          <button onClick={() => setShowAiPanel(false)} style={{ color: "var(--foreground-dim)" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          {aiLoading && aiContent === "" ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: "var(--foreground-dim)" }}>
+              <Loader2 size={24} className="animate-spin" />
+              <p className="text-sm">Analyse en cours…</p>
+            </div>
+          ) : aiContent ? (
+            <div className="prose prose-sm max-w-none" style={{ color: "var(--foreground)" }}>
+              {aiContent.split("\n").map((line, i) => {
+                const trimmed = line.trim();
+                if (!trimmed) return <div key={i} className="h-3" />;
+                if (trimmed.startsWith("## ") || trimmed.startsWith("# ")) {
+                  return <p key={i} className="text-base font-bold mt-5 mb-2" style={{ color: "var(--foreground)" }}>{trimmed.replace(/^#+\s+/, "")}</p>;
+                }
+                if (trimmed.startsWith("**") && trimmed.endsWith("**")) {
+                  return <p key={i} className="text-sm font-semibold mt-4 mb-1" style={{ color: "var(--foreground)" }}>{trimmed.replace(/\*\*/g, "")}</p>;
+                }
+                if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+                  return (
+                    <div key={i} className="flex gap-2 mb-1.5">
+                      <span className="flex-shrink-0 mt-1 w-1 h-1 rounded-full" style={{ background: "var(--accent)", marginTop: 7 }} />
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>{trimmed.replace(/^[-•]\s+/, "")}</p>
+                    </div>
+                  );
+                }
+                // Handle inline bold (**text**)
+                if (trimmed.includes("**")) {
+                  const parts = trimmed.split(/(\*\*[^*]+\*\*)/g);
+                  return (
+                    <p key={i} className="text-sm leading-relaxed mb-1.5" style={{ color: "var(--foreground-muted)" }}>
+                      {parts.map((part, j) =>
+                        part.startsWith("**") && part.endsWith("**")
+                          ? <strong key={j} style={{ color: "var(--foreground)" }}>{part.replace(/\*\*/g, "")}</strong>
+                          : part
+                      )}
+                    </p>
+                  );
+                }
+                return <p key={i} className="text-sm leading-relaxed mb-1.5" style={{ color: "var(--foreground-muted)" }}>{trimmed}</p>;
+              })}
+              {aiLoading && (
+                <span className="inline-flex items-center gap-1 text-xs mt-2" style={{ color: "var(--foreground-dim)" }}>
+                  <Loader2 size={11} className="animate-spin" /> Génération…
+                </span>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Footer */}
+        {!aiLoading && aiContent && (
+          <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+            <button
+              onClick={runAiAnalysis}
+              className="w-full py-2.5 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
+            >
+              <BrainCircuit size={14} /> Relancer l'analyse
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
