@@ -1566,29 +1566,29 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     }
   };
   const [fbSwipeX, setFbSwipeX] = useState<Record<string, number>>({});
-  const [fbTouchStartX, setFbTouchStartX] = useState<Record<string, number>>({});
-  const [fbMouseDown, setFbMouseDown] = useState<Record<string, boolean>>({});
+  const fbTouchStartX = useRef<Record<string, number>>({});
+  const fbMouseDown = useRef<Record<string, boolean>>({});
   const SWIPE_THRESHOLD = 90;
 
   const handleFbTouchStart = (id: string, clientX: number) => {
-    setFbTouchStartX(prev => ({ ...prev, [id]: clientX }));
+    fbTouchStartX.current[id] = clientX;
   };
   const handleFbTouchMove = (id: string, clientX: number) => {
-    const dx = clientX - (fbTouchStartX[id] ?? clientX);
+    const dx = clientX - (fbTouchStartX.current[id] ?? clientX);
     if (dx < 0) setFbSwipeX(prev => ({ ...prev, [id]: dx }));
   };
   const handleFbMouseDown = (id: string, clientX: number) => {
-    setFbMouseDown(prev => ({ ...prev, [id]: true }));
-    setFbTouchStartX(prev => ({ ...prev, [id]: clientX }));
+    fbMouseDown.current[id] = true;
+    fbTouchStartX.current[id] = clientX;
   };
   const handleFbMouseMove = (id: string, clientX: number) => {
-    if (!fbMouseDown[id]) return;
-    const dx = clientX - (fbTouchStartX[id] ?? clientX);
+    if (!fbMouseDown.current[id]) return;
+    const dx = clientX - (fbTouchStartX.current[id] ?? clientX);
     if (dx < 0) setFbSwipeX(prev => ({ ...prev, [id]: dx }));
   };
   const handleFbMouseUp = (id: string) => {
-    if (!fbMouseDown[id]) return;
-    setFbMouseDown(prev => ({ ...prev, [id]: false }));
+    if (!fbMouseDown.current[id]) return;
+    fbMouseDown.current[id] = false;
     handleFbTouchEnd(id);
   };
   const handleFbTouchEnd = (id: string) => {
@@ -1881,7 +1881,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                           transform: `translateX(${swipeX}px)`,
                           transition: swipeX === 0 ? "transform 0.2s ease" : "none",
                           background: "var(--background-elev)",
-                          cursor: fbMouseDown[item.id] ? "grabbing" : "grab",
+                          cursor: "grab",
                           userSelect: "none",
                         }}
                       >
