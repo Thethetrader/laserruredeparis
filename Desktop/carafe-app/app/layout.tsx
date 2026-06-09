@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -48,14 +49,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
+        {/* Apply theme before first paint to avoid flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var t = localStorage.getItem('karaf-theme');
+            if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+          })();
+        `}} />
         <style>{`
           body { background: #09090B; }
+          html[data-theme="light"] body { background: #fafaf7; }
           #splash {
             position: fixed; inset: 0; z-index: 99999;
             background: #09090B;
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
           }
+          html[data-theme="light"] #splash { background: #fafaf7; }
           #splash.fade { opacity: 0; pointer-events: none; }
           #splash img { width: 140px; height: 140px; object-fit: contain; }
         `}</style>
@@ -77,7 +87,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           })();
         `}} />
         <ServiceWorkerRegistration />
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

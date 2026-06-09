@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Carafe Design Tokens */
+    /* Carafe Design Tokens — dark (default) */
     --background:        #09090B;
     --background-soft:   #111114;
     --background-elev:   #1A1A1F;
@@ -46,6 +46,43 @@
     --destructive-foreground: var(--foreground);
     --input:             var(--border);
     --ring:              var(--accent);
+  }
+
+  /* Mode clair — palette shyftips */
+  html[data-theme="light"] {
+    --background:        #fafaf7;
+    --background-soft:   #f0efe8;
+    --background-elev:   #ffffff;
+    --background-hover:  #e8e7df;
+    --border:            #e2e0d8;
+    --border-soft:       #ebe9e0;
+    --border-strong:     #ccc9be;
+    --foreground:        #1a1a18;
+    --foreground-muted:  #6b6b5f;
+    --foreground-dim:    #9b9b8f;
+    --accent:            #0f5132;
+    --accent-glow:       #1a7a4c;
+    --accent-deep:       #0a3b24;
+    --accent-bg:         rgba(15, 81, 50, 0.08);
+    --success:           #10B981;
+    --warning:           #c9a961;
+    --danger:            #c0392b;
+
+    /* shadcn compatibility */
+    --card:              #ffffff;
+    --card-foreground:   #1a1a18;
+    --popover:           #ffffff;
+    --popover-foreground: #1a1a18;
+    --primary:           #0f5132;
+    --primary-foreground: #fafaf7;
+    --secondary:         #f0efe8;
+    --secondary-foreground: #1a1a18;
+    --muted:             #f0efe8;
+    --muted-foreground:  #6b6b5f;
+    --destructive:       #c0392b;
+    --destructive-foreground: #fafaf7;
+    --input:             #e2e0d8;
+    --ring:              #0f5132;
   }
 
   * {

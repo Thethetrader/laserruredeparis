@@ -8,9 +8,10 @@ import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
   Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
   Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
-  BarChart2,
+  BarChart2, Sun, Moon,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
+import { useTheme } from "@/components/ThemeProvider";
 
 const DEV_MODE = false;
 const DEV_PROFILE_ID = "dev-user";
@@ -1360,6 +1361,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const myStats = data.leaderboard.find(m => m.profile_id === data.my_profile_id);
   const myRank = data.leaderboard.findIndex(m => m.profile_id === data.my_profile_id) + 1;
   const myBadge = myStats?.badge ? BADGE_CONFIG[myStats.badge] : null;
+  const { theme, toggleTheme } = useTheme();
   const [greeting, setGreeting] = useState("Bonjour");
   useEffect(() => { const h = new Date().getHours(); setGreeting(h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"); }, []);
 
@@ -1455,14 +1457,24 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   return (
     <div className="px-4 py-8 lg:px-10 max-w-7xl">
       {/* Greeting */}
-      <div className="mb-8">
-        <MonoLabel size="xs" className="mb-2 block">Mon tableau de bord</MonoLabel>
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
-          {greeting}{data.my_first_name ? `, ${data.my_first_name}` : ""} 👋
-        </h1>
-        <p className="text-sm mt-1 capitalize" style={{ color: "var(--foreground-dim)" }}>
-          {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <MonoLabel size="xs" className="mb-2 block">Mon tableau de bord</MonoLabel>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+            {greeting}{data.my_first_name ? `, ${data.my_first_name}` : ""} 👋
+          </h1>
+          <p className="text-sm mt-1 capitalize" style={{ color: "var(--foreground-dim)" }}>
+            {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+        </div>
+        <button
+          onClick={toggleTheme}
+          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
+          title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
 
       {/* Actions rapides — tout en haut */}
