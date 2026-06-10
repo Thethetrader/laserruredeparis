@@ -30,6 +30,7 @@ interface ProfileData {
   last_name: string | null;
   avatar_url: string | null;
   email: string;
+  phone: string | null;
 }
 
 export default function AccountPage() {
@@ -44,6 +45,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -88,7 +90,7 @@ export default function AccountPage() {
     if (!user) { router.push("/login"); return; }
 
     const [profileRes, memberRes] = await Promise.all([
-      supabase.from("profiles").select("id, first_name, last_name, avatar_url, contract_type, availability").eq("id", user.id).single(),
+      supabase.from("profiles").select("id, first_name, last_name, avatar_url, phone, contract_type, availability").eq("id", user.id).single(),
       supabase.from("establishment_members")
         .select("id, establishment_id")
         .eq("profile_id", user.id).eq("is_active", true).single(),
@@ -99,6 +101,7 @@ export default function AccountPage() {
       setProfile(p);
       setFirstName(p.first_name ?? "");
       setLastName(p.last_name ?? "");
+      setPhone((profileRes.data as any).phone ?? "");
       setContractType((profileRes.data as any).contract_type ?? null);
       setAvailability((profileRes.data as any).availability ?? []);
     }
@@ -155,7 +158,7 @@ export default function AccountPage() {
       setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500); return;
     }
     if (!profile) return;
-    await supabase.from("profiles").update({ first_name: firstName.trim(), last_name: lastName.trim() }).eq("id", profile.id);
+    await supabase.from("profiles").update({ first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim() || null } as any).eq("id", profile.id);
     setProfile(prev => prev ? { ...prev, first_name: firstName, last_name: lastName } : prev);
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
   };
@@ -182,7 +185,7 @@ export default function AccountPage() {
     router.push("/login");
   };
 
-  const hasChanges = profile && (firstName !== (profile.first_name ?? "") || lastName !== (profile.last_name ?? "") || avatarFile !== null);
+  const hasChanges = profile && (firstName !== (profile.first_name ?? "") || lastName !== (profile.last_name ?? "") || phone !== (profile.phone ?? "") || avatarFile !== null);
 
   if (loading) {
     return (
@@ -240,6 +243,10 @@ export default function AccountPage() {
             <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Email</label>
             <input value={profile.email} disabled className="w-full px-3 py-2 text-sm rounded-md outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-dim)", cursor: "not-allowed" }} />
           </div>
+          <div>
+            <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Téléphone</label>
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+33 6 00 00 00 00" type="tel" className="w-full px-3 py-2 text-sm rounded-md outline-none" style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} onFocus={e => e.currentTarget.style.borderColor = "var(--accent)"} onBlur={e => e.currentTarget.style.borderColor = "var(--border)"} />
+          </div>
         </div>
         <div className="flex items-center gap-3 mt-4">
           <button onClick={saveProfile} disabled={saving || !hasChanges || !firstName.trim()} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-opacity" style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: (saving || !hasChanges || !firstName.trim()) ? 0.4 : 1 }}>
@@ -249,9 +256,8 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Disponibilités — affiché pour tous mais surtout utile pour les extras */}
-      {(contractType === "extra" || contractType === null) && (
-        <div className="rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.3)" }}>
+      {/* Disponibilités */}
+      <div className="rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.3)" }}>
           <div className="flex items-center gap-2 mb-1">
             <Calendar size={14} style={{ color: "var(--accent)" }} />
             <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Mes disponibilités</p>
@@ -338,7 +344,6 @@ export default function AccountPage() {
             {savedAvail ? <><Check size={14} /> Disponibilités enregistrées</> : savingAvail ? "Enregistrement…" : "Enregistrer mes disponibilités"}
           </button>
         </div>
-      )}
 
       {/* Notifications */}
       {establishmentId && (

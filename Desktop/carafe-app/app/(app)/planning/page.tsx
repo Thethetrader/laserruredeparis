@@ -435,6 +435,17 @@ export default function PlanningPage() {
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error ?? "Erreur validation");
       await load(weekStart);
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          establishmentId: estId,
+          title: 'Planning à valider',
+          body: 'Ton planning a été publié. Confirme ou refuse tes shifts.',
+          url: '/shifts',
+          targetRole: 'employee',
+        }),
+      }).catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {

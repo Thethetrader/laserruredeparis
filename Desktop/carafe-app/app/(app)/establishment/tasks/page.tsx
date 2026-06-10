@@ -213,6 +213,17 @@ export default function EstablishmentTasksPage() {
         description: form.description || null,
         display_order: maxOrder + 1,
       });
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          establishmentId: estId,
+          title: 'Nouvelle tâche',
+          body: `"${form.title}" a été ajoutée à tes tâches.`,
+          url: '/me/tasks',
+          targetRole: 'employee',
+        }),
+      }).catch(() => {});
     } else if (modal?.task) {
       await supabase.from("task_templates").update({ ...form, description: form.description || null }).eq("id", modal.task.id);
     }

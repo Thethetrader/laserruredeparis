@@ -234,7 +234,20 @@ export default function ChallengesPage() {
       ends_at: formEndsAt ? new Date(formEndsAt).toISOString() : null,
     }).select().single();
 
-    if (data) setChallenges(prev => [data, ...prev]);
+    if (data) {
+      setChallenges(prev => [data, ...prev]);
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          establishmentId,
+          title: 'Nouveau défi',
+          body: `"${formTitle}" — relève le défi !`,
+          url: '/challenges',
+          targetRole: 'employee',
+        }),
+      }).catch(() => {});
+    }
     resetForm();
     setSubmitting(false);
   };

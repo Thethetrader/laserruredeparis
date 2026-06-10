@@ -1639,6 +1639,17 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     setSubmitting(true);
     if (DEV_MODE) { showSuccess("Retard déclaré ✓"); return; }
     await supabase.from("delays").insert({ establishment_id: data.establishment_id, employee_id: data.my_profile_id, shift_date: delayDate, delay_minutes: mins, reason: delayReason });
+    fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        establishmentId: data.establishment_id,
+        title: 'Retard déclaré',
+        body: `${data.my_first_name} a déclaré ${mins} min de retard.`,
+        url: '/delays',
+        targetRole: 'manager',
+      }),
+    }).catch(() => {});
     showSuccess("Retard déclaré ✓");
   };
 
