@@ -1867,8 +1867,8 @@ function ManualPlanningGrid({
           />
           {/* Sheet */}
           <div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl px-4 pt-4 pb-8"
-            style={{ background: "var(--background-elev)", boxShadow: "0 -8px 40px rgba(0,0,0,0.25)" }}>
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl px-4 pt-4 pb-8 flex flex-col"
+            style={{ background: "var(--background-elev)", boxShadow: "0 -8px 40px rgba(0,0,0,0.25)", maxHeight: "70vh" }}>
             {/* Handle */}
             <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "var(--border)" }} />
             {/* Title */}
@@ -1889,7 +1889,7 @@ function ManualPlanningGrid({
               </p>
             )}
             {/* Employee list */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 overflow-y-auto flex-1">
               {employees.map(emp => {
                 const color = STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA";
                 return (
