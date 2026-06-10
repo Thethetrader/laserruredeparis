@@ -158,17 +158,19 @@ export default function TeamPage() {
 
     const { data } = await supabase
       .from("establishment_members")
-      .select("id, profile_id, role, job_title, hired_at, is_active, profiles(first_name, last_name, email, avatar_url)")
+      .select("id, profile_id, role, job_title, hired_at, is_active, profiles(first_name, last_name, email, avatar_url, phone, contract_type, availability)")
       .eq("establishment_id", memberData.establishment_id)
       .order("joined_at", { ascending: true });
 
     const mapped: TeamMember[] = (data ?? []).map((m: {
       id: string; profile_id: string; role: UserRole; job_title: string | null; hired_at: string | null; is_active: boolean;
-      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null } | null;
+      profiles: { first_name: string | null; last_name: string | null; email: string; avatar_url: string | null; phone?: string | null; contract_type?: string | null; availability?: AvailabilitySlot[] | null } | null;
     }) => ({
       id: m.id, profile_id: m.profile_id, role: m.role, job_title: m.job_title, hired_at: m.hired_at, is_active: m.is_active,
       first_name: m.profiles?.first_name ?? null, last_name: m.profiles?.last_name ?? null,
       email: m.profiles?.email ?? "", avatar_url: m.profiles?.avatar_url ?? null,
+      phone: m.profiles?.phone ?? null, contract_type: m.profiles?.contract_type ?? null,
+      availability: (m.profiles?.availability ?? []) as AvailabilitySlot[],
     }));
     setMembers(mapped);
     setLoading(false);
