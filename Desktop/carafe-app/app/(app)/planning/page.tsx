@@ -65,6 +65,26 @@ interface PlanningWeek {
   service_needs: unknown;
 }
 
+interface ManualService {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+}
+
+function parseManualServices(raw: unknown): ManualService[] {
+  if (raw && typeof raw === "object") {
+    const r = raw as Record<string, unknown>;
+    if (r.type === "manual_v1" && Array.isArray(r.services)) {
+      return r.services as ManualService[];
+    }
+  }
+  return [
+    { id: "midi", name: "Midi", start: "11:30", end: "15:30" },
+    { id: "soir", name: "Soir", start: "18:30", end: "23:00" },
+  ];
+}
+
 interface PlanningShift {
   id: string;
   user_id: string;
@@ -185,7 +205,9 @@ export default function PlanningPage() {
   const [rulesOpen,    setRulesOpen]    = useState(false);
 
   /* ── Planning mode ── */
-  const [planningMode, setPlanningMode] = useState<PlanningMode>("ai");
+  const [planningMode,    setPlanningMode]    = useState<PlanningMode>("ai");
+  const [manualServices,  setManualServices]  = useState<ManualService[]>([]);
+  const [addingEmpCell,   setAddingEmpCell]   = useState<{ svcId: string; dateStr: string } | null>(null);
 
   /* ── Loading / actions ── */
   const [loading,      setLoading]      = useState(true);
@@ -315,6 +337,7 @@ export default function PlanningPage() {
       setPlanningWeek(pw as PlanningWeek);
       setDailyConfig(parseDailyNeeds(pw.service_needs));
       setRules(parseLegacyRules(pw.service_needs));
+      setManualServices(parseManualServices(pw.service_needs));
 
       const { data: ps } = await supabase
         .from("planning_shifts")
@@ -497,6 +520,27 @@ export default function PlanningPage() {
       setError(e instanceof Error ? e.message : "Erreur");
     } finally {
       setReassigning(false);
+    }
+  }
+
+  /* ── Manual: save services grid ── */
+  async function handleSaveManualServices(services: ManualService[]) {
+    setManualServices(services);
+    if (!estId) return;
+    const supabase = createClient();
+    const weekStr = toDateStr(weekStart);
+    const needs = { type: "manual_v1", services };
+    if (planningWeek?.id) {
+      await supabase.from("planning_weeks").update({ service_needs: needs }).eq("id", planningWeek.id);
+    } else {
+      const { data: newPw } = await supabase
+        .from("planning_weeks")
+        .upsert(
+          { establishment_id: estId, week_start: weekStr, status: "draft", service_needs: needs },
+          { onConflict: "establishment_id,week_start" }
+        )
+        .select().single();
+      if (newPw) setPlanningWeek(newPw as PlanningWeek);
     }
   }
 
@@ -930,63 +974,24 @@ export default function PlanningPage() {
             </>
           )}
 
-          {/* ── Manual mode: day strip + shift creation ── */}
+          {/* ── Manual mode: grid services × jours ── */}
           {planningMode === "manual" && planningWeek?.status !== "published" && (
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="flex items-center justify-between px-4 py-3"
-                style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <div className="flex items-center gap-2">
-                  <Users size={13} style={{ color: "var(--accent)" }} />
-                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Shifts par jour</p>
-                </div>
-                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-                  {planningShifts.length} shift{planningShifts.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-7" style={{ background: "var(--background)" }}>
-                {weekDates.map((date, idx) => {
-                  const dateStr = toDateStr(date);
-                  const isEditing = editingDay === dateStr;
-                  const hasShifts = planningShifts.some(s => s.shift_date === dateStr);
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() => setEditingDay(isEditing ? null : dateStr)}
-                      className="flex flex-col items-center justify-center py-3 px-1 gap-1 transition-colors"
-                      style={{
-                        borderRight: idx < 6 ? "1px solid var(--border-soft)" : "none",
-                        background: isEditing ? "rgba(6,182,212,0.06)" : "transparent",
-                        borderBottom: isEditing ? "2px solid var(--accent)" : "2px solid transparent",
-                      }}
-                    >
-                      <span className="text-[9px] font-mono uppercase tracking-widest"
-                        style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[idx]}</span>
-                      <span className="text-[16px] font-bold leading-none"
-                        style={{ color: isEditing ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
-                      <div className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: hasShifts ? "#10B981" : "var(--border)" }} />
-                    </button>
-                  );
-                })}
-              </div>
-
-              {editingDay && (
-                <ManualDayPanel
-                  dateStr={editingDay}
-                  weekDates={weekDates}
-                  employees={employees}
-                  shifts={planningShifts}
-                  onAdd={(userId, service, start, end) => handleAddManualShift(editingDay, userId, service, start, end)}
-                  onDelete={handleDeleteManualShift}
-                  adding={addingShift}
-                />
-              )}
-            </div>
+            <ManualPlanningGrid
+              weekDates={weekDates}
+              services={manualServices}
+              shifts={planningShifts}
+              employees={employees}
+              adding={addingShift}
+              addingCell={addingEmpCell}
+              onAddingCellChange={setAddingEmpCell}
+              onServicesChange={handleSaveManualServices}
+              onAddShift={handleAddManualShift}
+              onDeleteShift={handleDeleteManualShift}
+            />
           )}
 
-          {/* ── Manual: publish button (when shifts exist and not yet published) ── */}
-          {planningMode === "manual" && !planningWeek && planningShifts.length > 0 && (
+          {/* ── Manual: publish button ── */}
+          {planningMode === "manual" && planningWeek?.status === "draft" && planningShifts.length > 0 && !hasGenerated && (
             <button
               onClick={handleValidate}
               disabled={validating}
@@ -1642,120 +1647,267 @@ function WeekSummary({ shifts, employees }: {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   MANUAL DAY PANEL
+   MANUAL PLANNING GRID
+   Rows = services, Columns = 7 days, Cells = employee chips + add popup
 ══════════════════════════════════════════════════════════════════════════════ */
 
-function ManualDayPanel({ dateStr, weekDates, employees, shifts, onAdd, onDelete, adding }: {
-  dateStr: string;
+function ManualPlanningGrid({
+  weekDates, services, shifts, employees, adding,
+  addingCell, onAddingCellChange, onServicesChange, onAddShift, onDeleteShift,
+}: {
   weekDates: Date[];
-  employees: EmployeeInfo[];
+  services: ManualService[];
   shifts: PlanningShift[];
-  onAdd: (userId: string, service: string, start: string, end: string) => Promise<void>;
-  onDelete: (shiftId: string) => Promise<void>;
+  employees: EmployeeInfo[];
   adding: boolean;
+  addingCell: { svcId: string; dateStr: string } | null;
+  onAddingCellChange: (cell: { svcId: string; dateStr: string } | null) => void;
+  onServicesChange: (services: ManualService[]) => Promise<void>;
+  onAddShift: (dateStr: string, userId: string, service: string, start: string, end: string) => Promise<void>;
+  onDeleteShift: (shiftId: string) => Promise<void>;
 }) {
-  const idx = weekDates.findIndex(d => toDateStr(d) === dateStr);
-  const dayName = idx >= 0 ? DAYS_FULL[idx] : dateStr;
-  const date = new Date(dateStr + "T12:00:00");
-  const dateLabel = date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  const [editingSvc, setEditingSvc] = useState(false);
+  const [newSvcName, setNewSvcName] = useState("");
+  const [newSvcStart, setNewSvcStart] = useState("11:30");
+  const [newSvcEnd, setNewSvcEnd] = useState("15:30");
+  const [popupUserId, setPopupUserId] = useState("");
 
-  const [userId, setUserId] = useState(employees[0]?.id ?? "");
-  const [service, setService] = useState("Midi");
-  const [start, setStart] = useState("11:30");
-  const [end, setEnd] = useState("15:30");
+  useEffect(() => {
+    if (employees.length > 0 && !popupUserId) setPopupUserId(employees[0].id);
+  }, [employees, popupUserId]);
 
-  const dayShifts = shifts.filter(s => s.shift_date === dateStr);
+  function addService() {
+    if (!newSvcName.trim()) return;
+    const svc: ManualService = {
+      id: `svc_${Date.now()}`,
+      name: newSvcName.trim(),
+      start: newSvcStart,
+      end: newSvcEnd,
+    };
+    onServicesChange([...services, svc]);
+    setNewSvcName("");
+    setEditingSvc(false);
+  }
 
-  async function handleAdd() {
-    if (!userId) return;
-    await onAdd(userId, service, start, end);
+  function removeService(id: string) {
+    onServicesChange(services.filter(s => s.id !== id));
+  }
+
+  async function handlePopupAdd() {
+    if (!addingCell || !popupUserId) return;
+    const svc = services.find(s => s.id === addingCell.svcId);
+    if (!svc) return;
+    await onAddShift(addingCell.dateStr, popupUserId, svc.name, svc.start, svc.end);
+    onAddingCellChange(null);
   }
 
   return (
-    <div className="px-4 pb-4 pt-3 space-y-3" style={{ background: "var(--background)", borderTop: "1px solid var(--border-soft)" }}>
-      <div>
-        <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{dayName}</p>
-        <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{dateLabel}</p>
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3"
+        style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-2">
+          <Users size={13} style={{ color: "var(--accent)" }} />
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Planning manuel</p>
+        </div>
+        <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+          {shifts.length} shift{shifts.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
-      {/* Shifts déjà créés ce jour */}
-      {dayShifts.length > 0 && (
-        <div className="space-y-1.5">
-          {dayShifts.map(shift => {
-            const emp = employees.find(e => e.id === shift.user_id);
-            const color = STAFF_STATUSES[emp?.status as StaffStatus]?.color ?? "#A1A1AA";
-            return (
-              <div key={shift.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>
-                    {shift.first_name ?? "?"} · {shift.service}
-                  </p>
-                  <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>
-                    {shift.start_time.slice(0, 5)} → {shift.end_time.slice(0, 5)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => onDelete(shift.id)}
-                  className="p-1.5 rounded-lg flex-shrink-0"
-                  style={{ color: "var(--danger)", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Grid scroll wrapper */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse" style={{ minWidth: 520 }}>
+          {/* Day columns header */}
+          <thead>
+            <tr>
+              <th className="text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest w-24"
+                style={{ color: "var(--foreground-dim)", background: "var(--background-elev)", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+                Service
+              </th>
+              {weekDates.map((date, idx) => {
+                const dateStr = toDateStr(date);
+                const isToday = toDateStr(new Date()) === dateStr;
+                return (
+                  <th key={dateStr} className="px-2 py-2 text-center"
+                    style={{
+                      background: isToday ? "rgba(6,182,212,0.06)" : "var(--background-elev)",
+                      borderRight: idx < 6 ? "1px solid var(--border-soft)" : "none",
+                      borderBottom: "1px solid var(--border)",
+                      minWidth: 72,
+                    }}>
+                    <span className="block text-[9px] font-mono uppercase tracking-widest"
+                      style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[idx]}</span>
+                    <span className="block text-[14px] font-bold leading-tight"
+                      style={{ color: isToday ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {services.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-[12px]"
+                  style={{ color: "var(--foreground-dim)", background: "var(--background)" }}>
+                  Aucun service. Ajoutez-en un ci-dessous.
+                </td>
+              </tr>
+            )}
+            {services.map((svc, svcIdx) => (
+              <tr key={svc.id} style={{ background: svcIdx % 2 === 0 ? "var(--background)" : "var(--background-elev)" }}>
+                {/* Service label */}
+                <td className="px-3 py-2 align-top"
+                  style={{ borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border-soft)", verticalAlign: "middle" }}>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: SERVICE_PALETTE[svcIdx % SERVICE_PALETTE.length] }} />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{svc.name}</p>
+                      <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>
+                        {svc.start}–{svc.end}
+                      </p>
+                    </div>
+                    <button onClick={() => removeService(svc.id)}
+                      className="ml-auto p-0.5 rounded flex-shrink-0"
+                      style={{ color: "var(--foreground-dim)", opacity: 0.4 }}>
+                      <X size={10} />
+                    </button>
+                  </div>
+                </td>
 
-      {/* Formulaire ajout shift */}
-      <div className="space-y-2 pt-1">
-        <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Ajouter un shift</p>
+                {/* Day cells */}
+                {weekDates.map((date, dayIdx) => {
+                  const dateStr = toDateStr(date);
+                  const cellShifts = shifts.filter(s => s.shift_date === dateStr && s.service === svc.name);
+                  const isOpen = addingCell?.svcId === svc.id && addingCell?.dateStr === dateStr;
 
-        <select
-          value={userId}
-          onChange={e => setUserId(e.target.value)}
-          className="w-full text-[12px] rounded-lg px-2.5 py-2"
-          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-        >
-          {employees.length === 0 && <option value="">Aucun employé</option>}
-          {employees.map(emp => (
-            <option key={emp.id} value={emp.id}>
-              {emp.name} · {STAFF_STATUSES[emp.status as StaffStatus]?.label ?? emp.status}
-            </option>
-          ))}
-        </select>
+                  return (
+                    <td key={dateStr} className="px-1.5 py-1.5 align-top"
+                      style={{
+                        borderRight: dayIdx < 6 ? "1px solid var(--border-soft)" : "none",
+                        borderBottom: "1px solid var(--border-soft)",
+                        verticalAlign: "top",
+                      }}>
+                      <div className="flex flex-col gap-1">
+                        {/* Employee chips */}
+                        {cellShifts.map(shift => {
+                          const emp = employees.find(e => e.id === shift.user_id);
+                          const color = STAFF_STATUSES[emp?.status as StaffStatus]?.color ?? "#A1A1AA";
+                          return (
+                            <div key={shift.id}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium leading-tight"
+                              style={{ background: `${color}18`, border: `1px solid ${color}40`, color: "var(--foreground)" }}>
+                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                              <span className="truncate max-w-[48px]">{shift.first_name ?? "?"}</span>
+                              <button
+                                onClick={() => onDeleteShift(shift.id)}
+                                className="ml-auto flex-shrink-0"
+                                style={{ color, opacity: 0.7 }}>
+                                <X size={9} />
+                              </button>
+                            </div>
+                          );
+                        })}
 
-        <input
-          type="text"
-          value={service}
-          onChange={e => setService(e.target.value)}
-          placeholder="Nom du service (ex: Midi, Soir…)"
-          className="w-full text-[12px] rounded-lg px-2.5 py-2"
-          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-        />
+                        {/* Add button */}
+                        {isOpen ? (
+                          <div className="rounded-lg p-1.5 space-y-1"
+                            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                            <select
+                              value={popupUserId}
+                              onChange={e => setPopupUserId(e.target.value)}
+                              className="w-full text-[10px] rounded px-1.5 py-1"
+                              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                              {employees.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.name}</option>
+                              ))}
+                            </select>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={handlePopupAdd}
+                                disabled={adding}
+                                className="flex-1 text-[10px] font-semibold py-0.5 rounded"
+                                style={{ background: "var(--accent)", color: "#fff", opacity: adding ? 0.6 : 1 }}>
+                                {adding ? "…" : "OK"}
+                              </button>
+                              <button
+                                onClick={() => onAddingCellChange(null)}
+                                className="px-1.5 text-[10px] rounded"
+                                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => onAddingCellChange({ svcId: svc.id, dateStr })}
+                            className="w-full flex items-center justify-center rounded-md py-0.5"
+                            style={{
+                              border: "1px dashed var(--border)",
+                              color: "var(--foreground-dim)",
+                              opacity: 0.5,
+                            }}>
+                            <Plus size={10} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <input type="time" value={start} onChange={e => setStart(e.target.value)}
-            className="flex-1 text-[11px] font-mono rounded-lg px-2.5 py-2"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          <span className="text-[10px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>→</span>
-          <input type="time" value={end} onChange={e => setEnd(e.target.value)}
-            className="flex-1 text-[11px] font-mono rounded-lg px-2.5 py-2"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-        </div>
-
-        <button
-          onClick={handleAdd}
-          disabled={adding || !userId}
-          className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
-          style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: adding || !userId ? 0.6 : 1 }}
-        >
-          {adding
-            ? <><RefreshCw size={12} className="animate-spin" />Ajout…</>
-            : <><Plus size={13} />Ajouter ce shift</>}
-        </button>
+      {/* Add service row */}
+      <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)", background: "var(--background)" }}>
+        {editingSvc ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newSvcName}
+                onChange={e => setNewSvcName(e.target.value)}
+                placeholder="Nom du service (ex: Midi, Soir…)"
+                autoFocus
+                className="flex-1 text-[12px] rounded-lg px-2.5 py-2"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                onKeyDown={e => e.key === "Enter" && addService()}
+              />
+              <input type="time" value={newSvcStart} onChange={e => setNewSvcStart(e.target.value)}
+                className="text-[11px] font-mono rounded-lg px-2 py-2 w-24"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+              <input type="time" value={newSvcEnd} onChange={e => setNewSvcEnd(e.target.value)}
+                className="text-[11px] font-mono rounded-lg px-2 py-2 w-24"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={addService}
+                disabled={!newSvcName.trim()}
+                className="flex-1 py-2 rounded-xl text-[12px] font-semibold"
+                style={{ background: "var(--accent)", color: "#fff", opacity: !newSvcName.trim() ? 0.5 : 1 }}>
+                Ajouter le service
+              </button>
+              <button
+                onClick={() => setEditingSvc(false)}
+                className="px-3 py-2 rounded-xl text-[12px]"
+                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setEditingSvc(true)}
+            className="flex items-center gap-2 text-[12px] font-medium"
+            style={{ color: "var(--accent)" }}>
+            <Plus size={13} />
+            Ajouter un service
+          </button>
+        )}
       </div>
     </div>
   );
