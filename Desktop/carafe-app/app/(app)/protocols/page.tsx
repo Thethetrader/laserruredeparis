@@ -476,7 +476,19 @@ export default function ProtocolsPage() {
       setSubmitting(false);
       return;
     }
-    if (data) setProtocols(prev => [data as Protocol, ...prev]);
+    if (data) {
+      setProtocols(prev => [data as Protocol, ...prev]);
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          establishmentId,
+          title: 'Nouveau protocole',
+          body: `"${formTitle}" a été publié. Appuie pour le lire.`,
+          url: '/protocols',
+        }),
+      }).catch(() => {});
+    }
     resetForm();
     setSubmitting(false);
   };

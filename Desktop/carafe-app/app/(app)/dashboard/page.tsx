@@ -14,6 +14,7 @@ import {
 import { useDevRole } from "@/hooks/useDevRole";
 import { useTheme } from "@/components/ThemeProvider";
 import { NewFeedbackModal } from "@/components/NewFeedbackModal";
+import { PushNotificationBanner } from "@/components/PushNotificationSetup";
 
 const DEV_MODE = false;
 const DEV_PROFILE_ID = "dev-user";
@@ -501,6 +502,16 @@ function AddProtocolModal({ data, onClose, onAdded }: { data: DashboardData; onC
     const { data: inserted } = await supabase.from("protocols").insert({ establishment_id: data.establishment_id, author_id: data.my_profile_id, title, content: content || "", category: category as unknown as undefined, is_mandatory: mandatory, show_on_dashboard: true }).select().single();
     if (inserted) {
       onAdded({ id: (inserted as { id: string }).id, title, content, category, is_mandatory: mandatory, is_read: false, read_count: 0, total_members: data.leaderboard.length });
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          establishmentId: data.establishment_id,
+          title: 'Nouveau protocole',
+          body: `"${title}" a été publié. Appuie pour le lire.`,
+          url: '/protocols',
+        }),
+      }).catch(() => {});
     }
     onClose();
   };
@@ -1710,6 +1721,8 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
           {successMsg}
         </div>
       )}
+
+      <PushNotificationBanner establishmentId={data.establishment_id} />
 
       {/* Alert protocoles — obligatoires OU épinglés sur dashboard non lus */}
       {(() => {
