@@ -9,7 +9,9 @@ import {
   TrendingUp, Plus, X, Settings2, ChevronDown, ChevronUp, Users,
 } from "lucide-react";
 import {
-  toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES, type StaffStatus,
+  toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES,
+  parsePlanningMode,
+  type StaffStatus, type PlanningMode,
 } from "@/lib/shifts";
 
 const DEV_MODE = false;
@@ -182,11 +184,15 @@ export default function PlanningPage() {
   const [savingDay,    setSavingDay]    = useState(false);
   const [rulesOpen,    setRulesOpen]    = useState(false);
 
+  /* ── Planning mode ── */
+  const [planningMode, setPlanningMode] = useState<PlanningMode>("ai");
+
   /* ── Loading / actions ── */
-  const [loading,    setLoading]    = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [validating, setValidating] = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [generating,   setGenerating]   = useState(false);
+  const [validating,   setValidating]   = useState(false);
+  const [addingShift,  setAddingShift]  = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
 
   /* ── Employee-side state ── */
   const [isRealEmployee,    setIsRealEmployee]    = useState(false);
@@ -272,6 +278,14 @@ export default function PlanningPage() {
     }
 
     setEstId(resolvedEid);
+
+    // Load planning mode
+    const { data: estData } = await supabase
+      .from("establishments")
+      .select("planning_mode")
+      .eq("id", resolvedEid)
+      .maybeSingle();
+    setPlanningMode(parsePlanningMode((estData as Record<string, unknown> | null)?.planning_mode));
 
     // Load employees for reassignment
     const { data: memberRows } = await supabase
@@ -486,6 +500,66 @@ export default function PlanningPage() {
     }
   }
 
+  /* ── Manual: add shift ── */
+  async function handleAddManualShift(dateStr: string, userId: string, service: string, start: string, end: string) {
+    if (!estId) return;
+    setAddingShift(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const weekStr = toDateStr(weekStart);
+      let weekId = planningWeek?.id;
+
+      if (!weekId) {
+        const { data: newPw } = await supabase
+          .from("planning_weeks")
+          .upsert(
+            { establishment_id: estId, week_start: weekStr, status: "draft", service_needs: {} },
+            { onConflict: "establishment_id,week_start" }
+          )
+          .select()
+          .single();
+        if (newPw) { setPlanningWeek(newPw as PlanningWeek); weekId = newPw.id; }
+      }
+
+      if (!weekId) throw new Error("Impossible de créer la semaine");
+
+      const { data: newShift } = await supabase
+        .from("planning_shifts")
+        .insert({
+          planning_week_id: weekId,
+          user_id: userId,
+          shift_date: dateStr,
+          start_time: start,
+          end_time: end,
+          service,
+          confirmation_status: "pending",
+        })
+        .select("id, user_id, shift_date, start_time, end_time, service, confirmation_status")
+        .single();
+
+      if (newShift) {
+        const emp = employees.find(e => e.id === userId);
+        setPlanningShifts(prev => [...prev, {
+          ...(newShift as PlanningShift),
+          first_name: emp?.name ?? null,
+          staff_status: emp?.status ?? null,
+        }]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setAddingShift(false);
+    }
+  }
+
+  /* ── Manual: delete shift ── */
+  async function handleDeleteManualShift(shiftId: string) {
+    const supabase = createClient();
+    await supabase.from("planning_shifts").delete().eq("id", shiftId);
+    setPlanningShifts(prev => prev.filter(s => s.id !== shiftId));
+  }
+
   /* ── Employee: confirm shift ── */
   async function confirmShift(shiftId: string) {
     const supabase = createClient();
@@ -697,9 +771,11 @@ export default function PlanningPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[22px] font-semibold" style={{ color: "var(--foreground)" }}>Planning</h1>
-          <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Configurez les besoins jour par jour, puis générez</p>
+          <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+            {planningMode === "manual" ? "Créez les shifts manuellement, puis publiez" : "Configurez les besoins jour par jour, puis générez"}
+          </p>
         </div>
-        <Sparkles size={20} style={{ color: "#F59E0B" }} />
+        {planningMode === "ai" ? <Sparkles size={20} style={{ color: "#F59E0B" }} /> : <Users size={20} style={{ color: "var(--accent)" }} />}
       </div>
 
       {/* Week selector */}
@@ -732,8 +808,8 @@ export default function PlanningPage() {
       ) : (
         <div className="space-y-4">
 
-          {/* ── Day Calendar ── */}
-          {(!planningWeek || planningWeek.status === "draft") && (
+          {/* ── Day Calendar (AI mode) ── */}
+          {planningMode === "ai" && (!planningWeek || planningWeek.status === "draft") && (
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="flex items-center justify-between px-4 py-3"
                 style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
@@ -795,8 +871,8 @@ export default function PlanningPage() {
             </div>
           )}
 
-          {/* ── Rules (collapsible) ── */}
-          {(!planningWeek || planningWeek.status === "draft") && (
+          {/* ── Rules (collapsible, AI mode only) ── */}
+          {planningMode === "ai" && (!planningWeek || planningWeek.status === "draft") && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <button
                 onClick={() => setRulesOpen(v => !v)}
@@ -832,8 +908,8 @@ export default function PlanningPage() {
             </div>
           )}
 
-          {/* ── Generate button ── */}
-          {!hasGenerated && anyValidated && (
+          {/* ── Generate button (AI mode only) ── */}
+          {planningMode === "ai" && !hasGenerated && anyValidated && (
             <>
               <button
                 onClick={handleGenerate}
@@ -854,6 +930,73 @@ export default function PlanningPage() {
             </>
           )}
 
+          {/* ── Manual mode: day strip + shift creation ── */}
+          {planningMode === "manual" && planningWeek?.status !== "published" && (
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+              <div className="flex items-center justify-between px-4 py-3"
+                style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <Users size={13} style={{ color: "var(--accent)" }} />
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Shifts par jour</p>
+                </div>
+                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+                  {planningShifts.length} shift{planningShifts.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-7" style={{ background: "var(--background)" }}>
+                {weekDates.map((date, idx) => {
+                  const dateStr = toDateStr(date);
+                  const isEditing = editingDay === dateStr;
+                  const hasShifts = planningShifts.some(s => s.shift_date === dateStr);
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => setEditingDay(isEditing ? null : dateStr)}
+                      className="flex flex-col items-center justify-center py-3 px-1 gap-1 transition-colors"
+                      style={{
+                        borderRight: idx < 6 ? "1px solid var(--border-soft)" : "none",
+                        background: isEditing ? "rgba(6,182,212,0.06)" : "transparent",
+                        borderBottom: isEditing ? "2px solid var(--accent)" : "2px solid transparent",
+                      }}
+                    >
+                      <span className="text-[9px] font-mono uppercase tracking-widest"
+                        style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[idx]}</span>
+                      <span className="text-[16px] font-bold leading-none"
+                        style={{ color: isEditing ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                      <div className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: hasShifts ? "#10B981" : "var(--border)" }} />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {editingDay && (
+                <ManualDayPanel
+                  dateStr={editingDay}
+                  weekDates={weekDates}
+                  employees={employees}
+                  shifts={planningShifts}
+                  onAdd={(userId, service, start, end) => handleAddManualShift(editingDay, userId, service, start, end)}
+                  onDelete={handleDeleteManualShift}
+                  adding={addingShift}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ── Manual: publish button (when shifts exist and not yet published) ── */}
+          {planningMode === "manual" && !planningWeek && planningShifts.length > 0 && (
+            <button
+              onClick={handleValidate}
+              disabled={validating}
+              className="w-full py-3.5 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2"
+              style={{ background: "var(--accent)", color: "#fff", opacity: validating ? 0.6 : 1 }}
+            >
+              {validating ? "Publication…" : <><Check size={14} />Publier le planning</>}
+            </button>
+          )}
+
           {/* ── Draft view ── */}
           {planningWeek?.status === "draft" && hasGenerated && (
             <DraftView
@@ -864,6 +1007,7 @@ export default function PlanningPage() {
               onRegenerate={handleRegenerate}
               validating={validating}
               onReassign={shift => setReassignShift(shift)}
+              canRegenerate={planningMode === "ai"}
             />
           )}
 
@@ -878,10 +1022,12 @@ export default function PlanningPage() {
           )}
 
           {/* Nothing configured yet */}
-          {!planningWeek && !anyValidated && !loading && (
+          {!planningWeek && !anyValidated && planningShifts.length === 0 && !loading && (
             <div className="rounded-xl p-6 text-center" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
               <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>
-                Cliquez sur un jour pour configurer les besoins en personnel.
+                {planningMode === "manual"
+                  ? "Cliquez sur un jour pour ajouter des shifts."
+                  : "Cliquez sur un jour pour configurer les besoins en personnel."}
               </p>
             </div>
           )}
@@ -1191,7 +1337,7 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
    DRAFT VIEW
 ══════════════════════════════════════════════════════════════════════════════ */
 
-function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, validating, onReassign }: {
+function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, validating, onReassign, canRegenerate = true }: {
   shifts: PlanningShift[];
   weekDates: Date[];
   employees: EmployeeInfo[];
@@ -1199,6 +1345,7 @@ function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, val
   onRegenerate: () => void;
   validating: boolean;
   onReassign: (shift: PlanningShift) => void;
+  canRegenerate?: boolean;
 }) {
   const modified = shifts.filter(s => s.confirmation_status === "modified");
 
@@ -1207,7 +1354,9 @@ function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, val
       <div className="flex items-center gap-2 px-1">
         <div className="w-2 h-2 rounded-full" style={{ background: "#F59E0B" }} />
         <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
-          Planning généré — {shifts.length} shift{shifts.length > 1 ? "s" : ""} · Vérifiez puis validez
+          {canRegenerate
+            ? `Planning généré — ${shifts.length} shift${shifts.length > 1 ? "s" : ""} · Vérifiez puis validez`
+            : `Planning manuel — ${shifts.length} shift${shifts.length > 1 ? "s" : ""} · Vérifiez puis publiez`}
         </p>
       </div>
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
@@ -1221,15 +1370,17 @@ function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, val
       )}
       <WeekSummary shifts={shifts} employees={employees} />
       <div className="flex gap-3 pt-2">
-        <button onClick={onRegenerate}
-          className="flex-1 py-3 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2"
-          style={{ border: "1px solid var(--border)", color: "var(--foreground-dim)", background: "transparent" }}>
-          <RefreshCw size={14} />Régénérer
-        </button>
+        {canRegenerate && (
+          <button onClick={onRegenerate}
+            className="flex-1 py-3 rounded-xl text-[13px] font-medium flex items-center justify-center gap-2"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground-dim)", background: "transparent" }}>
+            <RefreshCw size={14} />Régénérer
+          </button>
+        )}
         <button onClick={onValidate} disabled={validating || shifts.length === 0}
-          className="flex-1 py-3 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2"
+          className={`py-3 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 ${canRegenerate ? "flex-1" : "w-full"}`}
           style={{ background: "var(--accent)", color: "#fff", opacity: validating ? 0.6 : 1 }}>
-          {validating ? "Validation…" : <><Check size={14} />Publier le planning</>}
+          {validating ? "Publication…" : <><Check size={14} />Publier le planning</>}
         </button>
       </div>
     </div>
@@ -1485,6 +1636,126 @@ function WeekSummary({ shifts, employees }: {
             <p className="text-[22px] font-black leading-none" style={{ color: "#F59E0B" }}>{fmt(totalCost / 0.35)} €</p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MANUAL DAY PANEL
+══════════════════════════════════════════════════════════════════════════════ */
+
+function ManualDayPanel({ dateStr, weekDates, employees, shifts, onAdd, onDelete, adding }: {
+  dateStr: string;
+  weekDates: Date[];
+  employees: EmployeeInfo[];
+  shifts: PlanningShift[];
+  onAdd: (userId: string, service: string, start: string, end: string) => Promise<void>;
+  onDelete: (shiftId: string) => Promise<void>;
+  adding: boolean;
+}) {
+  const idx = weekDates.findIndex(d => toDateStr(d) === dateStr);
+  const dayName = idx >= 0 ? DAYS_FULL[idx] : dateStr;
+  const date = new Date(dateStr + "T12:00:00");
+  const dateLabel = date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+
+  const [userId, setUserId] = useState(employees[0]?.id ?? "");
+  const [service, setService] = useState("Midi");
+  const [start, setStart] = useState("11:30");
+  const [end, setEnd] = useState("15:30");
+
+  const dayShifts = shifts.filter(s => s.shift_date === dateStr);
+
+  async function handleAdd() {
+    if (!userId) return;
+    await onAdd(userId, service, start, end);
+  }
+
+  return (
+    <div className="px-4 pb-4 pt-3 space-y-3" style={{ background: "var(--background)", borderTop: "1px solid var(--border-soft)" }}>
+      <div>
+        <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{dayName}</p>
+        <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{dateLabel}</p>
+      </div>
+
+      {/* Shifts déjà créés ce jour */}
+      {dayShifts.length > 0 && (
+        <div className="space-y-1.5">
+          {dayShifts.map(shift => {
+            const emp = employees.find(e => e.id === shift.user_id);
+            const color = STAFF_STATUSES[emp?.status as StaffStatus]?.color ?? "#A1A1AA";
+            return (
+              <div key={shift.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-medium truncate" style={{ color: "var(--foreground)" }}>
+                    {shift.first_name ?? "?"} · {shift.service}
+                  </p>
+                  <p className="text-[10px] font-mono" style={{ color: "var(--foreground-dim)" }}>
+                    {shift.start_time.slice(0, 5)} → {shift.end_time.slice(0, 5)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onDelete(shift.id)}
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ color: "var(--danger)", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Formulaire ajout shift */}
+      <div className="space-y-2 pt-1">
+        <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Ajouter un shift</p>
+
+        <select
+          value={userId}
+          onChange={e => setUserId(e.target.value)}
+          className="w-full text-[12px] rounded-lg px-2.5 py-2"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+        >
+          {employees.length === 0 && <option value="">Aucun employé</option>}
+          {employees.map(emp => (
+            <option key={emp.id} value={emp.id}>
+              {emp.name} · {STAFF_STATUSES[emp.status as StaffStatus]?.label ?? emp.status}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="text"
+          value={service}
+          onChange={e => setService(e.target.value)}
+          placeholder="Nom du service (ex: Midi, Soir…)"
+          className="w-full text-[12px] rounded-lg px-2.5 py-2"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+        />
+
+        <div className="flex items-center gap-2">
+          <input type="time" value={start} onChange={e => setStart(e.target.value)}
+            className="flex-1 text-[11px] font-mono rounded-lg px-2.5 py-2"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          <span className="text-[10px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>→</span>
+          <input type="time" value={end} onChange={e => setEnd(e.target.value)}
+            className="flex-1 text-[11px] font-mono rounded-lg px-2.5 py-2"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+        </div>
+
+        <button
+          onClick={handleAdd}
+          disabled={adding || !userId}
+          className="w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
+          style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: adding || !userId ? 0.6 : 1 }}
+        >
+          {adding
+            ? <><RefreshCw size={12} className="animate-spin" />Ajout…</>
+            : <><Plus size={13} />Ajouter ce shift</>}
+        </button>
       </div>
     </div>
   );

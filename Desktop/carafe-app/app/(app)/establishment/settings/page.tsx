@@ -8,8 +8,10 @@ import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw, LogOut } from "lucid
 import {
   STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS,
   parseCASettings, DEFAULT_CA_SETTINGS,
+  parsePlanningMode,
   type TipSettings, type StaffStatus, type TipMode,
   type CASettings, type CAMode,
+  type PlanningMode,
 } from "@/lib/shifts";
 
 const DEV_MODE = false;
@@ -22,6 +24,7 @@ export default function EstablishmentSettingsPage() {
   const [establishment, setEstablishment] = useState<EstablishmentInfo | null>(null);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [caSettings, setCASettings] = useState<CASettings>(DEFAULT_CA_SETTINGS);
+  const [planningMode, setPlanningMode] = useState<PlanningMode>("ai");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -41,14 +44,15 @@ export default function EstablishmentSettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
     const { data } = await supabase.from("establishment_members")
-      .select("establishment_id, role, establishments(id, name, city, tip_settings, ca_settings)")
+      .select("establishment_id, role, establishments(id, name, city, tip_settings, ca_settings, planning_mode)")
       .eq("profile_id", user.id).in("role", ["owner", "manager"]).limit(1).maybeSingle();
     if (!data) { router.push("/dashboard"); return; }
-    const est = data.establishments as unknown as { id: string; name: string; city: string | null; tip_settings: unknown; ca_settings: unknown } | null;
+    const est = data.establishments as unknown as { id: string; name: string; city: string | null; tip_settings: unknown; ca_settings: unknown; planning_mode: unknown } | null;
     if (!est) { router.push("/dashboard"); return; }
     setEstablishment({ id: est.id, name: est.name, city: est.city });
     setTipSettings(parseTipSettings(est.tip_settings));
     setCASettings(parseCASettings(est.ca_settings));
+    setPlanningMode(parsePlanningMode(est.planning_mode));
     setLoading(false);
   }
 
@@ -86,7 +90,8 @@ export default function EstablishmentSettingsPage() {
       .update({
         tip_settings: tipSettings as unknown as Record<string, unknown>,
         ca_settings: caSettings as unknown as Record<string, unknown>,
-      })
+        planning_mode: planningMode,
+      } as Record<string, unknown>)
       .eq("id", establishment.id);
     setSaving(false);
     if (error) { setSaveError(error.message); return; }
@@ -176,6 +181,30 @@ export default function EstablishmentSettingsPage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Planning mode */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode de planning</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez comment vous créez le planning de l&apos;équipe</p>
+        </div>
+        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
+          {([
+            { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
+            { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
+          ]).map(opt => (
+            <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
+              className="p-3 rounded-xl text-left transition-all"
+              style={{
+                background: planningMode === opt.value ? "rgba(245,158,11,0.08)" : "var(--background)",
+                border: `1px solid ${planningMode === opt.value ? "rgba(245,158,11,0.3)" : "var(--border)"}`,
+              }}>
+              <p className="text-[13px] font-semibold" style={{ color: planningMode === opt.value ? "#F59E0B" : "var(--foreground)" }}>{opt.label}</p>
+              <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--foreground-dim)" }}>{opt.desc}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Postes */}
