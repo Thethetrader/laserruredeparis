@@ -207,7 +207,7 @@ export default function PlanningPage() {
   /* ── Planning mode ── */
   const [planningMode,    setPlanningMode]    = useState<PlanningMode>("ai");
   const [manualServices,  setManualServices]  = useState<ManualService[]>([]);
-  const [addingEmpCell,   setAddingEmpCell]   = useState<{ svcId: string; dateStr: string } | null>(null);
+  const [addingEmpCell,   setAddingEmpCell]   = useState<{ userId: string; dateStr: string } | null>(null);
 
   /* ── Loading / actions ── */
   const [loading,      setLoading]      = useState(true);
@@ -497,14 +497,6 @@ export default function PlanningPage() {
     await supabase.from("planning_shifts").delete().eq("planning_week_id", planningWeek.id);
     await supabase.from("planning_weeks").delete().eq("id", planningWeek.id);
     setPlanningWeek(null);
-    setPlanningShifts([]);
-  }
-
-  /* ── Manual: reset all shifts for the week ── */
-  async function handleResetManual() {
-    if (!planningWeek) { setManualServices([]); setPlanningShifts([]); return; }
-    const supabase = createClient();
-    await supabase.from("planning_shifts").delete().eq("planning_week_id", planningWeek.id);
     setPlanningShifts([]);
   }
 
@@ -982,7 +974,7 @@ export default function PlanningPage() {
             </>
           )}
 
-          {/* ── Manual mode: grid services × jours ── */}
+          {/* ── Manual mode: grille employés × jours ── */}
           {planningMode === "manual" && planningWeek?.status !== "published" && (
             <ManualPlanningGrid
               weekDates={weekDates}
@@ -990,12 +982,9 @@ export default function PlanningPage() {
               shifts={planningShifts}
               employees={employees}
               adding={addingShift}
-              addingCell={addingEmpCell}
-              onAddingCellChange={setAddingEmpCell}
               onServicesChange={handleSaveManualServices}
               onAddShift={handleAddManualShift}
               onDeleteShift={handleDeleteManualShift}
-              onReset={handleResetManual}
             />
           )}
 
@@ -1656,315 +1645,316 @@ function WeekSummary({ shifts, employees }: {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   MANUAL PLANNING GRID
-   Rows = services, Columns = 7 days, Cells = employee chips + add popup
+   MANUAL PLANNING GRID  — style Combo
+   Rows = employees, Columns = 7 days, Cells = shift blocks colorés
 ══════════════════════════════════════════════════════════════════════════════ */
+
+const SVC_PALETTES = [
+  { bg: "#EDE9FE", text: "#6D28D9", border: "#C4B5FD" },
+  { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
+  { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },
+  { bg: "#FEF3C7", text: "#92400E", border: "#FCD34D" },
+  { bg: "#FED7AA", text: "#C2410C", border: "#FDBA74" },
+  { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
+  { bg: "#F0FDF4", text: "#166534", border: "#86EFAC" },
+  { bg: "#FFF7ED", text: "#9A3412", border: "#FDBA74" },
+];
+
+function svcColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return SVC_PALETTES[h % SVC_PALETTES.length];
+}
+
+function calcHours(shifts: PlanningShift[], userId: string): number {
+  return shifts
+    .filter(s => s.user_id === userId)
+    .reduce((acc, s) => {
+      const [sh, sm] = s.start_time.split(":").map(Number);
+      const [eh, em] = s.end_time.split(":").map(Number);
+      return acc + (eh * 60 + em - sh * 60 - sm) / 60;
+    }, 0);
+}
 
 function ManualPlanningGrid({
   weekDates, services, shifts, employees, adding,
-  addingCell, onAddingCellChange, onServicesChange, onAddShift, onDeleteShift, onReset,
+  onServicesChange, onAddShift, onDeleteShift,
 }: {
   weekDates: Date[];
   services: ManualService[];
   shifts: PlanningShift[];
   employees: EmployeeInfo[];
   adding: boolean;
-  addingCell: { svcId: string; dateStr: string } | null;
-  onAddingCellChange: (cell: { svcId: string; dateStr: string } | null) => void;
   onServicesChange: (services: ManualService[]) => Promise<void>;
   onAddShift: (dateStr: string, userId: string, service: string, start: string, end: string) => Promise<void>;
   onDeleteShift: (shiftId: string) => Promise<void>;
-  onReset: () => Promise<void>;
 }) {
-  const [editingSvc, setEditingSvc] = useState(false);
-  const [newSvcName, setNewSvcName] = useState("");
+  /* form cell = { userId, dateStr } when "+" is clicked */
+  const [formCell,    setFormCell]    = useState<{ userId: string; dateStr: string } | null>(null);
+  const [formSvcId,   setFormSvcId]   = useState(services[0]?.id ?? "");
+  const [formStart,   setFormStart]   = useState(services[0]?.start ?? "11:30");
+  const [formEnd,     setFormEnd]     = useState(services[0]?.end   ?? "15:30");
+
+  /* service editor */
+  const [editingSvc,  setEditingSvc]  = useState(false);
+  const [newSvcName,  setNewSvcName]  = useState("");
   const [newSvcStart, setNewSvcStart] = useState("11:30");
-  const [newSvcEnd, setNewSvcEnd] = useState("15:30");
-  const [resetting, setResetting] = useState(false);
+  const [newSvcEnd,   setNewSvcEnd]   = useState("15:30");
+
+  /* keep formSvcId in sync when services load */
+  useEffect(() => {
+    if (services.length > 0 && !services.find(s => s.id === formSvcId)) {
+      setFormSvcId(services[0].id);
+      setFormStart(services[0].start);
+      setFormEnd(services[0].end);
+    }
+  }, [services, formSvcId]);
+
+  function openForm(userId: string, dateStr: string) {
+    setFormCell({ userId, dateStr });
+    const svc = services.find(s => s.id === formSvcId) ?? services[0];
+    if (svc) { setFormStart(svc.start); setFormEnd(svc.end); }
+  }
+
+  function onFormSvcChange(id: string) {
+    setFormSvcId(id);
+    const svc = services.find(s => s.id === id);
+    if (svc) { setFormStart(svc.start); setFormEnd(svc.end); }
+  }
+
+  async function submitShift() {
+    if (!formCell) return;
+    const svc = services.find(s => s.id === formSvcId);
+    if (!svc) return;
+    await onAddShift(formCell.dateStr, formCell.userId, svc.name, formStart, formEnd);
+    setFormCell(null);
+  }
 
   function addService() {
     if (!newSvcName.trim()) return;
-    const svc: ManualService = {
-      id: `svc_${Date.now()}`,
-      name: newSvcName.trim(),
-      start: newSvcStart,
-      end: newSvcEnd,
-    };
+    const svc: ManualService = { id: `svc_${Date.now()}`, name: newSvcName.trim(), start: newSvcStart, end: newSvcEnd };
     onServicesChange([...services, svc]);
-    setNewSvcName("");
-    setEditingSvc(false);
+    setNewSvcName(""); setEditingSvc(false);
   }
 
-  function removeService(id: string) {
-    onServicesChange(services.filter(s => s.id !== id));
-  }
-
-  async function handleReset() {
-    setResetting(true);
-    await onReset();
-    setResetting(false);
-  }
-
-  async function handlePickEmployee(userId: string) {
-    if (!addingCell) return;
-    const svc = services.find(s => s.id === addingCell.svcId);
-    if (!svc) return;
-    await onAddShift(addingCell.dateStr, userId, svc.name, svc.start, svc.end);
-    onAddingCellChange(null);
-  }
-
-  const addingCellSvc = addingCell ? services.find(s => s.id === addingCell.svcId) : null;
+  const todayStr = toDateStr(new Date());
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3"
+
+      {/* ── Top bar ── */}
+      <div className="flex items-center justify-between px-4 py-3 gap-3"
         style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-        <div className="flex items-center gap-2">
-          <Users size={13} style={{ color: "var(--accent)" }} />
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Planning manuel</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {services.map(svc => {
+            const c = svcColor(svc.name);
+            return (
+              <div key={svc.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium"
+                style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
+                <span>{svc.name}</span>
+                <span className="opacity-60 font-mono text-[9px]">{svc.start}–{svc.end}</span>
+                <button onClick={() => onServicesChange(services.filter(s => s.id !== svc.id))}
+                  className="ml-0.5" style={{ opacity: 0.5 }}><X size={10} /></button>
+              </div>
+            );
+          })}
+          <button onClick={() => setEditingSvc(v => !v)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium"
+            style={{ border: "1px dashed var(--border)", color: "var(--foreground-dim)" }}>
+            <Plus size={11} />Étiquette
+          </button>
         </div>
-        <div className="flex items-center gap-3">
-          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-            {shifts.length} shift{shifts.length !== 1 ? "s" : ""}
-          </p>
-          {shifts.length > 0 && (
-            <button
-              onClick={handleReset}
-              disabled={resetting}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-opacity"
-              style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", opacity: resetting ? 0.5 : 1 }}>
-              <RefreshCw size={10} />
-              {resetting ? "…" : "Réinitialiser"}
-            </button>
-          )}
-        </div>
+        <p className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
+          {shifts.length} shift{shifts.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
-      {/* Grid scroll wrapper */}
+      {/* ── New étiquette form ── */}
+      {editingSvc && (
+        <div className="px-4 py-3 flex flex-wrap gap-2 items-end"
+          style={{ background: "var(--background)", borderBottom: "1px solid var(--border)" }}>
+          <input type="text" value={newSvcName} onChange={e => setNewSvcName(e.target.value)}
+            placeholder="Nom (ex: Midi, Soir, Bar…)" autoFocus
+            onKeyDown={e => e.key === "Enter" && addService()}
+            className="text-[12px] rounded-lg px-2.5 py-1.5 flex-1 min-w-[140px]"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          <input type="time" value={newSvcStart} onChange={e => setNewSvcStart(e.target.value)}
+            className="text-[11px] font-mono rounded-lg px-2 py-1.5 w-[90px]"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          <span className="text-[11px] self-center" style={{ color: "var(--foreground-dim)" }}>→</span>
+          <input type="time" value={newSvcEnd} onChange={e => setNewSvcEnd(e.target.value)}
+            className="text-[11px] font-mono rounded-lg px-2 py-1.5 w-[90px]"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          <button onClick={addService} disabled={!newSvcName.trim()}
+            className="px-3 py-1.5 rounded-lg text-[12px] font-semibold"
+            style={{ background: "var(--accent)", color: "#fff", opacity: !newSvcName.trim() ? 0.5 : 1 }}>
+            Ajouter
+          </button>
+          <button onClick={() => setEditingSvc(false)}
+            className="px-3 py-1.5 rounded-lg text-[12px]"
+            style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* ── Grid ── */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse" style={{ minWidth: 520 }}>
-          {/* Day columns header */}
+        <table className="w-full border-collapse" style={{ minWidth: 560 }}>
           <thead>
-            <tr>
-              <th className="text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest w-24"
-                style={{ color: "var(--foreground-dim)", background: "var(--background-elev)", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
-                Service
+            <tr style={{ background: "var(--background-elev)" }}>
+              {/* Employee column header */}
+              <th className="text-left px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: "var(--foreground-dim)", borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border)", minWidth: 140, width: 140 }}>
+                Équipe
               </th>
               {weekDates.map((date, idx) => {
-                const dateStr = toDateStr(date);
-                const isToday = toDateStr(new Date()) === dateStr;
+                const ds = toDateStr(date);
+                const isToday = ds === todayStr;
                 return (
-                  <th key={dateStr} className="px-2 py-2 text-center"
+                  <th key={ds} className="px-2 py-2.5 text-center"
                     style={{
-                      background: isToday ? "rgba(6,182,212,0.06)" : "var(--background-elev)",
+                      background: isToday ? "rgba(6,182,212,0.08)" : "var(--background-elev)",
                       borderRight: idx < 6 ? "1px solid var(--border-soft)" : "none",
                       borderBottom: "1px solid var(--border)",
-                      minWidth: 72,
+                      minWidth: 88,
                     }}>
                     <span className="block text-[9px] font-mono uppercase tracking-widest"
                       style={{ color: "var(--foreground-dim)" }}>{DAYS_SHORT[idx]}</span>
-                    <span className="block text-[14px] font-bold leading-tight"
+                    <span className="block text-[15px] font-bold leading-tight mt-0.5"
                       style={{ color: isToday ? "var(--accent)" : "var(--foreground)" }}>{date.getDate()}</span>
+                    {isToday && <span className="block w-1 h-1 rounded-full mx-auto mt-0.5" style={{ background: "var(--accent)" }} />}
                   </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
-            {services.length === 0 && (
+            {employees.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-[12px]"
+                <td colSpan={8} className="px-4 py-8 text-center text-[12px]"
                   style={{ color: "var(--foreground-dim)", background: "var(--background)" }}>
-                  Aucun service. Ajoutez-en un ci-dessous.
+                  Aucun employé dans l'équipe.
                 </td>
               </tr>
             )}
-            {services.map((svc, svcIdx) => (
-              <tr key={svc.id} style={{ background: svcIdx % 2 === 0 ? "var(--background)" : "var(--background-elev)" }}>
-                {/* Service label */}
-                <td className="px-3 py-2 align-top"
-                  style={{ borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border-soft)", verticalAlign: "middle" }}>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: SERVICE_PALETTE[svcIdx % SERVICE_PALETTE.length] }} />
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{svc.name}</p>
-                      <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>
-                        {svc.start}–{svc.end}
-                      </p>
-                    </div>
-                    <button onClick={() => removeService(svc.id)}
-                      className="ml-auto p-0.5 rounded flex-shrink-0"
-                      style={{ color: "var(--foreground-dim)", opacity: 0.4 }}>
-                      <X size={10} />
-                    </button>
-                  </div>
-                </td>
+            {employees.map((emp, empIdx) => {
+              const weekH = calcHours(shifts, emp.id);
+              const statusColor = STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA";
+              const initials = (emp.name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <tr key={emp.id} style={{ background: empIdx % 2 === 0 ? "var(--background)" : "rgba(0,0,0,0.015)" }}>
 
-                {/* Day cells */}
-                {weekDates.map((date, dayIdx) => {
-                  const dateStr = toDateStr(date);
-                  const cellShifts = shifts.filter(s => s.shift_date === dateStr && s.service === svc.name);
-
-                  return (
-                    <td key={dateStr} className="px-1.5 py-1.5 align-top"
-                      style={{
-                        borderRight: dayIdx < 6 ? "1px solid var(--border-soft)" : "none",
-                        borderBottom: "1px solid var(--border-soft)",
-                        verticalAlign: "top",
-                      }}>
-                      <div className="flex flex-col gap-1">
-                        {/* Employee chips */}
-                        {cellShifts.map(shift => {
-                          const emp = employees.find(e => e.id === shift.user_id);
-                          const color = STAFF_STATUSES[emp?.status as StaffStatus]?.color ?? "#A1A1AA";
-                          return (
-                            <div key={shift.id}
-                              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium leading-tight"
-                              style={{ background: `${color}18`, border: `1px solid ${color}40`, color: "var(--foreground)" }}>
-                              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                              <span className="truncate max-w-[48px]">{shift.first_name ?? "?"}</span>
-                              <button
-                                onClick={() => onDeleteShift(shift.id)}
-                                className="ml-auto flex-shrink-0"
-                                style={{ color, opacity: 0.7 }}>
-                                <X size={9} />
-                              </button>
-                            </div>
-                          );
-                        })}
-
-                        {/* Add button */}
-                        <button
-                          onClick={() => onAddingCellChange({ svcId: svc.id, dateStr })}
-                          className="w-full flex items-center justify-center rounded-md py-0.5"
-                          style={{
-                            border: "1px dashed var(--border)",
-                            color: "var(--foreground-dim)",
-                            opacity: 0.5,
-                          }}>
-                          <Plus size={10} />
-                        </button>
+                  {/* Employee cell */}
+                  <td className="px-3 py-2.5"
+                    style={{ borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border-soft)", verticalAlign: "middle" }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold"
+                        style={{ background: `${statusColor}22`, color: statusColor }}>
+                        {initials}
                       </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: "var(--foreground)" }}>
+                          {emp.name}
+                        </p>
+                        <p className="text-[10px] font-mono leading-tight mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+                          {weekH.toFixed(1)}h semaine
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Day cells */}
+                  {weekDates.map((date, dayIdx) => {
+                    const ds = toDateStr(date);
+                    const cellShifts = shifts.filter(s => s.user_id === emp.id && s.shift_date === ds);
+                    const isFormHere = formCell?.userId === emp.id && formCell?.dateStr === ds;
+
+                    return (
+                      <td key={ds} className="px-1.5 py-1.5"
+                        style={{
+                          borderRight: dayIdx < 6 ? "1px solid var(--border-soft)" : "none",
+                          borderBottom: "1px solid var(--border-soft)",
+                          verticalAlign: "top",
+                          minHeight: 56,
+                        }}>
+                        <div className="flex flex-col gap-1">
+
+                          {/* Shift blocks */}
+                          {cellShifts.map(shift => {
+                            const c = svcColor(shift.service ?? "");
+                            return (
+                              <div key={shift.id}
+                                className="group relative rounded-lg px-2 py-1.5 text-[11px]"
+                                style={{ background: c.bg, border: `1px solid ${c.border}` }}>
+                                <p className="font-semibold leading-tight truncate" style={{ color: c.text }}>{shift.service}</p>
+                                <p className="font-mono text-[9px] leading-tight mt-0.5" style={{ color: c.text, opacity: 0.7 }}>
+                                  {shift.start_time.slice(0, 5)} – {shift.end_time.slice(0, 5)}
+                                </p>
+                                <button
+                                  onClick={() => onDeleteShift(shift.id)}
+                                  className="absolute top-0.5 right-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                  style={{ color: c.text, background: c.bg }}>
+                                  <X size={9} />
+                                </button>
+                              </div>
+                            );
+                          })}
+
+                          {/* Add form / add button */}
+                          {isFormHere ? (
+                            <div className="rounded-lg p-2 space-y-1.5"
+                              style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                              {services.length > 0 ? (
+                                <select value={formSvcId} onChange={e => onFormSvcChange(e.target.value)}
+                                  className="w-full text-[10px] rounded px-1.5 py-1"
+                                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+                                  {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                              ) : (
+                                <p className="text-[10px] text-center" style={{ color: "var(--foreground-dim)" }}>
+                                  Ajoutez d'abord une étiquette
+                                </p>
+                              )}
+                              <div className="flex gap-1 items-center">
+                                <input type="time" value={formStart} onChange={e => setFormStart(e.target.value)}
+                                  className="flex-1 text-[10px] font-mono rounded px-1 py-0.5"
+                                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                                <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>→</span>
+                                <input type="time" value={formEnd} onChange={e => setFormEnd(e.target.value)}
+                                  className="flex-1 text-[10px] font-mono rounded px-1 py-0.5"
+                                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                              </div>
+                              <div className="flex gap-1">
+                                <button onClick={submitShift} disabled={adding || services.length === 0}
+                                  className="flex-1 text-[10px] font-semibold py-1 rounded-md"
+                                  style={{ background: "var(--accent)", color: "#fff", opacity: adding || services.length === 0 ? 0.5 : 1 }}>
+                                  {adding ? "…" : "Créer"}
+                                </button>
+                                <button onClick={() => setFormCell(null)}
+                                  className="px-2 text-[10px] rounded-md"
+                                  style={{ background: "var(--border-soft)", color: "var(--foreground-dim)" }}>
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => openForm(emp.id, ds)}
+                              className="w-full flex items-center justify-center py-1 rounded-lg opacity-0 hover:opacity-100 transition-opacity"
+                              style={{ border: "1px dashed var(--border)", color: "var(--foreground-dim)" }}>
+                              <Plus size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-      </div>
-
-      {/* Employee picker bottom-sheet */}
-      {addingCell && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            style={{ background: "rgba(0,0,0,0.35)" }}
-            onClick={() => onAddingCellChange(null)}
-          />
-          {/* Sheet */}
-          <div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl px-4 pt-4 pb-8 flex flex-col"
-            style={{ background: "var(--background-elev)", boxShadow: "0 -8px 40px rgba(0,0,0,0.25)", maxHeight: "70vh" }}>
-            {/* Handle */}
-            <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "var(--border)" }} />
-            {/* Title */}
-            <div className="flex items-center justify-between mb-1 px-1">
-              <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
-                Choisir un employé
-              </p>
-              <button
-                onClick={() => onAddingCellChange(null)}
-                className="w-7 h-7 flex items-center justify-center rounded-full"
-                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
-                <X size={12} />
-              </button>
-            </div>
-            {addingCellSvc && (
-              <p className="text-[11px] mb-4 px-1" style={{ color: "var(--foreground-dim)" }}>
-                {addingCellSvc.name} · {addingCellSvc.start}–{addingCellSvc.end}
-              </p>
-            )}
-            {/* Employee list */}
-            <div className="flex flex-col gap-2 overflow-y-auto flex-1">
-              {employees.map(emp => {
-                const color = STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA";
-                return (
-                  <button
-                    key={emp.id}
-                    onClick={() => handlePickEmployee(emp.id)}
-                    disabled={adding}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left transition-opacity"
-                    style={{ background: "var(--background)", border: "1px solid var(--border)", opacity: adding ? 0.6 : 1 }}>
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
-                    <span className="text-[13px] font-medium flex-1" style={{ color: "var(--foreground)" }}>{emp.name}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                      style={{ background: `${color}22`, color }}>
-                      {STAFF_STATUSES[emp.status as StaffStatus]?.label ?? emp.status}
-                    </span>
-                  </button>
-                );
-              })}
-              {employees.length === 0 && (
-                <p className="text-center text-[12px] py-4" style={{ color: "var(--foreground-dim)" }}>
-                  Aucun employé disponible
-                </p>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Add service row */}
-      <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)", background: "var(--background)" }}>
-        {editingSvc ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newSvcName}
-                onChange={e => setNewSvcName(e.target.value)}
-                placeholder="Nom du service (ex: Midi, Soir…)"
-                autoFocus
-                className="flex-1 text-[12px] rounded-lg px-2.5 py-2"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onKeyDown={e => e.key === "Enter" && addService()}
-              />
-              <input type="time" value={newSvcStart} onChange={e => setNewSvcStart(e.target.value)}
-                className="text-[11px] font-mono rounded-lg px-2 py-2 w-24"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-              <input type="time" value={newSvcEnd} onChange={e => setNewSvcEnd(e.target.value)}
-                className="text-[11px] font-mono rounded-lg px-2 py-2 w-24"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={addService}
-                disabled={!newSvcName.trim()}
-                className="flex-1 py-2 rounded-xl text-[12px] font-semibold"
-                style={{ background: "var(--accent)", color: "#fff", opacity: !newSvcName.trim() ? 0.5 : 1 }}>
-                Ajouter le service
-              </button>
-              <button
-                onClick={() => setEditingSvc(false)}
-                className="px-3 py-2 rounded-xl text-[12px]"
-                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setEditingSvc(true)}
-            className="flex items-center gap-2 text-[12px] font-medium"
-            style={{ color: "var(--accent)" }}>
-            <Plus size={13} />
-            Ajouter un service
-          </button>
-        )}
       </div>
     </div>
   );
