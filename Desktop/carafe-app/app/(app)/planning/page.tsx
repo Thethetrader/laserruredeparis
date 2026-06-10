@@ -1665,7 +1665,7 @@ function svcColor(name: string) {
   return SVC_PALETTES[h % SVC_PALETTES.length];
 }
 
-function calcHours(shifts: PlanningShift[], userId: string): number {
+function calcWeekHours(shifts: PlanningShift[], userId: string): number {
   return shifts
     .filter(s => s.user_id === userId)
     .reduce((acc, s) => {
@@ -1838,7 +1838,7 @@ function ManualPlanningGrid({
               </tr>
             )}
             {employees.map((emp, empIdx) => {
-              const weekH = calcHours(shifts, emp.id);
+              const weekH = calcWeekHours(shifts, emp.id);
               const statusColor = STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA";
               const initials = (emp.name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
               return (
