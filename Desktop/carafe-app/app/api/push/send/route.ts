@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import webpush from 'web-push';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 webpush.setVapidDetails(
   'mailto:brey.theodore4@gmail.com',
@@ -10,7 +10,11 @@ webpush.setVapidDetails(
 
 export async function POST(req: NextRequest) {
   const { establishmentId, title, body, url } = await req.json();
-  const supabase = await createClient();
+  // Service role client to bypass RLS — needed to read all subscriptions for the establishment
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   const { data: subs } = await supabase
     .from('push_subscriptions')
     .select('*')
