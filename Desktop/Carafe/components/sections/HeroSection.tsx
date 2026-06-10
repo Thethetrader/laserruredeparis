@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import HeroMockup from "@/components/hero/HeroMockup";
+import InstallPWAButton from "@/components/InstallPWAButton";
 import { useEffect, useRef } from "react";
 
 function GridBackground() {
@@ -88,16 +89,13 @@ export default function HeroSection() {
                 Se connecter
                 <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
               </a>
-              <a
-                href="#features"
-                className="inline-flex items-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
-                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
-              >
-                Voir comment ça marche
-                <span className="arrow-pulse inline-block">↓</span>
-              </a>
+              <InstallPWAButton
+                label="Télécharger l'app"
+                subLabel="iOS · Android · gratuit"
+                showIcon
+                className="inline-flex items-center gap-2.5 font-medium px-5 py-3.5 rounded-lg text-sm active:scale-[0.98] transition-all duration-100"
+                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+              />
             </div>
 
             <p className="font-mono text-xs" style={{ color: "var(--foreground-dim)" }}>
