@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
+import InstallPWAButton from "@/components/landing/InstallPWAButton";
 
 const PLACEHOLDER = "votre@email.com";
 
@@ -164,6 +165,12 @@ export default function CTASection() {
             >
               Se connecter →
             </a>
+            <InstallPWAButton
+              label="Télécharger l'app"
+              showIcon
+              className="inline-flex items-center justify-center gap-2 font-medium text-sm px-5 py-3.5 rounded-lg active:scale-[0.98] transition-all duration-100"
+              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+            />
           </div>
 
           <p className="text-sm mb-8" style={{ color: "var(--foreground-muted)" }}>

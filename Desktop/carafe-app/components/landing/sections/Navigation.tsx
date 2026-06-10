@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, ArrowRight } from "lucide-react";
+import InstallPWAButton from "@/components/landing/InstallPWAButton";
 
 const navLinks = [
   { label: "Le produit", href: "#features" },
@@ -142,6 +143,12 @@ export default function Navigation() {
               >
                 Commencer
               </a>
+              <InstallPWAButton
+                label="Télécharger l'app"
+                showIcon
+                className="font-medium px-6 py-3 rounded-md text-center text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-100"
+                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+              />
             </div>
             <p className="mt-auto mb-8 font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>v0.1 · BETA</p>
           </motion.div>
