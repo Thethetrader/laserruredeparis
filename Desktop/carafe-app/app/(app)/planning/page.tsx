@@ -500,6 +500,14 @@ export default function PlanningPage() {
     setPlanningShifts([]);
   }
 
+  /* ── Manual: reset all shifts for the week ── */
+  async function handleResetManual() {
+    if (!planningWeek) { setManualServices([]); setPlanningShifts([]); return; }
+    const supabase = createClient();
+    await supabase.from("planning_shifts").delete().eq("planning_week_id", planningWeek.id);
+    setPlanningShifts([]);
+  }
+
   /* ── Reassign shift ── */
   async function handleReassign(shiftId: string, newUserId: string) {
     setReassigning(true);
@@ -987,6 +995,7 @@ export default function PlanningPage() {
               onServicesChange={handleSaveManualServices}
               onAddShift={handleAddManualShift}
               onDeleteShift={handleDeleteManualShift}
+              onReset={handleResetManual}
             />
           )}
 
@@ -1653,7 +1662,7 @@ function WeekSummary({ shifts, employees }: {
 
 function ManualPlanningGrid({
   weekDates, services, shifts, employees, adding,
-  addingCell, onAddingCellChange, onServicesChange, onAddShift, onDeleteShift,
+  addingCell, onAddingCellChange, onServicesChange, onAddShift, onDeleteShift, onReset,
 }: {
   weekDates: Date[];
   services: ManualService[];
@@ -1665,16 +1674,13 @@ function ManualPlanningGrid({
   onServicesChange: (services: ManualService[]) => Promise<void>;
   onAddShift: (dateStr: string, userId: string, service: string, start: string, end: string) => Promise<void>;
   onDeleteShift: (shiftId: string) => Promise<void>;
+  onReset: () => Promise<void>;
 }) {
   const [editingSvc, setEditingSvc] = useState(false);
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcStart, setNewSvcStart] = useState("11:30");
   const [newSvcEnd, setNewSvcEnd] = useState("15:30");
-  const [popupUserId, setPopupUserId] = useState("");
-
-  useEffect(() => {
-    if (employees.length > 0 && !popupUserId) setPopupUserId(employees[0].id);
-  }, [employees, popupUserId]);
+  const [resetting, setResetting] = useState(false);
 
   function addService() {
     if (!newSvcName.trim()) return;
@@ -1693,13 +1699,21 @@ function ManualPlanningGrid({
     onServicesChange(services.filter(s => s.id !== id));
   }
 
-  async function handlePopupAdd() {
-    if (!addingCell || !popupUserId) return;
+  async function handleReset() {
+    setResetting(true);
+    await onReset();
+    setResetting(false);
+  }
+
+  async function handlePickEmployee(userId: string) {
+    if (!addingCell) return;
     const svc = services.find(s => s.id === addingCell.svcId);
     if (!svc) return;
-    await onAddShift(addingCell.dateStr, popupUserId, svc.name, svc.start, svc.end);
+    await onAddShift(addingCell.dateStr, userId, svc.name, svc.start, svc.end);
     onAddingCellChange(null);
   }
+
+  const addingCellSvc = addingCell ? services.find(s => s.id === addingCell.svcId) : null;
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
@@ -1710,9 +1724,21 @@ function ManualPlanningGrid({
           <Users size={13} style={{ color: "var(--accent)" }} />
           <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Planning manuel</p>
         </div>
-        <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
-          {shifts.length} shift{shifts.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+            {shifts.length} shift{shifts.length !== 1 ? "s" : ""}
+          </p>
+          {shifts.length > 0 && (
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-opacity"
+              style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", opacity: resetting ? 0.5 : 1 }}>
+              <RefreshCw size={10} />
+              {resetting ? "…" : "Réinitialiser"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grid scroll wrapper */}
@@ -1780,7 +1806,6 @@ function ManualPlanningGrid({
                 {weekDates.map((date, dayIdx) => {
                   const dateStr = toDateStr(date);
                   const cellShifts = shifts.filter(s => s.shift_date === dateStr && s.service === svc.name);
-                  const isOpen = addingCell?.svcId === svc.id && addingCell?.dateStr === dateStr;
 
                   return (
                     <td key={dateStr} className="px-1.5 py-1.5 align-top"
@@ -1811,46 +1836,16 @@ function ManualPlanningGrid({
                         })}
 
                         {/* Add button */}
-                        {isOpen ? (
-                          <div className="rounded-lg p-1.5 space-y-1"
-                            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-                            <select
-                              value={popupUserId}
-                              onChange={e => setPopupUserId(e.target.value)}
-                              className="w-full text-[10px] rounded px-1.5 py-1"
-                              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                              {employees.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                              ))}
-                            </select>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={handlePopupAdd}
-                                disabled={adding}
-                                className="flex-1 text-[10px] font-semibold py-0.5 rounded"
-                                style={{ background: "var(--accent)", color: "#fff", opacity: adding ? 0.6 : 1 }}>
-                                {adding ? "…" : "OK"}
-                              </button>
-                              <button
-                                onClick={() => onAddingCellChange(null)}
-                                className="px-1.5 text-[10px] rounded"
-                                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => onAddingCellChange({ svcId: svc.id, dateStr })}
-                            className="w-full flex items-center justify-center rounded-md py-0.5"
-                            style={{
-                              border: "1px dashed var(--border)",
-                              color: "var(--foreground-dim)",
-                              opacity: 0.5,
-                            }}>
-                            <Plus size={10} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => onAddingCellChange({ svcId: svc.id, dateStr })}
+                          className="w-full flex items-center justify-center rounded-md py-0.5"
+                          style={{
+                            border: "1px dashed var(--border)",
+                            color: "var(--foreground-dim)",
+                            opacity: 0.5,
+                          }}>
+                          <Plus size={10} />
+                        </button>
                       </div>
                     </td>
                   );
@@ -1860,6 +1855,68 @@ function ManualPlanningGrid({
           </tbody>
         </table>
       </div>
+
+      {/* Employee picker bottom-sheet */}
+      {addingCell && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40"
+            style={{ background: "rgba(0,0,0,0.35)" }}
+            onClick={() => onAddingCellChange(null)}
+          />
+          {/* Sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl px-4 pt-4 pb-8"
+            style={{ background: "var(--background-elev)", boxShadow: "0 -8px 40px rgba(0,0,0,0.25)" }}>
+            {/* Handle */}
+            <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "var(--border)" }} />
+            {/* Title */}
+            <div className="flex items-center justify-between mb-1 px-1">
+              <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>
+                Choisir un employé
+              </p>
+              <button
+                onClick={() => onAddingCellChange(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-full"
+                style={{ background: "var(--border)", color: "var(--foreground-dim)" }}>
+                <X size={12} />
+              </button>
+            </div>
+            {addingCellSvc && (
+              <p className="text-[11px] mb-4 px-1" style={{ color: "var(--foreground-dim)" }}>
+                {addingCellSvc.name} · {addingCellSvc.start}–{addingCellSvc.end}
+              </p>
+            )}
+            {/* Employee list */}
+            <div className="flex flex-col gap-2">
+              {employees.map(emp => {
+                const color = STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA";
+                return (
+                  <button
+                    key={emp.id}
+                    onClick={() => handlePickEmployee(emp.id)}
+                    disabled={adding}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left transition-opacity"
+                    style={{ background: "var(--background)", border: "1px solid var(--border)", opacity: adding ? 0.6 : 1 }}>
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <span className="text-[13px] font-medium flex-1" style={{ color: "var(--foreground)" }}>{emp.name}</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
+                      style={{ background: `${color}22`, color }}>
+                      {STAFF_STATUSES[emp.status as StaffStatus]?.label ?? emp.status}
+                    </span>
+                  </button>
+                );
+              })}
+              {employees.length === 0 && (
+                <p className="text-center text-[12px] py-4" style={{ color: "var(--foreground-dim)" }}>
+                  Aucun employé disponible
+                </p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Add service row */}
       <div className="px-4 py-3" style={{ borderTop: "1px solid var(--border)", background: "var(--background)" }}>
