@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
+import InstallPWAButton from "@/components/landing/InstallPWAButton";
 
 function GridBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,13 @@ export default function HeroSection() {
             >
               Se connecter <span className="inline-block">→</span>
             </a>
+            <InstallPWAButton
+              label="Télécharger l'app"
+              subLabel="iOS · Android · gratuit"
+              showIcon
+              className="inline-flex items-center gap-2.5 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
+              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+            />
           </div>
 
           <p className="font-mono text-xs" style={{ color: "var(--foreground-dim)" }}>
