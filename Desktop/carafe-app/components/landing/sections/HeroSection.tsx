@@ -95,9 +95,8 @@ export default function HeroSection() {
             </a>
             <InstallPWAButton
               label="Télécharger l'app"
-              subLabel="iOS · Android · gratuit"
               showIcon
-              className="inline-flex items-center gap-2.5 font-medium text-sm px-5 py-3.5 rounded-lg active:scale-[0.98] transition-all duration-100"
+              className="inline-flex items-center gap-2 font-medium text-sm px-5 py-3.5 rounded-lg active:scale-[0.98] transition-all duration-100"
               style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
             />
           </div>
