@@ -140,7 +140,7 @@ export default function LoginPage() {
         </Link>
         <div className="mb-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Karaf" style={{ height: 64, width: "auto", marginBottom: 8 }} />
+          <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 64, width: "auto", marginBottom: 8, mixBlendMode: "multiply" }} />
           <p className="text-[13px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
             Connexion à votre espace
           </p>

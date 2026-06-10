@@ -181,7 +181,7 @@ export default function SignupPage() {
       <div className="w-full max-w-sm">
         <div className="mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Karaf" style={{ height: 64, width: "auto", marginBottom: 8 }} />
+          <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 64, width: "auto", marginBottom: 8, mixBlendMode: "multiply" }} />
         </div>
         <Suspense fallback={null}>
           <SignupInner />
