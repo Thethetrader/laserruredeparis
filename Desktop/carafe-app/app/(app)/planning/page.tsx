@@ -207,7 +207,6 @@ export default function PlanningPage() {
   /* ── Planning mode ── */
   const [planningMode,    setPlanningMode]    = useState<PlanningMode>("ai");
   const [manualServices,  setManualServices]  = useState<ManualService[]>([]);
-  const [addingEmpCell,   setAddingEmpCell]   = useState<{ userId: string; dateStr: string } | null>(null);
 
   /* ── Loading / actions ── */
   const [loading,      setLoading]      = useState(true);
