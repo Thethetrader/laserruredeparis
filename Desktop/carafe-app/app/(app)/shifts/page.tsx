@@ -644,8 +644,6 @@ const days     = getDaysInMonth(year, month);
           </div>
         )}
 
-      </div>
-
       </div>{/* end 2-col grid */}
 
       <button onClick={() => setSelected(todayStr)} className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-30" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
