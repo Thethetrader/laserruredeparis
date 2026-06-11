@@ -5,9 +5,9 @@ import { motion, useInView } from "framer-motion";
 import { Check, Download, Award } from "lucide-react";
 
 const reviews = [
-  { name: "Noté par Sofia", text: "La dame a demandé si on faisait des privatisations — très satisfaits, ils reviendront.", date: "il y a 1j" },
-  { name: "Noté par Marc", text: "Couple table 6 — contents du plat, mais ont trouvé l'attente longue entre l'entrée et le plat.", date: "il y a 3j" },
-  { name: "Noté par Yasmine", text: "Groupe de 4 — ont adoré le menu du jour, la dame a demandé la recette du tiramisu.", date: "il y a 6j" },
+  { name: "Noté par Sofia", text: "La dame a demandé si on faisait des privatisations, très satisfaits, ils reviendront.", date: "il y a 1j" },
+  { name: "Noté par Marc", text: "Couple table 6, contents du plat, mais ont trouvé l'attente longue entre l'entrée et le plat.", date: "il y a 3j" },
+  { name: "Noté par Yasmine", text: "Groupe de 4, ont adoré le menu du jour, la dame a demandé la recette du tiramisu.", date: "il y a 6j" },
 ];
 
 const skills = ["Carte des vins", "Encaissement", "Allergènes", "Gestion VIP", "Latte art"];
