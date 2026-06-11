@@ -571,13 +571,10 @@ const days     = getDaysInMonth(year, month);
                         const color = staffStatus
                           ? (tipSettings.colors[staffStatus] ?? STAFF_STATUSES[staffStatus]?.color ?? "var(--accent)")
                           : "var(--accent)";
-                        const fmt = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
-                        const time1 = shift.start_time ? fmt(shift.start_time) : null;
-                        const time2 = hasCoupure && shift.start_time_2 ? fmt(shift.start_time_2) : null;
                         return (
-                          <div className="w-full space-y-0.5 px-0.5">
-                            {time1 && <p className="text-[8px] lg:text-[11px] font-mono font-medium leading-tight" style={{ color }}>{time1}</p>}
-                            {time2 && <p className="text-[8px] lg:text-[11px] font-mono leading-tight" style={{ color, opacity: 0.65 }}>{time2}</p>}
+                          <div className="w-full flex flex-wrap gap-0.5 justify-center mt-0.5">
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                            {hasCoupure && shift.start_time_2 && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, opacity: 0.65 }} />}
                           </div>
                         );
                       })()}
