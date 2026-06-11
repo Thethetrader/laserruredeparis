@@ -889,7 +889,7 @@ export default function ShiftsTeamPage() {
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
-                  <div className="w-full flex flex-wrap gap-0.5 px-0.5 mt-0.5">
+                  <div className="w-full flex flex-wrap gap-0.5 justify-center mt-0.5">
                     {dayShifts.map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
                       return <span key={s.id} className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, opacity: s.tips_enabled ? 1 : 0.5 }} />;
