@@ -2,12 +2,12 @@
 
 import { useRef, useEffect, useState } from "react";
 import { motion, useInView } from "framer-motion";
-import { Check, Download, Award } from "lucide-react";
+import { Star, Check, Download, Award } from "lucide-react";
 
 const reviews = [
-  { name: "Noté par Sofia", text: "La dame a demandé si on faisait des privatisations, très satisfaits, ils reviendront.", date: "il y a 1j" },
-  { name: "Noté par Marc", text: "Couple table 6, contents du plat, mais ont trouvé l'attente longue entre l'entrée et le plat.", date: "il y a 3j" },
-  { name: "Noté par Yasmine", text: "Groupe de 4, ont adoré le menu du jour, la dame a demandé la recette du tiramisu.", date: "il y a 6j" },
+  { name: "Marie D.", text: "Julie a été formidable, très professionnelle. Le service était impeccable.", date: "il y a 2j" },
+  { name: "Thomas B.", text: "Accueil exceptionnel, Julie a rendu notre anniversaire inoubliable.", date: "il y a 5j" },
+  { name: "Camille L.", text: "Recommandations parfaites pour les vins. On reviendra !", date: "il y a 8j" },
 ];
 
 const skills = ["Carte des vins", "Encaissement", "Allergènes", "Gestion VIP", "Latte art"];
@@ -128,7 +128,7 @@ export default function EmployeeSection() {
 
             {/* Reviews */}
             <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
-              <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Retours clients relevés</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "var(--foreground-dim)" }}>Avis clients reçus</p>
               <div className="space-y-3">
                 {reviews.map(({ name, text, date }, i) => (
                   <motion.div
@@ -139,9 +139,14 @@ export default function EmployeeSection() {
                     className="p-3 rounded-xl"
                     style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
                   >
+                    <div className="flex gap-0.5 mb-1.5">
+                      {[1,2,3,4,5].map(s=><Star key={s} size={9} style={{ color:"#F59E0B", fill:"#F59E0B" }} />)}
+                    </div>
                     <p className="text-[10px] leading-relaxed mb-1.5" style={{ color: "var(--foreground-muted)" }}>&ldquo;{text}&rdquo;</p>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[8px]" style={{ color: "var(--accent)" }}>{name}</span>
+                      <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>{name}</span>
+                      <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>·</span>
+                      <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>Google</span>
                       <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>·</span>
                       <span className="font-mono text-[8px]" style={{ color: "var(--foreground-dim)" }}>{date}</span>
                     </div>

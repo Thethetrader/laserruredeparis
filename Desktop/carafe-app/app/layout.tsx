@@ -58,16 +58,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           html[data-theme="light"] body { background: #fafaf7; }
           #splash {
             position: fixed; inset: 0; z-index: 99999;
-            background: #09090B;
+            background: #fafaf7;
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
           }
-          html[data-theme="light"] #splash { background: #fafaf7; }
           #splash.fade { opacity: 0; pointer-events: none; }
           #splash img { width: 140px; height: 140px; object-fit: contain; }
-          #splash .logo-light { display: none; }
-          html[data-theme="light"] #splash .logo-dark { display: none; }
-          html[data-theme="light"] #splash .logo-light { display: block; mix-blend-mode: multiply; }
+          #splash .logo-dark { display: none; }
+          #splash .logo-light { display: block; mix-blend-mode: multiply; }
         `}</style>
       </head>
       <body className="font-sans antialiased bg-background text-foreground">

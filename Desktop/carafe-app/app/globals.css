@@ -98,6 +98,9 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Empêche Safari iOS d'agrandir la typo en paysage */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -106,6 +109,8 @@
     font-size: 15px;
     line-height: 1.6;
     -webkit-tap-highlight-color: transparent;
+    /* Normalise le rendu des polices variables sur Safari */
+    font-synthesis: none;
   }
 
   :focus-visible {
@@ -142,6 +147,12 @@
     .app-main-safe-pb { padding-bottom: 0; }
   }
 
+  /* Backdrop blur avec préfixe Safari */
+  .backdrop-blur-overlay {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+
   .mono {
     font-family: var(--font-mono), ui-monospace, monospace;
     letter-spacing: 0.02em;
@@ -149,10 +160,12 @@
 
   .glow-cyan {
     animation: glow-pulse 6s ease-in-out infinite;
+    will-change: box-shadow;
   }
 
   .breathe-glow {
     animation: breathe-glow 3s ease-in-out infinite;
+    will-change: box-shadow;
   }
 
   .text-balance {

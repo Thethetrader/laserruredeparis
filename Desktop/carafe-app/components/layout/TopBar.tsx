@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
-import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
+import { LiveAvatar } from "@/components/layout/LiveAvatar";
 import type { Profile, EstablishmentWithRole } from "@/lib/types/database";
 
 interface TopBarProps {
@@ -23,10 +23,10 @@ export function TopBar({ profile, establishment, establishments }: TopBarProps) 
       {/* Left: avatar + establishment */}
       <div className="flex items-center gap-3">
         <Link href="/account" className="flex-shrink-0">
-          <KarafAvatar
+          <LiveAvatar
             firstName={profile.first_name}
             lastName={profile.last_name}
-            avatarUrl={profile.avatar_url}
+            serverAvatarUrl={profile.avatar_url}
             size={30}
           />
         </Link>

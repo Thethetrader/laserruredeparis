@@ -544,13 +544,18 @@ function DayModal({ date, shifts, tipSettings, caSettings, estId, supabase, onCl
             const hours = (s.hours_worked ?? 0) + (s.hours_worked_2 ?? 0);
             const statusCfg = s.staff_status ? STAFF_STATUSES[s.staff_status] : null;
             const myTip = distribution[s.user_id];
+            const fmtT = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
+            const timeStr = s.start_time && s.end_time
+              ? `${fmtT(s.start_time)}–${fmtT(s.end_time)}${s.start_time_2 && s.end_time_2 ? ` · ${fmtT(s.start_time_2)}–${fmtT(s.end_time_2)}` : ""}`
+              : null;
             return (
               <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                 style={{ background: "var(--background)", border: `1px solid ${s.tips_enabled ? "var(--border)" : "var(--border-soft)"}`, opacity: s.tips_enabled ? 1 : 0.6 }}>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: statusCfg?.color ?? "var(--border-strong)" }} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{s.first_name ?? "—"}</p>
+                    {timeStr && <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{timeStr}</span>}
                     {!s.tips_enabled && <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}><Ban size={8} />no tips</span>}
                   </div>
                   <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
@@ -884,16 +889,11 @@ export default function ShiftsTeamPage() {
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
                   </span>
-                  <div className="w-full space-y-0.5 px-0.5">
-                    {dayShifts.slice(0, 3).map(s => {
+                  <div className="w-full flex flex-wrap gap-0.5 px-0.5 mt-0.5">
+                    {dayShifts.map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
-                      const fmt = (t: string) => t.slice(0, 5).replace(":00", "h").replace(":", "h");
-                      const timeLabel = s.start_time && s.end_time ? `${fmt(s.start_time)}–${fmt(s.end_time)}` : null;
-                      return timeLabel ? (
-                        <p key={s.id} className="text-[8px] lg:text-[11px] font-mono font-medium leading-tight" style={{ color, opacity: s.tips_enabled ? 1 : 0.5 }}>{timeLabel}</p>
-                      ) : null;
+                      return <span key={s.id} className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, opacity: s.tips_enabled ? 1 : 0.5 }} />;
                     })}
-                    {dayShifts.length > 3 && <p className="text-[8px]" style={{ color: "var(--foreground-dim)" }}>+{dayShifts.length - 3}</p>}
                   </div>
                   {dayTips > 0 && (
                     <span className="absolute bottom-1 right-1 text-[7px] lg:text-[10px] font-mono font-bold" style={{ color: "#F59E0B" }}>
