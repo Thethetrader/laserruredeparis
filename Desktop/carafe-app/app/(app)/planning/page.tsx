@@ -153,10 +153,13 @@ function getWeekDates(monday: Date): Date[] {
   });
 }
 
+const FR_MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 function weekLabel(monday: Date): string {
   const end = new Date(monday);
   end.setDate(end.getDate() + 6);
-  return `${monday.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – ${end.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}`;
+  const fmt = (d: Date, year?: boolean) =>
+    `${d.getDate()} ${FR_MONTHS[d.getMonth()]}${year ? ` ${d.getFullYear()}` : ""}`;
+  return `${fmt(monday)} – ${fmt(end, true)}`;
 }
 
 function getISOWeek(date: Date): number {
@@ -241,6 +244,7 @@ export default function PlanningPage() {
       return;
     }
 
+    try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
@@ -381,6 +385,11 @@ export default function PlanningPage() {
     }
 
     setLoading(false);
+    } catch (err) {
+      console.error("[planning] load error:", err);
+      setError("Erreur lors du chargement du planning.");
+      setLoading(false);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(weekStart); }, [weekStart, load]);
@@ -1699,15 +1708,6 @@ function ManualPlanningGrid({
   const [newSvcName,  setNewSvcName]  = useState("");
   const [newSvcStart, setNewSvcStart] = useState("11:30");
   const [newSvcEnd,   setNewSvcEnd]   = useState("15:30");
-
-  /* keep formSvcId in sync when services load */
-  useEffect(() => {
-    if (services.length > 0 && !services.find(s => s.id === formSvcId)) {
-      setFormSvcId(services[0].id);
-      setFormStart(services[0].start);
-      setFormEnd(services[0].end);
-    }
-  }, [services, formSvcId]);
 
   function openForm(userId: string, dateStr: string) {
     setFormCell({ userId, dateStr });
