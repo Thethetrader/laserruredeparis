@@ -580,6 +580,7 @@ export default function PlanningPage() {
         .from("planning_shifts")
         .insert({
           planning_week_id: weekId,
+          establishment_id: estId,
           user_id: userId,
           shift_date: dateStr,
           start_time: start,
