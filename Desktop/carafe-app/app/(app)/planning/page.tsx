@@ -6,7 +6,7 @@ import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import {
   ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock,
-  Plus, X, Settings2, ChevronDown, ChevronUp, Users,
+  Plus, X, Settings2, ChevronDown, ChevronUp, Users, Download,
 } from "lucide-react";
 import {
   toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES,
@@ -184,6 +184,299 @@ function newServiceId() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
+   EXPORT MODAL
+══════════════════════════════════════════════════════════════════════════════ */
+
+const FR_DAYS_FULL = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const FR_MONTHS_FULL = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+function fmtDateFull(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${FR_DAYS_FULL[d.getDay()]} ${d.getDate()} ${FR_MONTHS_FULL[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtDateShort(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${FR_DAYS_FULL[d.getDay()].slice(0, 3)}. ${d.getDate()} ${FR_MONTHS_FULL[d.getMonth()].slice(0, 4)}.`;
+}
+
+function fmtTime(t: string): string {
+  return t.slice(0, 5).replace(":", "h");
+}
+
+interface ExportShift {
+  id: string;
+  user_id: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  service: string;
+  first_name: string;
+  staff_status: string;
+  hourly_rate: number;
+}
+
+function buildExportHTML(
+  estName: string,
+  fromStr: string,
+  toStr: string,
+  shifts: ExportShift[],
+  employees: EmployeeInfo[],
+): string {
+  const empMap = new Map(employees.map(e => [e.id, e]));
+
+  const byEmployee: Map<string, ExportShift[]> = new Map();
+  for (const s of shifts) {
+    if (!byEmployee.has(s.user_id)) byEmployee.set(s.user_id, []);
+    byEmployee.get(s.user_id)!.push(s);
+  }
+
+  const sortedEmps = [...byEmployee.entries()].sort(([, a], [, b]) =>
+    (a[0]?.first_name ?? "").localeCompare(b[0]?.first_name ?? "")
+  );
+
+  const periodLabel = `${fmtDateFull(fromStr)} — ${fmtDateFull(toStr)}`;
+  const generatedAt = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+  let totalAllHours = 0;
+
+  const empSections = sortedEmps.map(([userId, empShifts]) => {
+    const emp = empMap.get(userId);
+    const name = empShifts[0]?.first_name ?? emp?.name ?? "Employé";
+    const status = emp?.status ?? "";
+    const hourlyRate = emp?.hourly_rate ?? 0;
+    const sorted = [...empShifts].sort((a, b) => a.shift_date.localeCompare(b.shift_date));
+
+    let totalH = 0;
+    const rows = sorted.map(s => {
+      const h = calcHours(s.start_time, s.end_time);
+      totalH += h;
+      const cost = h * hourlyRate;
+      return `
+        <tr>
+          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px">${fmtDateShort(s.shift_date)}</td>
+          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#6b6b67; font-size:13px">${s.service}</td>
+          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px; font-family:monospace">${fmtTime(s.start_time)} → ${fmtTime(s.end_time)}</td>
+          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px; text-align:right; font-family:monospace; font-weight:600">${h.toFixed(2)}h</td>
+          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#6b6b67; font-size:12px; text-align:right; font-family:monospace">${cost.toFixed(0)} €</td>
+        </tr>`;
+    }).join("");
+
+    totalAllHours += totalH;
+    const totalCost = totalH * hourlyRate;
+    const statusLabel = status.replace(/_/g, " ");
+    const color = STAFF_STATUSES[status as StaffStatus]?.color ?? "#6b6b67";
+
+    return `
+      <div style="margin-bottom:32px; break-inside:avoid">
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px 10px 0 0">
+          <div style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0"></div>
+          <div>
+            <div style="font-size:15px; font-weight:700; color:#1a1a18">${name}</div>
+            <div style="font-size:11px; color:#9b9b97; text-transform:uppercase; letter-spacing:0.05em">${statusLabel} · ${hourlyRate.toFixed(2)} €/h</div>
+          </div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; border:1px solid #e8e8e4; border-top:none; border-radius:0 0 10px 10px; overflow:hidden">
+          <thead>
+            <tr style="background:#f4f4f0">
+              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Date</th>
+              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Service</th>
+              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Horaires</th>
+              <th style="padding:8px 14px; text-align:right; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Heures</th>
+              <th style="padding:8px 14px; text-align:right; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Coût</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="background:#f4f4f0">
+              <td colspan="3" style="padding:10px 14px; font-size:12px; font-weight:700; color:#1a1a18; text-transform:uppercase; letter-spacing:0.06em">Total</td>
+              <td style="padding:10px 14px; text-align:right; font-family:monospace; font-size:14px; font-weight:800; color:#1a1a18">${totalH.toFixed(2)}h</td>
+              <td style="padding:10px 14px; text-align:right; font-family:monospace; font-size:13px; font-weight:700; color:#1a1a18">${totalCost.toFixed(0)} €</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planning ${estName} — ${periodLabel}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a18; }
+    @media print {
+      @page { margin: 20mm 18mm; size: A4; }
+      body { font-size: 12px; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width:800px; margin:0 auto; padding:40px 24px">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:40px; padding-bottom:24px; border-bottom:2px solid #1a1a18">
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px">Planning du personnel</div>
+        <div style="font-size:28px; font-weight:800; color:#1a1a18; line-height:1.1">${estName || "Établissement"}</div>
+        <div style="font-size:13px; color:#6b6b67; margin-top:8px">${periodLabel}</div>
+      </div>
+      <img src="https://karaf.fr/FONDCLAIRLOGO.png" alt="Karaf" style="width:56px; height:56px; object-fit:contain; mix-blend-mode:multiply; opacity:0.85" />
+    </div>
+
+    <!-- Summary banner -->
+    <div style="display:flex; gap:16px; margin-bottom:36px">
+      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
+        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Employés</div>
+        <div style="font-size:24px; font-weight:800; color:#1a1a18">${byEmployee.size}</div>
+      </div>
+      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
+        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Total shifts</div>
+        <div style="font-size:24px; font-weight:800; color:#1a1a18">${shifts.length}</div>
+      </div>
+      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
+        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Heures totales</div>
+        <div style="font-size:24px; font-weight:800; color:#1a1a18">${totalAllHours.toFixed(1)}h</div>
+      </div>
+    </div>
+
+    <!-- Print button -->
+    <div class="no-print" style="margin-bottom:28px; display:flex; gap:10px">
+      <button onclick="window.print()" style="padding:10px 22px; background:#1a1a18; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer">
+        Imprimer / Enregistrer en PDF
+      </button>
+    </div>
+
+    <!-- Employee sections -->
+    ${empSections}
+
+    <!-- Footer -->
+    <div style="margin-top:48px; padding-top:16px; border-top:1px solid #e8e8e4; display:flex; justify-content:space-between; align-items:center">
+      <div style="font-size:11px; color:#b0b0aa">Généré le ${generatedAt} via Karaf</div>
+      <div style="font-size:11px; color:#b0b0aa">karaf.fr</div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+function ExportModal({ estId, estName, employees, onClose }: {
+  estId: string;
+  estName: string;
+  employees: EmployeeInfo[];
+  onClose: () => void;
+}) {
+  const today = new Date();
+  const monday = getMondayOf(today);
+  const defaultFrom = toDateStr(monday);
+  const defaultTo = toDateStr(new Date(monday.getTime() + 27 * 86400000));
+
+  const [fromDate, setFromDate] = useState(defaultFrom);
+  const [toDate,   setToDate]   = useState(defaultTo);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  async function handleExport() {
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data, error: dbErr } = await supabase
+        .from("planning_shifts")
+        .select("id, user_id, shift_date, start_time, end_time, service, profiles(first_name), establishment_members!inner(staff_status, hourly_rate)")
+        .eq("establishment_id", estId)
+        .gte("shift_date", fromDate)
+        .lte("shift_date", toDate)
+        .order("shift_date");
+
+      if (dbErr) throw dbErr;
+
+      const shifts: ExportShift[] = (data ?? []).map((s: any) => ({
+        id: s.id,
+        user_id: s.user_id,
+        shift_date: s.shift_date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        service: s.service,
+        first_name: s.profiles?.first_name ?? "Employé",
+        staff_status: s.establishment_members?.staff_status ?? "",
+        hourly_rate: s.establishment_members?.hourly_rate ?? 0,
+      }));
+
+      const html = buildExportHTML(estName, fromDate, toDate, shifts, employees);
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
+      onClose();
+    } catch (e: any) {
+      setError(e?.message ?? "Erreur lors de l'export");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-sm rounded-2xl p-5 space-y-4"
+        style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center justify-between">
+          <p className="text-[16px] font-semibold" style={{ color: "var(--foreground)" }}>Exporter le planning</p>
+          <button onClick={onClose}><X size={18} style={{ color: "var(--foreground-dim)" }} /></button>
+        </div>
+
+        <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
+          Choisissez la période à exporter. Un PDF s'ouvrira dans un nouvel onglet.
+        </p>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Du</p>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl text-[13px]"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            />
+          </div>
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Au</p>
+            <input
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl text-[13px]"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-[12px] px-3 py-2 rounded-xl" style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)" }}>{error}</p>
+        )}
+
+        <button
+          onClick={handleExport}
+          disabled={loading || !fromDate || !toDate}
+          className="w-full py-3 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2"
+          style={{ background: "var(--accent)", color: "#fff", opacity: loading ? 0.6 : 1 }}
+        >
+          <Download size={15} />
+          {loading ? "Génération…" : "Générer le PDF"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -198,7 +491,9 @@ export default function PlanningPage() {
   const [planningWeek,   setPlanningWeek]   = useState<PlanningWeek | null | undefined>(undefined);
   const [planningShifts, setPlanningShifts] = useState<PlanningShift[]>([]);
   const [estId,          setEstId]          = useState<string | null>(null);
+  const [estName,        setEstName]        = useState<string>("");
   const [employees,      setEmployees]      = useState<EmployeeInfo[]>([]);
+  const [showExport,     setShowExport]     = useState(false);
 
   /* ── Owner: per-day config ── */
   const [dailyConfig,  setDailyConfig]  = useState<Record<string, DayConfig>>({});
@@ -304,13 +599,14 @@ export default function PlanningPage() {
 
     setEstId(resolvedEid);
 
-    // Load planning mode
+    // Load planning mode + establishment name
     const { data: estData } = await supabase
       .from("establishments")
-      .select("planning_mode")
+      .select("planning_mode, name")
       .eq("id", resolvedEid)
       .maybeSingle();
     setPlanningMode(parsePlanningMode((estData as Record<string, unknown> | null)?.planning_mode));
+    setEstName((estData as Record<string, unknown> | null)?.name as string ?? "");
 
     // Load employees for reassignment
     const { data: memberRows } = await supabase
@@ -828,8 +1124,27 @@ export default function PlanningPage() {
             {planningMode === "manual" ? "Créez les shifts manuellement, puis publiez" : "Configurez les besoins jour par jour, puis générez"}
           </p>
         </div>
-        {planningMode === "ai" ? <Sparkles size={20} style={{ color: "#F59E0B" }} /> : <Users size={20} style={{ color: "var(--accent)" }} />}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowExport(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium"
+            style={{ border: "1px solid var(--border)", color: "var(--foreground-dim)", background: "var(--background-elev)" }}
+          >
+            <Download size={13} />
+            Exporter
+          </button>
+          {planningMode === "ai" ? <Sparkles size={20} style={{ color: "#F59E0B" }} /> : <Users size={20} style={{ color: "var(--accent)" }} />}
+        </div>
       </div>
+
+      {showExport && estId && (
+        <ExportModal
+          estId={estId}
+          estName={estName}
+          employees={employees}
+          onClose={() => setShowExport(false)}
+        />
+      )}
 
       {/* Week selector */}
       <div className="flex items-center gap-3 mb-5">
