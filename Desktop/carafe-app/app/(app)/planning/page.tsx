@@ -386,7 +386,7 @@ function ExportModal({ estId, estName, employees, onClose }: {
       const supabase = createClient();
       const { data, error: dbErr } = await supabase
         .from("planning_shifts")
-        .select("id, user_id, shift_date, start_time, end_time, service, profiles(first_name), establishment_members!inner(staff_status, hourly_rate)")
+        .select("id, user_id, shift_date, start_time, end_time, service, profiles(first_name)")
         .eq("establishment_id", estId)
         .gte("shift_date", fromDate)
         .lte("shift_date", toDate)
@@ -394,17 +394,20 @@ function ExportModal({ estId, estName, employees, onClose }: {
 
       if (dbErr) throw dbErr;
 
-      const shifts: ExportShift[] = (data ?? []).map((s: any) => ({
-        id: s.id,
-        user_id: s.user_id,
-        shift_date: s.shift_date,
-        start_time: s.start_time,
-        end_time: s.end_time,
-        service: s.service,
-        first_name: s.profiles?.first_name ?? "Employé",
-        staff_status: s.establishment_members?.staff_status ?? "",
-        hourly_rate: s.establishment_members?.hourly_rate ?? 0,
-      }));
+      const shifts: ExportShift[] = (data ?? []).map((s: any) => {
+        const emp = employees.find(e => e.id === s.user_id);
+        return {
+          id: s.id,
+          user_id: s.user_id,
+          shift_date: s.shift_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          service: s.service,
+          first_name: s.profiles?.first_name ?? emp?.name ?? "Employé",
+          staff_status: emp?.status ?? "",
+          hourly_rate: emp?.hourly_rate ?? 0,
+        };
+      });
 
       const html = buildExportHTML(estName, fromDate, toDate, shifts, employees);
       const win = window.open("", "_blank");
