@@ -235,7 +235,7 @@ export default function ProtocolsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<ProtocolCategory | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "gallery">("list");
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [galleryLightbox, setGalleryLightbox] = useState<{ urls: string[]; index: number } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -848,7 +848,11 @@ export default function ProtocolsPage() {
               <div key={p.id}>
                 {p.attachment_type === "image" ? (
                   <button
-                    onClick={() => setLightboxUrl(p.attachment_url!)}
+                    onClick={() => {
+                      const imageUrls = catAttachments.filter(a => a.attachment_type === "image").map(a => a.attachment_url!);
+                      const idx = imageUrls.indexOf(p.attachment_url!);
+                      setGalleryLightbox({ urls: imageUrls, index: idx >= 0 ? idx : 0 });
+                    }}
                     className="w-full rounded-xl overflow-hidden transition-opacity active:opacity-75"
                     style={{ aspectRatio: "1", display: "block" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -875,26 +879,12 @@ export default function ProtocolsPage() {
           </div>
 
           {/* Lightbox */}
-          {lightboxUrl && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(6px)" }}
-              onClick={() => setLightboxUrl(null)}>
-              <button
-                onClick={() => setLightboxUrl(null)}
-                className="absolute top-4 right-4 rounded-full flex items-center justify-center"
-                style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)", color: "#fff" }}>
-                <X size={18} />
-              </button>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={lightboxUrl}
-                alt=""
-                className="max-w-full max-h-full rounded-xl"
-                style={{ objectFit: "contain", maxHeight: "90vh" }}
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
+          {galleryLightbox && (
+            <PhotoLightbox
+              urls={galleryLightbox.urls}
+              initialIndex={galleryLightbox.index}
+              onClose={() => setGalleryLightbox(null)}
+            />
           )}
         </>
       )}
@@ -936,6 +926,116 @@ export default function ProtocolsPage() {
 /* ────────────────────────────────────────────
    Sub-components
    ──────────────────────────────────────────── */
+
+/* ── Photo lightbox — swipe, pinch zoom, double-tap, bouton fermer bas ── */
+function PhotoLightbox({ urls, initialIndex, onClose }: { urls: string[]; initialIndex: number; onClose: () => void }) {
+  const [index, setIndex] = useState(initialIndex);
+  const [scale, setScale] = useState(1);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const lastPinchDist = useRef<number | null>(null);
+  const lastTapTime = useRef(0);
+
+  function getPinchDist(e: React.TouchEvent) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 1) {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+      lastPinchDist.current = null;
+    } else if (e.touches.length === 2) {
+      lastPinchDist.current = getPinchDist(e);
+    }
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && lastPinchDist.current !== null) {
+      const dist = getPinchDist(e);
+      setScale(s => Math.min(Math.max(s * (dist / lastPinchDist.current!), 1), 5));
+      lastPinchDist.current = dist;
+    }
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (e.changedTouches.length === 1 && scale < 1.15) {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+      if (Math.abs(dx) > 50 && dy < 80) {
+        if (dx < 0 && index < urls.length - 1) { setIndex(i => i + 1); setScale(1); }
+        else if (dx > 0 && index > 0) { setIndex(i => i - 1); setScale(1); }
+        return;
+      }
+      const now = Date.now();
+      if (now - lastTapTime.current < 300) setScale(s => s > 1 ? 1 : 2.5);
+      lastTapTime.current = now;
+    }
+    lastPinchDist.current = null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center select-none"
+      style={{ background: "rgba(0,0,0,0.93)", backdropFilter: "blur(8px)" }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onClick={() => { if (scale <= 1) onClose(); }}>
+
+      {urls.length > 1 && index > 0 && (
+        <button onClick={e => { e.stopPropagation(); setIndex(i => i - 1); setScale(1); }}
+          className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+          style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff", zIndex: 1 }}>
+          <ChevronLeft size={20} />
+        </button>
+      )}
+      {urls.length > 1 && index < urls.length - 1 && (
+        <button onClick={e => { e.stopPropagation(); setIndex(i => i + 1); setScale(1); }}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+          style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff", zIndex: 1 }}>
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={urls[index]}
+        alt=""
+        draggable={false}
+        className="rounded-xl"
+        style={{
+          objectFit: "contain",
+          maxHeight: "72vh",
+          maxWidth: "90vw",
+          transform: `scale(${scale})`,
+          transition: scale === 1 ? "transform 0.25s ease" : "none",
+          touchAction: "none",
+        }}
+        onClick={e => e.stopPropagation()}
+      />
+
+      {urls.length > 1 && (
+        <div className="flex gap-1.5 mt-5" onClick={e => e.stopPropagation()}>
+          {urls.map((_, i) => (
+            <button key={i} onClick={() => { setIndex(i); setScale(1); }}
+              className="rounded-full transition-all"
+              style={{ width: i === index ? 18 : 6, height: 6, background: i === index ? "#fff" : "rgba(255,255,255,0.35)" }} />
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={e => { e.stopPropagation(); onClose(); }}
+        className="mt-6 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium"
+        style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>
+        <X size={16} />Fermer
+      </button>
+    </div>
+  );
+}
 
 interface ProtocolCardProps {
   protocol: Protocol;
@@ -1162,54 +1262,11 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
         </div>
       )}
       {lightbox && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.93)", backdropFilter: "blur(8px)" }}
-          onClick={() => setLightbox(null)}>
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 rounded-full flex items-center justify-center"
-            style={{ width: 36, height: 36, background: "rgba(255,255,255,0.12)", color: "#fff" }}>
-            <X size={18} />
-          </button>
-          {/* Navigation gauche */}
-          {lightbox.urls.length > 1 && lightbox.index > 0 && (
-            <button
-              onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: lb.index - 1 } : null); }}
-              className="absolute left-3 rounded-full flex items-center justify-center"
-              style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff" }}>
-              <ChevronLeft size={20} />
-            </button>
-          )}
-          {/* Image */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox.urls[lightbox.index]}
-            alt=""
-            className="max-w-full rounded-xl"
-            style={{ objectFit: "contain", maxHeight: "85vh", maxWidth: "90vw" }}
-            onClick={e => e.stopPropagation()}
-          />
-          {/* Navigation droite */}
-          {lightbox.urls.length > 1 && lightbox.index < lightbox.urls.length - 1 && (
-            <button
-              onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: lb.index + 1 } : null); }}
-              className="absolute right-3 rounded-full flex items-center justify-center"
-              style={{ width: 40, height: 40, background: "rgba(255,255,255,0.15)", color: "#fff" }}>
-              <ChevronRight size={20} />
-            </button>
-          )}
-          {/* Compteur */}
-          {lightbox.urls.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {lightbox.urls.map((_, i) => (
-                <button key={i} onClick={e => { e.stopPropagation(); setLightbox(lb => lb ? { ...lb, index: i } : null); }}
-                  className="rounded-full transition-all"
-                  style={{ width: i === lightbox.index ? 18 : 6, height: 6, background: i === lightbox.index ? "#fff" : "rgba(255,255,255,0.35)" }} />
-              ))}
-            </div>
-          )}
-        </div>
+        <PhotoLightbox
+          urls={lightbox.urls}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );
