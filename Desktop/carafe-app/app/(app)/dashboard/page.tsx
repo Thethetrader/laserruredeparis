@@ -888,7 +888,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
       {/* Protocoles à signer — en haut si non vides */}
       {(() => {
         const unsigned = protocols.filter(p =>
-          (p.show_on_dashboard || p.is_mandatory) &&
+          p.is_mandatory &&
           p.total_members > 0 &&
           p.read_count < p.total_members
         );
