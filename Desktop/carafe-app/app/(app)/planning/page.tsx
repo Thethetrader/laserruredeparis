@@ -1600,8 +1600,8 @@ function WeekGrid({ shifts, weekDates, showStatus, onShiftClick }: {
   showStatus?: boolean;
   onShiftClick?: (shift: PlanningShift) => void;
 }) {
-  const activeDates = weekDates.filter(d => shifts.some(s => s.shift_date === toDateStr(d)));
-  if (activeDates.length === 0) return null;
+  const activeDates = weekDates;
+  if (shifts.length === 0) return null;
 
   const getShifts = (date: Date, service: string) =>
     shifts.filter(s => s.shift_date === toDateStr(date) && s.service === service);
