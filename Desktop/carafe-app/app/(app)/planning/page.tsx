@@ -5,8 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useDevRole } from "@/hooks/useDevRole";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import {
-  ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock, BarChart2,
-  TrendingUp, Plus, X, Settings2, ChevronDown, ChevronUp, Users,
+  ChevronLeft, ChevronRight, Sparkles, Check, RefreshCw, Clock,
+  Plus, X, Settings2, ChevronDown, ChevronUp, Users,
 } from "lucide-react";
 import {
   toDateStr, formatHours, DEFAULT_PAUSE_SETTINGS, STAFF_STATUSES,
@@ -1380,7 +1380,6 @@ function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, val
           {modified.length} shift{modified.length > 1 ? "s" : ""} refusé{modified.length > 1 ? "s" : ""} — cliquez dessus pour réassigner
         </div>
       )}
-      <WeekSummary shifts={shifts} employees={employees} />
       <div className="flex gap-3 pt-2">
         {canRegenerate && (
           <button onClick={onRegenerate}
@@ -1477,7 +1476,6 @@ function PublishedView({ shifts, weekDates, employees, onReassign }: {
           );
         })}
       </div>
-      <WeekSummary shifts={shifts} employees={employees} />
     </div>
   );
 }
@@ -1569,85 +1567,6 @@ function ReassignPopup({ shift, employees, planningShifts, reassigning, onReassi
           style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
           Annuler
         </button>
-      </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════════════════════
-   WEEK SUMMARY
-══════════════════════════════════════════════════════════════════════════════ */
-
-function WeekSummary({ shifts, employees }: {
-  shifts: PlanningShift[];
-  employees: EmployeeInfo[];
-}) {
-  const empData = employees
-    .map(emp => {
-      const userShifts = shifts.filter(s => s.user_id === emp.id);
-      if (userShifts.length === 0) return null;
-      const hours = userShifts.reduce((sum, s) => sum + calcHours(s.start_time, s.end_time), 0);
-      const cost  = hours * emp.hourly_rate;
-      return { ...emp, hours, cost, color: STAFF_STATUSES[emp.status as StaffStatus]?.color ?? "#A1A1AA" };
-    })
-    .filter(Boolean) as Array<EmployeeInfo & { hours: number; cost: number; color: string }>;
-
-  if (empData.length === 0) return null;
-
-  const totalHours = empData.reduce((s, e) => s + e.hours, 0);
-  const totalCost  = empData.reduce((s, e) => s + e.cost, 0);
-  const fmt = (n: number) => Math.round(n).toLocaleString("fr-FR");
-
-  return (
-    <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-      <div className="px-4 py-3 flex items-center gap-2" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border-soft)" }}>
-        <BarChart2 size={13} style={{ color: "var(--accent)" }} />
-        <p className="text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>Récap masse salariale</p>
-      </div>
-      <div style={{ background: "var(--background-elev)" }}>
-        <div className="grid px-4 py-1.5" style={{ gridTemplateColumns: "1fr 64px 56px 60px", borderBottom: "1px solid var(--border-soft)" }}>
-          {["Employé", "Heures", "Taux", "Coût"].map(h => (
-            <p key={h} className="text-[9px] font-mono uppercase tracking-widest text-right first:text-left"
-              style={{ color: "var(--foreground-dim)" }}>{h}</p>
-          ))}
-        </div>
-        {empData.map(emp => (
-          <div key={emp.id} className="grid items-center px-4 py-3"
-            style={{ gridTemplateColumns: "1fr 64px 56px 60px", borderBottom: "1px solid var(--border-soft)" }}>
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: emp.color }} />
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{emp.name}</p>
-                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{emp.status.replace(/_/g, " ")}</p>
-              </div>
-            </div>
-            <p className="text-[13px] font-mono font-semibold text-right" style={{ color: "var(--foreground)" }}>{formatHours(emp.hours)}</p>
-            <p className="text-[11px] font-mono text-right" style={{ color: "var(--foreground-dim)" }}>{emp.hourly_rate.toFixed(2)}€</p>
-            <p className="text-[15px] font-bold text-right" style={{ color: emp.color }}>{fmt(emp.cost)}€</p>
-          </div>
-        ))}
-        <div className="grid items-center px-4 py-3" style={{ gridTemplateColumns: "1fr 64px 56px 60px", background: "rgba(0,0,0,0.15)" }}>
-          <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Total</p>
-          <p className="text-[13px] font-mono font-bold text-right" style={{ color: "var(--foreground)" }}>{formatHours(totalHours)}</p>
-          <p />
-          <p className="text-[16px] font-black text-right" style={{ color: "var(--foreground)" }}>{fmt(totalCost)}€</p>
-        </div>
-      </div>
-      <div className="px-4 py-4" style={{ background: "rgba(6,182,212,0.04)", borderTop: "1px solid var(--border)" }}>
-        <div className="flex items-center gap-1.5 mb-3">
-          <TrendingUp size={12} style={{ color: "var(--accent)" }} />
-          <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>CA minimum pour être rentable</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl px-3 py-3" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.2)" }}>
-            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Objectif 30% MS</p>
-            <p className="text-[22px] font-black leading-none" style={{ color: "var(--accent)" }}>{fmt(totalCost / 0.30)} €</p>
-          </div>
-          <div className="rounded-xl px-3 py-3" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Seuil critique 35% MS</p>
-            <p className="text-[22px] font-black leading-none" style={{ color: "#F59E0B" }}>{fmt(totalCost / 0.35)} €</p>
-          </div>
-        </div>
       </div>
     </div>
   );
