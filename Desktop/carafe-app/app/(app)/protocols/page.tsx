@@ -1124,10 +1124,14 @@ function ProtocolCard({ protocol, isManager, isExpanded, isRead, onToggle, onMar
           {isManager && isExpanded && (
             <>
               <button onClick={e => { e.stopPropagation(); onToggleDashboard?.(); }}
-                className="p-1.5 rounded-base transition-opacity hover:opacity-100"
-                style={{ color: protocol.show_on_dashboard ? "var(--accent)" : "var(--foreground-dim)", opacity: protocol.show_on_dashboard ? 1 : 0.4 }}
-                title={protocol.show_on_dashboard ? "Retirer du dashboard" : "Épingler sur le dashboard"}>
-                <LayoutDashboard size={13} />
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-all"
+                style={{
+                  color: protocol.show_on_dashboard ? "var(--accent)" : "var(--foreground-dim)",
+                  background: protocol.show_on_dashboard ? "rgba(6,182,212,0.1)" : "var(--background-elev)",
+                  border: `1px solid ${protocol.show_on_dashboard ? "rgba(6,182,212,0.3)" : "var(--border)"}`,
+                }}>
+                <LayoutDashboard size={10} />
+                {protocol.show_on_dashboard ? "Affiché sur le dashboard" : "Afficher sur le dashboard"}
               </button>
               <button onClick={e => { e.stopPropagation(); onEdit?.(); }}
                 className="p-1.5 rounded-base transition-opacity hover:opacity-100 opacity-50"
