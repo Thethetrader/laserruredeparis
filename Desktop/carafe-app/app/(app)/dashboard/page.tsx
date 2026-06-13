@@ -619,6 +619,13 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
     setClaiming(null);
   }
 
+  async function unvalidateTask(taskId: string) {
+    const today = new Date().toISOString().split("T")[0];
+    const supabase = createClient();
+    await supabase.from("task_completions").delete().eq("task_template_id", taskId).eq("establishment_id", establishmentId).eq("service_date", today);
+    setTaskList(prev => prev.map(t => t.id === taskId ? { ...t, done: false } : t));
+  }
+
   async function submitValidation() {
     if (!validating) return;
     setSubmitting(true);
@@ -779,7 +786,10 @@ function TaskGaugePopup({ stats, onClose, establishmentId, profileId, onValidate
                         {done.map((t, i) => (
                           <div key={i} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)" }}>
                             <CheckCircle2 size={14} style={{ color: "var(--success)", flexShrink: 0 }} />
-                            <p className="text-[13px] truncate" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+                            <p className="text-[13px] truncate flex-1" style={{ color: "var(--foreground-muted)", textDecoration: "line-through" }}>{t.title}</p>
+                            {canValidate && t.id && (
+                              <button onClick={() => unvalidateTask(t.id!)} className="text-[10px] px-2 py-0.5 rounded flex-shrink-0" style={{ color: "var(--foreground-dim)", border: "1px solid var(--border)", opacity: 0.6 }}>Annuler</button>
+                            )}
                           </div>
                         ))}
                       </div>
