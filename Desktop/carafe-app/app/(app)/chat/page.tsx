@@ -96,9 +96,9 @@ function Receipt({ msg, myId, memberCount }: { msg: Msg; myId: string; memberCou
   if (msg.sender_id !== myId) return null;
   const readers = (msg.read_by ?? []).filter(id => id !== myId).length;
   const allRead = readers >= memberCount - 1;
-  if (allRead) return <CheckCheck size={11} style={{ color: "#3b82f6", flexShrink: 0 }} />;
-  if (readers > 0) return <CheckCheck size={11} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />;
-  return <Check size={11} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />;
+  if (allRead) return <CheckCheck size={11} style={{ color: "#60a5fa", flexShrink: 0 }} />;
+  if (readers > 0) return <CheckCheck size={11} style={{ color: "rgba(255,255,255,0.6)", flexShrink: 0 }} />;
+  return <Check size={11} style={{ color: "rgba(255,255,255,0.6)", flexShrink: 0 }} />;
 }
 
 /* ── Reply preview (input bar) ──────────────────────────────────────────────── */
@@ -120,9 +120,9 @@ function ReplyPreview({ msg, onCancel }: { msg: Msg; onCancel: () => void }) {
 function QuotedBubble({ content, sender, isMe }: { content: string; sender: string; isMe: boolean }) {
   return (
     <div className="rounded-lg px-2.5 py-1.5 mb-1.5"
-      style={{ background: isMe ? "rgba(0,0,0,0.15)" : "rgba(6,182,212,0.08)", borderLeft: `3px solid ${isMe ? "rgba(255,255,255,0.4)" : "var(--accent)"}` }}>
-      <p className="text-[10px] font-semibold mb-0.5" style={{ color: isMe ? "rgba(255,255,255,0.7)" : "var(--accent)" }}>{sender}</p>
-      <p className="text-[11px] line-clamp-2" style={{ color: isMe ? "rgba(255,255,255,0.75)" : "var(--foreground-dim)" }}>{content || "📎 Fichier"}</p>
+      style={{ background: isMe ? "rgba(0,0,0,0.18)" : "rgba(6,182,212,0.08)", borderLeft: `3px solid ${isMe ? "rgba(255,255,255,0.4)" : "var(--accent)"}` }}>
+      <p className="text-[10px] font-semibold mb-0.5" style={{ color: isMe ? "rgba(255,255,255,0.75)" : "var(--accent)" }}>{sender}</p>
+      <p className="text-[11px] line-clamp-2" style={{ color: isMe ? "rgba(255,255,255,0.7)" : "var(--foreground-dim)" }}>{content || "📎 Fichier"}</p>
     </div>
   );
 }
@@ -156,7 +156,8 @@ function AttachmentView({ url, isMe }: { url: string; isMe: boolean }) {
   }
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2.5" style={{ color: isMe ? "#0a0a09" : "var(--foreground)", textDecoration: "none" }}>
+      className="flex items-center gap-2 px-3 py-2.5"
+      style={{ color: isMe ? "rgba(255,255,255,0.9)" : "var(--foreground)", textDecoration: "none" }}>
       <FileText size={18} style={{ flexShrink: 0, opacity: 0.7 }} />
       <span className="text-[12px] underline truncate">{filename}</span>
     </a>
@@ -164,12 +165,16 @@ function AttachmentView({ url, isMe }: { url: string; isMe: boolean }) {
 }
 
 /* ── Emoji picker ────────────────────────────────────────────────────────────── */
-function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose: () => void }) {
+function EmojiPicker({ onPick, onClose, alignRight }: { onPick: (e: string) => void; onClose: () => void; alignRight?: boolean }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute bottom-full mb-1 z-50 flex gap-1 p-1.5 rounded-xl shadow-lg"
-        style={{ background: "var(--background)", border: "1px solid var(--border)", left: "50%", transform: "translateX(-50%)" }}>
+        style={{
+          background: "var(--background)",
+          border: "1px solid var(--border)",
+          ...(alignRight ? { right: 0 } : { left: 0 }),
+        }}>
         {QUICK_EMOJIS.map(e => (
           <button key={e} onClick={() => { onPick(e); onClose(); }}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-lg hover:bg-black/10 transition-colors">
@@ -206,14 +211,20 @@ function ContextMenu({ msg, myId, isManager, x, y, onClose, onReply, onEdit, onD
 }) {
   const canEdit = msg.sender_id === myId && !msg.deleted_at && (Date.now() - new Date(msg.created_at).getTime()) < 5 * 60_000;
   const canDelete = msg.sender_id === myId || isManager;
-  const safeX = typeof window !== "undefined" ? Math.min(x, window.innerWidth - 180) : x;
-  const safeY = typeof window !== "undefined" ? Math.min(y, window.innerHeight - 200) : y;
+  const [pos, setPos] = useState({ x, y });
+
+  useEffect(() => {
+    setPos({
+      x: Math.min(x, window.innerWidth - 180),
+      y: Math.min(y, window.innerHeight - 200),
+    });
+  }, [x, y]);
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="fixed z-50 rounded-xl shadow-xl py-1 min-w-[148px]"
-        style={{ left: safeX, top: safeY, background: "var(--background)", border: "1px solid var(--border)" }}>
+        style={{ left: pos.x, top: pos.y, background: "var(--background)", border: "1px solid var(--border)" }}>
         {[
           { icon: CornerDownLeft, label: "Répondre", action: onReply, show: true, danger: false },
           { icon: Edit2, label: "Modifier", action: onEdit, show: canEdit, danger: false },
@@ -238,7 +249,7 @@ function PollBubble({ poll, myId, isMe, onVote }: { poll: PollData; myId: string
   const myVote = Object.entries(poll.votes).find(([, u]) => u.includes(myId))?.[0];
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[13px] font-semibold">{poll.question}</p>
+      <p className="text-[13px] font-semibold" style={{ color: isMe ? "white" : "var(--foreground)" }}>{poll.question}</p>
       {poll.options.map(opt => {
         const votes = poll.votes[opt.id] ?? [];
         const pct = totalVotes > 0 ? Math.round((votes.length / totalVotes) * 100) : 0;
@@ -249,8 +260,8 @@ function PollBubble({ poll, myId, isMe, onVote }: { poll: PollData; myId: string
             style={{ background: voted ? (isMe ? "rgba(0,0,0,0.2)" : "rgba(6,182,212,0.15)") : (isMe ? "rgba(0,0,0,0.1)" : "var(--background)"), border: `1px solid ${voted ? "rgba(6,182,212,0.5)" : "var(--border-soft)"}` }}>
             {totalVotes > 0 && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: isMe ? "rgba(0,0,0,0.08)" : "rgba(6,182,212,0.08)", transition: "width 0.3s" }} />}
             <div className="relative flex items-center justify-between gap-2">
-              <span className="text-[12px]">{opt.label}</span>
-              {votes.length > 0 && <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{pct}% · {votes.length}</span>}
+              <span className="text-[12px]" style={{ color: isMe ? "rgba(255,255,255,0.9)" : "var(--foreground)" }}>{opt.label}</span>
+              {votes.length > 0 && <span className="text-[11px] flex-shrink-0" style={{ color: isMe ? "rgba(255,255,255,0.6)" : "var(--foreground-dim)" }}>{pct}% · {votes.length}</span>}
             </div>
           </button>
         );
@@ -297,7 +308,7 @@ function PollCreator({ onSend, onClose }: { onSend: (p: PollData) => void; onClo
         </div>
         <button onClick={submit} disabled={!question.trim() || options.filter(o => o.trim()).length < 2}
           className="rounded-xl py-2.5 text-[13px] font-semibold transition-opacity"
-          style={{ background: "var(--accent)", color: "#0a0a09", opacity: !question.trim() ? 0.4 : 1 }}>
+          style={{ background: "var(--accent)", color: "white", opacity: !question.trim() ? 0.4 : 1 }}>
           Envoyer
         </button>
       </div>
@@ -385,7 +396,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
       style={{ paddingLeft: !isMe && !showAvatar ? 40 : 0 }}>
       {!isMe && <div style={{ width: 28, flexShrink: 0 }}>{showAvatar && <Avatar name={msg.sender_name} size={28} />}</div>}
 
-      <div style={{ maxWidth: "72%" }}
+      <div style={{ maxWidth: "72%", position: "relative" }}
         onDoubleClick={() => onReply(msg)}
         onContextMenu={e => { e.preventDefault(); onContextMenu(e, msg); }}
         onTouchStart={() => { touchTimer.current = setTimeout(() => onContextMenu({ touches: [{ clientX: 0, clientY: 200 }] } as any, msg), 500); }}
@@ -395,18 +406,31 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
           <p className="text-[10px] mb-1 ml-1 font-semibold" style={{ color: avatarColor(msg.sender_name) }}>{msg.sender_name}</p>
         )}
 
-        <div className="rounded-2xl text-[13px] leading-snug overflow-hidden relative"
-          style={{ background: isMe ? "var(--accent)" : "var(--background-elev)", color: isMe ? "#0a0a09" : "var(--foreground)", border: isMe ? "none" : "1px solid var(--border-soft)", borderBottomRightRadius: isMe ? 4 : undefined, borderBottomLeftRadius: !isMe ? 4 : undefined }}>
-
-          {/* Emoji shortcut on hover */}
-          <div className={`absolute top-1 ${isMe ? "left-1" : "right-1"} opacity-0 group-hover:opacity-100 transition-opacity z-10 relative`}>
+        {/* Emoji shortcut button — OUTSIDE overflow:hidden bubble */}
+        <div className={`absolute -top-3 ${isMe ? "left-1" : "right-1"} z-20 opacity-0 group-hover:opacity-100 transition-opacity`}
+          style={{ position: "absolute" }}>
+          <div style={{ position: "relative" }}>
             <button onClick={() => setShowEmoji(p => !p)}
               className="w-6 h-6 flex items-center justify-center rounded-full text-[11px]"
-              style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
               😊
             </button>
-            {showEmoji && <EmojiPicker onPick={e => { onReaction(msg.id, e); setShowEmoji(false); }} onClose={() => setShowEmoji(false)} />}
+            {showEmoji && <EmojiPicker
+              onPick={e => { onReaction(msg.id, e); setShowEmoji(false); }}
+              onClose={() => setShowEmoji(false)}
+              alignRight={isMe}
+            />}
           </div>
+        </div>
+
+        <div className="rounded-2xl text-[13px] leading-snug overflow-hidden"
+          style={{
+            background: isMe ? "var(--accent)" : "var(--background-elev)",
+            color: isMe ? "white" : "var(--foreground)",
+            border: isMe ? "none" : "1px solid var(--border-soft)",
+            borderBottomRightRadius: isMe ? 4 : undefined,
+            borderBottomLeftRadius: !isMe ? 4 : undefined,
+          }}>
 
           {msg.attachment_url && <AttachmentView url={msg.attachment_url} isMe={isMe} />}
           {(msg.reply_to_content || msg.content || msg.poll) && (
@@ -414,7 +438,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
               {msg.reply_to_content && <QuotedBubble content={msg.reply_to_content} sender={msg.reply_to_sender ?? "…"} isMe={isMe} />}
               {msg.poll
                 ? <PollBubble poll={msg.poll} myId={myId} isMe={isMe} onVote={id => onVote(msg.id, id)} />
-                : <>{msg.content}{msg.edited_at && <span className="text-[9px] ml-1 opacity-60">(modifié)</span>}</>}
+                : <span style={{ color: isMe ? "white" : "var(--foreground)" }}>{msg.content}{msg.edited_at && <span className="text-[9px] ml-1 opacity-60">(modifié)</span>}</span>}
             </div>
           )}
         </div>
@@ -424,7 +448,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
         <ReactionBar reactions={msg.reactions} myId={myId} onToggle={e => onReaction(msg.id, e)} />
 
         <div className={`flex items-center gap-1 mt-0.5 ${isMe ? "justify-end mr-1" : "ml-1"}`}>
-          <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{fmtMsgTime(msg.created_at)}</span>
+          <span suppressHydrationWarning className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{fmtMsgTime(msg.created_at)}</span>
           <Receipt msg={msg} myId={myId} memberCount={memberCount} />
         </div>
       </div>
@@ -506,6 +530,10 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     }
   }, [supabase, estId, myId, conv.id]);
 
+  // Keep a ref to fetchMessages so the subscription closure doesn't go stale
+  const fetchMessagesRef = useRef(fetchMessages);
+  useEffect(() => { fetchMessagesRef.current = fetchMessages; }, [fetchMessages]);
+
   const isNearBottom = useCallback(() => {
     const el = scrollRef.current;
     return !el || el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -514,15 +542,22 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, []);
 
-  useEffect(() => { fetchMessages().then(() => scrollToBottom(false)); }, [conv.id]);
+  // Load messages when conversation changes
+  useEffect(() => {
+    fetchMessages().then(() => scrollToBottom(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conv.id]);
 
+  // Realtime subscription — only recreated when the conversation changes
   useEffect(() => {
     const channel = supabase.channel(`chat-${estId}-${conv.id ?? "general"}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
         const near = isNearBottom();
-        fetchMessages().then(() => { if (near) scrollToBottom(); });
+        fetchMessagesRef.current().then(() => { if (near) scrollToBottom(); });
       })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => fetchMessages())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => {
+        fetchMessagesRef.current();
+      })
       .on("broadcast", { event: "typing" }, (payload: any) => {
         if (payload.payload?.user_id === myId) return;
         setTyping(true);
@@ -532,7 +567,8 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
       .subscribe();
     channelRef.current = channel;
     return () => { supabase.removeChannel(channel); };
-  }, [fetchMessages, supabase, estId, conv.id, myId, isNearBottom, scrollToBottom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estId, conv.id, myId]);
 
   useEffect(() => { if (typing) scrollToBottom(); }, [typing, scrollToBottom]);
 
@@ -570,7 +606,6 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     setReplyTo(null);
     await supabase.from("messages").insert(payload);
 
-    // Push notification to recipient(s)
     const senderName = (await supabase.from("profiles").select("first_name,last_name").eq("id", myId).maybeSingle()).data;
     const senderDisplay = senderName ? `${senderName.first_name ?? ""} ${senderName.last_name ?? ""}`.trim() : "Nouveau message";
     const notifBody = pollData ? `📊 ${pollData.question}` : attachment_url ? "📎 Fichier" : content;
@@ -645,7 +680,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
         style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background)" }}>
@@ -719,7 +754,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
         <div ref={bottomRef} />
       </div>
 
-      {/* Scroll button */}
+      {/* Scroll to bottom button */}
       {showScrollBtn && (
         <button onClick={() => scrollToBottom()} className="absolute right-4 w-9 h-9 rounded-full shadow-lg flex items-center justify-center"
           style={{ bottom: replyTo || uploadPreview ? 120 : 72, background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -753,8 +788,9 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
         </div>
       )}
 
-      {/* Input */}
-      <div className="flex items-end gap-2 px-4 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)" }}>
+      {/* Input bar */}
+      <div className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
+        style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)", paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
         <input ref={fileRef} type="file" accept="image/*,application/pdf,video/mp4" className="hidden" onChange={onFileChange} />
         <button onClick={() => fileRef.current?.click()} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
           <Paperclip size={15} style={{ color: "var(--foreground-dim)" }} />
@@ -769,7 +805,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
         <button onClick={() => send()} disabled={(!text.trim() && !uploadPreview) || sending}
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-opacity"
           style={{ background: "var(--accent)", opacity: (!text.trim() && !uploadPreview) ? 0.4 : 1 }}>
-          <Send size={15} style={{ color: "#0a0a09" }} />
+          <Send size={15} style={{ color: "white" }} />
         </button>
       </div>
     </div>
@@ -803,12 +839,12 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{conv.name}</p>
-                  {conv.last_at && <span className="text-[10px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{fmtTime(conv.last_at)}</span>}
+                  {conv.last_at && <span suppressHydrationWarning className="text-[10px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{fmtTime(conv.last_at)}</span>}
                 </div>
                 <p className="text-[11px] truncate mt-0.5" style={{ color: "var(--foreground-dim)" }}>{conv.last_message || "Aucun message"}</p>
               </div>
               {conv.unread > 0 && (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: "var(--accent)", color: "#0a0a09" }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: "var(--accent)", color: "white" }}>
                   {conv.unread > 9 ? "9+" : conv.unread}
                 </div>
               )}
@@ -822,7 +858,10 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
 
 /* ── Main ────────────────────────────────────────────────────────────────────── */
 export default function ChatPage() {
-  const supabase = createClient();
+  // Stable supabase instance — createClient() would change every render otherwise
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
+
   const [myId, setMyId] = useState("");
   const [estId, setEstId] = useState("");
   const [isManager, setIsManager] = useState(false);
@@ -872,25 +911,31 @@ export default function ChatPage() {
   }, [supabase]);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setMyId(user.id);
-      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
-      const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
-      let q = supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", user.id).eq("is_active", true);
-      if (validActiveId) q = q.eq("establishment_id", validActiveId);
-      const { data: member } = await q.limit(1).maybeSingle();
-      if (!member) { setLoading(false); return; }
-      const eid = member.establishment_id;
-      const manager = member.role === "owner" || member.role === "manager";
-      setEstId(eid);
-      setIsManager(manager);
-      await loadConvs(user.id, eid, manager);
-      setLoading(false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        setMyId(user.id);
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
+        const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
+        let q = supabase.from("establishment_members").select("establishment_id, role").eq("profile_id", user.id).eq("is_active", true);
+        if (validActiveId) q = q.eq("establishment_id", validActiveId);
+        const { data: member } = await q.limit(1).maybeSingle();
+        if (!member || cancelled) return;
+        const eid = member.establishment_id;
+        const manager = member.role === "owner" || member.role === "manager";
+        setEstId(eid);
+        setIsManager(manager);
+        await loadConvs(user.id, eid, manager);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-  }, [supabase, loadConvs]);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Realtime conv list refresh
   useEffect(() => {
@@ -900,7 +945,8 @@ export default function ChatPage() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => loadConvs(myId, estId, isManager))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [estId, myId, isManager, loadConvs, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estId, myId, isManager]);
 
   // Presence (online status)
   useEffect(() => {
@@ -915,7 +961,8 @@ export default function ChatPage() {
         if (status === "SUBSCRIBED") await ch.track({ user_id: myId });
       });
     return () => { supabase.removeChannel(ch); };
-  }, [estId, myId, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estId, myId]);
 
   function selectConv(conv: Conv) {
     setSelected(conv);
@@ -925,18 +972,19 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+        <div className="w-8 h-8 rounded-full border-2 animate-spin"
+          style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100dvh-64px)] lg:h-[calc(100dvh-0px)] flex overflow-hidden">
+    <div className="flex overflow-hidden" style={{ height: "calc(100dvh - 60px)" }}>
       <div className={`flex-shrink-0 ${selected ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-80 xl:w-96`}
         style={{ borderRight: "1px solid var(--border-soft)" }}>
         <ConvList convs={convs} selected={selected} onSelect={selectConv} onlineUsers={onlineUsers} />
       </div>
-      <div className={`flex-1 flex flex-col ${selected ? "flex" : "hidden lg:flex"}`}>
+      <div className={`flex-1 flex flex-col ${selected ? "flex" : "hidden lg:flex"} overflow-hidden`}>
         {selected
           ? <Thread conv={selected} myId={myId} estId={estId} supabase={supabase} onBack={() => setSelected(null)}
               memberCount={memberCount} isManager={isManager} onlineUsers={onlineUsers} />
