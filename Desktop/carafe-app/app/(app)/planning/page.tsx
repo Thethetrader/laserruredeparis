@@ -216,6 +216,30 @@ interface ExportShift {
   hourly_rate: number;
 }
 
+function svcColorExport(name: string): { bg: string; text: string; border: string } {
+  const palettes = [
+    { bg: "#EDE9FE", text: "#6D28D9", border: "#C4B5FD" },
+    { bg: "#D1FAE5", text: "#065F46", border: "#6EE7B7" },
+    { bg: "#FCE7F3", text: "#9D174D", border: "#F9A8D4" },
+    { bg: "#FEF3C7", text: "#92400E", border: "#FCD34D" },
+    { bg: "#FED7AA", text: "#C2410C", border: "#FDBA74" },
+    { bg: "#DBEAFE", text: "#1E40AF", border: "#93C5FD" },
+    { bg: "#F0FDF4", text: "#166534", border: "#86EFAC" },
+    { bg: "#FFF7ED", text: "#9A3412", border: "#FDBA74" },
+  ];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return palettes[h % palettes.length];
+}
+
+function getMondayOfDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split("T")[0];
+}
+
 function buildExportHTML(
   estName: string,
   fromStr: string,
@@ -225,138 +249,142 @@ function buildExportHTML(
 ): string {
   const empMap = new Map(employees.map(e => [e.id, e]));
 
-  const byEmployee: Map<string, ExportShift[]> = new Map();
-  for (const s of shifts) {
-    if (!byEmployee.has(s.user_id)) byEmployee.set(s.user_id, []);
-    byEmployee.get(s.user_id)!.push(s);
-  }
+  // collect all employee IDs that have shifts, preserve order from employees prop
+  const empIds = employees.filter(e => shifts.some(s => s.user_id === e.id)).map(e => e.id);
 
-  const sortedEmps = [...byEmployee.entries()].sort(([, a], [, b]) =>
-    (a[0]?.first_name ?? "").localeCompare(b[0]?.first_name ?? "")
-  );
+  // group shifts by week (monday)
+  const weekMap = new Map<string, ExportShift[]>();
+  for (const s of shifts) {
+    const mon = getMondayOfDate(s.shift_date);
+    if (!weekMap.has(mon)) weekMap.set(mon, []);
+    weekMap.get(mon)!.push(s);
+  }
+  const sortedWeeks = [...weekMap.keys()].sort();
 
   const periodLabel = `${fmtDateFull(fromStr)} — ${fmtDateFull(toStr)}`;
   const generatedAt = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-  let totalAllHours = 0;
+  const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
-  const empSections = sortedEmps.map(([userId, empShifts]) => {
-    const emp = empMap.get(userId);
-    const name = empShifts[0]?.first_name ?? emp?.name ?? "Employé";
-    const status = emp?.status ?? "";
-    const hourlyRate = emp?.hourly_rate ?? 0;
-    const sorted = [...empShifts].sort((a, b) => a.shift_date.localeCompare(b.shift_date));
+  const weekGrids = sortedWeeks.map(monStr => {
+    const weekShifts = weekMap.get(monStr)!;
+    const mon = new Date(monStr + "T12:00:00");
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon);
+      d.setDate(d.getDate() + i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    const weekLabel = `${mon.getDate()} ${FR_MONTHS_FULL[mon.getMonth()]} — ${sun.getDate()} ${FR_MONTHS_FULL[sun.getMonth()]} ${sun.getFullYear()}`;
 
-    let totalH = 0;
-    const rows = sorted.map(s => {
-      const h = calcHours(s.start_time, s.end_time);
-      totalH += h;
-      const cost = h * hourlyRate;
-      return `
-        <tr>
-          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px">${fmtDateShort(s.shift_date)}</td>
-          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#6b6b67; font-size:13px">${s.service}</td>
-          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px; font-family:monospace">${fmtTime(s.start_time)} → ${fmtTime(s.end_time)}</td>
-          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#1a1a18; font-size:13px; text-align:right; font-family:monospace; font-weight:600">${h.toFixed(2)}h</td>
-          <td style="padding:10px 14px; border-bottom:1px solid #f0f0ee; color:#6b6b67; font-size:12px; text-align:right; font-family:monospace">${cost.toFixed(0)} €</td>
-        </tr>`;
+    const empColW = 90;
+    const dayColW = `${Math.floor((100 - 12) / 7)}%`;
+
+    const headerCells = days.map((ds, i) => {
+      const d = new Date(ds + "T12:00:00");
+      return `<th style="padding:8px 4px; text-align:center; font-size:10px; font-weight:600; color:#6b6b67; border-left:1px solid #e8e8e4; width:${dayColW}">
+        <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.06em; color:#9b9b97">${DAY_LABELS[i]}</div>
+        <div style="font-size:14px; font-weight:700; color:#1a1a18; margin-top:1px">${d.getDate()}</div>
+      </th>`;
     }).join("");
 
-    totalAllHours += totalH;
-    const totalCost = totalH * hourlyRate;
-    const statusLabel = status.replace(/_/g, " ");
-    const color = STAFF_STATUSES[status as StaffStatus]?.color ?? "#6b6b67";
+    const empRows = empIds.map((uid, rowIdx) => {
+      const emp = empMap.get(uid);
+      const name = emp?.name ?? "—";
+      const weekH = days.reduce((sum, ds) => {
+        const s = weekShifts.filter(s => s.user_id === uid && s.shift_date === ds);
+        return sum + s.reduce((a, sh) => a + calcHours(sh.start_time, sh.end_time), 0);
+      }, 0);
+      const color = STAFF_STATUSES[emp?.status as StaffStatus]?.color ?? "#a1a1aa";
+      const bg = rowIdx % 2 === 0 ? "#ffffff" : "#fafaf7";
+
+      const dayCells = days.map(ds => {
+        const dayShifts = weekShifts.filter(s => s.user_id === uid && s.shift_date === ds);
+        const cellContent = dayShifts.map(sh => {
+          const c = svcColorExport(sh.service ?? "");
+          return `<div style="background:${c.bg}; border:1px solid ${c.border}; border-radius:5px; padding:3px 5px; margin-bottom:2px">
+            <div style="font-size:9px; font-weight:700; color:${c.text}; line-height:1.2">${sh.service}</div>
+            <div style="font-size:8px; color:${c.text}; opacity:0.8; font-family:monospace">${fmtTime(sh.start_time)}–${fmtTime(sh.end_time)}</div>
+          </div>`;
+        }).join("");
+        return `<td style="padding:4px; border-left:1px solid #e8e8e4; border-top:1px solid #e8e8e4; vertical-align:top; background:${bg}">${cellContent}</td>`;
+      }).join("");
+
+      return `<tr>
+        <td style="padding:8px 10px; border-top:1px solid #e8e8e4; vertical-align:middle; background:${bg}">
+          <div style="display:flex; align-items:center; gap:6px">
+            <div style="width:8px; height:8px; border-radius:50%; background:${color}; flex-shrink:0"></div>
+            <div>
+              <div style="font-size:11px; font-weight:700; color:#1a1a18; line-height:1.2">${name}</div>
+              ${weekH > 0 ? `<div style="font-size:9px; color:#9b9b97; font-family:monospace">${weekH.toFixed(1)}h</div>` : ""}
+            </div>
+          </div>
+        </td>
+        ${dayCells}
+      </tr>`;
+    }).join("");
 
     return `
-      <div style="margin-bottom:32px; break-inside:avoid">
-        <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px 10px 0 0">
-          <div style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0"></div>
-          <div>
-            <div style="font-size:15px; font-weight:700; color:#1a1a18">${name}</div>
-            <div style="font-size:11px; color:#9b9b97; text-transform:uppercase; letter-spacing:0.05em">${statusLabel} · ${hourlyRate.toFixed(2)} €/h</div>
-          </div>
-        </div>
-        <table style="width:100%; border-collapse:collapse; border:1px solid #e8e8e4; border-top:none; border-radius:0 0 10px 10px; overflow:hidden">
+      <div style="margin-bottom:32px; break-inside:avoid; page-break-inside:avoid">
+        <div style="font-size:11px; font-weight:700; color:#6b6b67; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px">${weekLabel}</div>
+        <table style="width:100%; border-collapse:collapse; border:1px solid #e8e8e4; border-radius:8px; overflow:hidden">
           <thead>
             <tr style="background:#f4f4f0">
-              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Date</th>
-              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Service</th>
-              <th style="padding:8px 14px; text-align:left; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Horaires</th>
-              <th style="padding:8px 14px; text-align:right; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Heures</th>
-              <th style="padding:8px 14px; text-align:right; font-size:10px; color:#9b9b97; font-weight:600; text-transform:uppercase; letter-spacing:0.08em">Coût</th>
+              <th style="padding:8px 10px; text-align:left; font-size:10px; font-weight:600; color:#9b9b97; width:${empColW}px">Équipe</th>
+              ${headerCells}
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
-          <tfoot>
-            <tr style="background:#f4f4f0">
-              <td colspan="3" style="padding:10px 14px; font-size:12px; font-weight:700; color:#1a1a18; text-transform:uppercase; letter-spacing:0.06em">Total</td>
-              <td style="padding:10px 14px; text-align:right; font-family:monospace; font-size:14px; font-weight:800; color:#1a1a18">${totalH.toFixed(2)}h</td>
-              <td style="padding:10px 14px; text-align:right; font-family:monospace; font-size:13px; font-weight:700; color:#1a1a18">${totalCost.toFixed(0)} €</td>
-            </tr>
-          </tfoot>
+          <tbody>${empRows}</tbody>
         </table>
       </div>`;
   }).join("");
+
+  const totalHours = shifts.reduce((s, sh) => s + calcHours(sh.start_time, sh.end_time), 0);
 
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Planning ${estName} — ${periodLabel}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #1a1a18; }
     @media print {
-      @page { margin: 20mm 18mm; size: A4; }
-      body { font-size: 12px; }
+      @page { margin: 12mm 10mm; size: A4 landscape; }
       .no-print { display: none !important; }
     }
   </style>
 </head>
 <body>
-  <div style="max-width:800px; margin:0 auto; padding:40px 24px">
+  <div style="max-width:1000px; margin:0 auto; padding:32px 24px">
 
-    <!-- Header -->
-    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:40px; padding-bottom:24px; border-bottom:2px solid #1a1a18">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; padding-bottom:20px; border-bottom:2px solid #1a1a18">
       <div>
-        <div style="font-size:11px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:6px">Planning du personnel</div>
-        <div style="font-size:28px; font-weight:800; color:#1a1a18; line-height:1.1">${estName || "Établissement"}</div>
-        <div style="font-size:13px; color:#6b6b67; margin-top:8px">${periodLabel}</div>
+        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:4px">Planning du personnel</div>
+        <div style="font-size:24px; font-weight:800; color:#1a1a18">${estName || "Établissement"}</div>
+        <div style="font-size:12px; color:#6b6b67; margin-top:4px">${periodLabel}</div>
       </div>
-      <img src="https://karaf.fr/FONDCLAIRLOGO.png" alt="Karaf" style="width:56px; height:56px; object-fit:contain; mix-blend-mode:multiply; opacity:0.85" />
-    </div>
-
-    <!-- Summary banner -->
-    <div style="display:flex; gap:16px; margin-bottom:36px">
-      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
-        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Employés</div>
-        <div style="font-size:24px; font-weight:800; color:#1a1a18">${byEmployee.size}</div>
-      </div>
-      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
-        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Total shifts</div>
-        <div style="font-size:24px; font-weight:800; color:#1a1a18">${shifts.length}</div>
-      </div>
-      <div style="flex:1; background:#fafaf7; border:1px solid #e8e8e4; border-radius:10px; padding:16px 20px">
-        <div style="font-size:10px; font-weight:600; color:#9b9b97; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px">Heures totales</div>
-        <div style="font-size:24px; font-weight:800; color:#1a1a18">${totalAllHours.toFixed(1)}h</div>
+      <div style="display:flex; align-items:center; gap:20px">
+        <div style="text-align:right">
+          <div style="font-size:10px; color:#9b9b97; text-transform:uppercase; letter-spacing:0.06em">Total</div>
+          <div style="font-size:20px; font-weight:800; color:#1a1a18">${totalHours.toFixed(1)}h</div>
+        </div>
+        <img src="https://karaf.fr/FONDCLAIRLOGO.png" alt="Karaf" style="width:44px; height:44px; object-fit:contain; mix-blend-mode:multiply; opacity:0.8" />
       </div>
     </div>
 
-    <!-- Print button -->
-    <div class="no-print" style="margin-bottom:28px; display:flex; gap:10px">
-      <button onclick="window.print()" style="padding:10px 22px; background:#1a1a18; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer">
+    <div class="no-print" style="margin-bottom:20px">
+      <button onclick="window.print()" style="padding:9px 20px; background:#1a1a18; color:#fff; border:none; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer">
         Imprimer / Enregistrer en PDF
       </button>
     </div>
 
-    <!-- Employee sections -->
-    ${empSections}
+    ${weekGrids}
 
-    <!-- Footer -->
-    <div style="margin-top:48px; padding-top:16px; border-top:1px solid #e8e8e4; display:flex; justify-content:space-between; align-items:center">
-      <div style="font-size:11px; color:#b0b0aa">Généré le ${generatedAt} via Karaf</div>
-      <div style="font-size:11px; color:#b0b0aa">karaf.fr</div>
+    <div style="margin-top:32px; padding-top:12px; border-top:1px solid #e8e8e4; display:flex; justify-content:space-between">
+      <div style="font-size:10px; color:#b0b0aa">Généré le ${generatedAt} via Karaf</div>
+      <div style="font-size:10px; color:#b0b0aa">karaf.fr</div>
     </div>
   </div>
 </body>
