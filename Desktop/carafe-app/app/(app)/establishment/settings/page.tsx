@@ -189,10 +189,11 @@ export default function EstablishmentSettingsPage() {
           <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode de planning</p>
           <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez comment vous créez le planning de l&apos;équipe</p>
         </div>
-        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
+        <div className="p-4 flex flex-col gap-3" style={{ background: "var(--background-elev)" }}>
           {([
             { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
             { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
+            { value: "none" as PlanningMode, label: "Pas de planning", desc: "Désactivez la gestion du planning — aucun shift, aucune vue équipe" },
           ]).map(opt => (
             <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
               className="p-3 rounded-xl text-left transition-all"

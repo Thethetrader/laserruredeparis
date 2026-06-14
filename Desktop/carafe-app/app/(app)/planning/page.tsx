@@ -1142,6 +1142,20 @@ export default function PlanningPage() {
 
   /* ══ OWNER / MANAGER VIEW ═══════════════════════════════════════════════════ */
 
+  if (planningMode === "none") {
+    return (
+      <div className="max-w-2xl px-4 py-6 pb-24 lg:pb-8">
+        <h1 className="text-[22px] font-semibold mb-2" style={{ color: "var(--foreground)" }}>Planning</h1>
+        <div className="rounded-xl p-6 text-center" style={{ border: "1px solid var(--border)", background: "var(--background-elev)" }}>
+          <p className="text-[14px] font-medium mb-1" style={{ color: "var(--foreground)" }}>Gestion du planning désactivée</p>
+          <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
+            Activez le planning IA ou manuel dans les réglages de l&apos;établissement pour commencer.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const anyValidated = Object.values(dailyConfig).some(d => d.validated);
   const hasGenerated = planningShifts.length > 0;
 
