@@ -401,6 +401,7 @@ export default function ShiftsPage() {
   const [staffStatus, setStaffStatus] = useState<StaffStatus | null>(null);
   const [estId, setEstId]         = useState("");
   const [userId, setUserId]       = useState("");
+  const [myPlanningShifts, setMyPlanningShifts] = useState<{id:string;shift_date:string;service:string;confirmation_status:"pending"|"confirmed"|"modified"}[]>([]);
   const [estName, setEstName]     = useState("");
   const [firstName, setFirstName] = useState("");
   const [greeting, setGreeting]   = useState("Bonjour");
@@ -460,11 +461,15 @@ export default function ShiftsPage() {
     const pl   = new Date(pd.getFullYear(), pd.getMonth()+1, 0).getDate();
     const pt   = `${pd.getFullYear()}-${String(pd.getMonth()+1).padStart(2,"0")}-${pl}`;
 
-    const [cur, prev, ytd, prof2] = await Promise.all([
+    const resolvedEid = member?.establishment_id ?? validActiveId ?? "";
+    const [cur, prev, ytd, prof2, planningRes] = await Promise.all([
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",from).lte("shift_date",to).order("shift_date"),
       supabase.from("shifts").select("*").eq("user_id",user.id).gte("shift_date",pf).lte("shift_date",pt),
       supabase.from("shifts").select("tips,tips_2").eq("user_id",user.id).gte("shift_date",`${y}-01-01`).lte("shift_date",to),
       supabase.from("profiles").select("contract_type,weekly_hours,weekly_rest_days,schedule_template").eq("id",user.id).single(),
+      resolvedEid
+        ? supabase.from("planning_shifts").select("id,shift_date,service,confirmation_status,planning_weeks!inner(status)").eq("user_id",user.id).eq("establishment_id",resolvedEid).eq("planning_weeks.status","published").gte("shift_date",from).lte("shift_date",to)
+        : Promise.resolve({ data: [] }),
     ]);
 
     const curShifts = (cur.data ?? []) as Shift[];
@@ -472,6 +477,7 @@ export default function ShiftsPage() {
     setPrev((prev.data ?? []) as Shift[]);
     setYtd(((ytd.data ?? []) as {tips:number;tips_2:number}[]).reduce((s,r) => s+(r.tips??0)+(r.tips_2??0), 0));
     if (prof2.data) setProfile(prof2.data as ShiftProfile);
+    setMyPlanningShifts((planningRes.data ?? []) as {id:string;shift_date:string;service:string;confirmation_status:"pending"|"confirmed"|"modified"}[]);
     setLoading(false);
   }, [supabase]);
 
@@ -507,6 +513,7 @@ export default function ShiftsPage() {
 
 const days     = getDaysInMonth(year, month);
   const shiftMap = shiftsToMap(shifts);
+  const planningMap = new Map(myPlanningShifts.map(s => [s.shift_date, s]));
   const todayStr = toDateStr(today);
   const tHours   = calcTotalHours(shifts);
   const tTips    = calcTotalTips(shifts);
@@ -556,13 +563,24 @@ const days     = getDaysInMonth(year, month);
                   if (!day) return <div key={`e-${i}`} style={{ minHeight: 72, borderRadius: 8 }} />;
                   const dateStr  = toDateStr(day);
                   const shift    = shiftMap.get(dateStr);
+                  const planShift = !shift ? planningMap.get(dateStr) : undefined;
                   const isToday  = dateStr === todayStr;
                   const totalTips = shift ? (shift.tips ?? 0) + (shift.tips_2 ?? 0) : 0;
                   const hasCoupure = shift && shift.start_time_2;
+                  const planDotColor = planShift
+                    ? planShift.confirmation_status === "modified" ? "#EF4444"
+                    : planShift.confirmation_status === "confirmed" ? "#10B981"
+                    : "#F97316"
+                    : null;
+                  const cellBg = shift ? "rgba(6,182,212,0.04)"
+                    : planShift?.confirmation_status === "modified" ? "rgba(239,68,68,0.05)"
+                    : planShift?.confirmation_status === "confirmed" ? "rgba(16,185,129,0.04)"
+                    : planShift ? "rgba(249,115,22,0.05)"
+                    : "var(--background-elev)";
                   return (
                     <button key={dateStr} onClick={() => setSelected(dateStr)}
                       className="relative flex flex-col items-start justify-start overflow-hidden lg:min-h-[96px]"
-                      style={{ minHeight: 72, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: shift ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
+                      style={{ minHeight: 72, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: cellBg, cursor: "pointer" }}>
                       <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                         style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                         {day.getDate()}
@@ -578,6 +596,11 @@ const days     = getDaysInMonth(year, month);
                           </div>
                         );
                       })()}
+                      {planShift && planDotColor && (
+                        <div className="w-full flex justify-center mt-0.5">
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: planDotColor }} />
+                        </div>
+                      )}
                       {totalTips > 0 && (
                         <span className="absolute bottom-1 right-1 text-[7px] lg:text-[10px] font-mono font-bold" style={{ color: "#F59E0B" }}>
                           {formatTips(totalTips)}
