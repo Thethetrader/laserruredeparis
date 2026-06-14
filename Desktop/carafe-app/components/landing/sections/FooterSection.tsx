@@ -25,9 +25,9 @@ export default function FooterSection() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/FONDCLAIRLOGO.png"
+                src="/logo.png"
                 alt="Karaf"
-                style={{ height: 44, width: "auto", mixBlendMode: "multiply", filter: "brightness(1.4)" }}
+                style={{ height: 44, width: "auto", filter: "brightness(1.4)" }}
               />
             </div>
             <p className="font-mono text-[11px] mb-1" style={{ color: "var(--foreground-dim)" }}>Tout coule. Rien ne se perd.</p>

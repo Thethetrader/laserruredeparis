@@ -101,7 +101,7 @@ export default function InvitePage() {
         {/* Logo */}
         <div className="flex justify-center mb-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 52, width: "auto", mixBlendMode: "multiply" }} />
+          <img src="/logo.png" alt="Karaf" style={{ height: 52, width: "auto" }} />
         </div>
 
         {accepted ? (

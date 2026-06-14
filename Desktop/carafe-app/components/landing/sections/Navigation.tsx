@@ -16,9 +16,9 @@ function KarafLogo() {
     <a href="#" className="flex items-center focus:outline-none" style={{ flexShrink: 0 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/FONDCLAIRLOGO.png"
+        src="/logo.png"
         alt="Karaf"
-        style={{ height: 52, width: "auto", mixBlendMode: "multiply", filter: "brightness(1.4)" }}
+        style={{ height: 52, width: "auto", filter: "brightness(1.4)" }}
       />
     </a>
   );
