@@ -193,7 +193,7 @@ export default function EstablishmentSettingsPage() {
           {([
             { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
             { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
-            { value: "none" as PlanningMode, label: "Pas de planning", desc: "Désactivez la gestion du planning — aucun shift, aucune vue équipe" },
+            { value: "none" as PlanningMode, label: "Pas de planning", desc: "Désactivez la gestion du planning. Aucun shift, aucune vue équipe" },
           ]).map(opt => (
             <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
               className="p-3 rounded-xl text-left transition-all"
