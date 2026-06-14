@@ -979,7 +979,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex overflow-hidden" style={{ height: "calc(100dvh - 60px)" }}>
+    <div className="chat-fullscreen">
       <div className={`flex-shrink-0 ${selected ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-80 xl:w-96`}
         style={{ borderRight: "1px solid var(--border-soft)" }}>
         <ConvList convs={convs} selected={selected} onSelect={selectConv} onlineUsers={onlineUsers} />
