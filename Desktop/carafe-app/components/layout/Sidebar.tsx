@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles, Zap, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, MessageCircle, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles, Zap, type LucideIcon } from "lucide-react";
 
 type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
@@ -18,6 +18,7 @@ const managerNav: NavItem[] = [
   { href: "/planning",           icon: Sparkles,        label: "Planning IA" },
   { href: "/shifts/team",        icon: CalendarDays,    label: "Shifts Staff" },
   { href: "/shifts",             icon: CalendarRange,   label: "Mes shifts", exact: true },
+  { href: "/chat",               icon: MessageCircle,   label: "Chat équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/schedule",           icon: CalendarCheck2,  label: "RDV" },
@@ -29,6 +30,7 @@ const employeeNav: NavItem[] = [
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/me/tasks",           icon: ClipboardList,   label: "Tâches" },
   { href: "/shifts",             icon: CalendarRange,   label: "Mes shifts", exact: true },
+  { href: "/chat",               icon: MessageCircle,   label: "Chat équipe" },
   { href: "/delays",             icon: Clock,           label: "Retards" },
   { href: "/challenges",         icon: Trophy,          label: "Challenges" },
   { href: "/scoring",            icon: Zap,             label: "Mon Score" },
