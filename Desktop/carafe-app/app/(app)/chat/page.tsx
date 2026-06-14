@@ -569,6 +569,25 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     if (pollData) payload.poll = pollData;
     setReplyTo(null);
     await supabase.from("messages").insert(payload);
+
+    // Push notification to recipient(s)
+    const senderName = (await supabase.from("profiles").select("first_name,last_name").eq("id", myId).maybeSingle()).data;
+    const senderDisplay = senderName ? `${senderName.first_name ?? ""} ${senderName.last_name ?? ""}`.trim() : "Nouveau message";
+    const notifBody = pollData ? `📊 ${pollData.question}` : attachment_url ? "📎 Fichier" : content;
+    const notifPayload: Record<string, string | undefined> = {
+      establishmentId: estId,
+      title: conv.id === null ? `${senderDisplay} — Général` : senderDisplay,
+      body: notifBody,
+      url: "/chat",
+    };
+    if (conv.id !== null) notifPayload.targetProfileId = conv.id;
+    (notifPayload as any).senderProfileId = myId;
+    fetch("/api/push/send-to-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notifPayload),
+    }).catch(() => {});
+
     setSending(false);
     inputRef.current?.focus();
     scrollToBottom();
