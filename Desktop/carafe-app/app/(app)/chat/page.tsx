@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import {
   ChevronLeft, Send, Users, MessageCircle, Check, CheckCheck,
-  CornerDownLeft, X, ChevronDown,
+  CornerDownLeft, X, ChevronDown, Paperclip, FileText, ImageOff,
 } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
@@ -19,6 +19,7 @@ interface Msg {
   reply_to_content?: string;
   reply_to_sender?: string;
   read_by: string[];
+  attachment_url: string | null;
 }
 
 interface Conv {
@@ -145,6 +146,44 @@ function DateSep({ label }: { label: string }) {
   );
 }
 
+/* ── Attachment display ─────────────────────────────────────────────────────── */
+function AttachmentView({ url, isMe }: { url: string; isMe: boolean }) {
+  const isImage = /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
+  const isPdf = /\.pdf(\?|$)/i.test(url);
+  const filename = decodeURIComponent(url.split("/").pop()?.split("?")[0] ?? "fichier");
+
+  if (isImage) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Photo"
+          className="w-full object-cover"
+          style={{ maxHeight: 240, display: "block" }}
+          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-3 py-2.5"
+      style={{ color: isMe ? "#0a0a09" : "var(--foreground)", textDecoration: "none" }}
+    >
+      {isPdf
+        ? <FileText size={18} style={{ flexShrink: 0, opacity: 0.7 }} />
+        : <Paperclip size={18} style={{ flexShrink: 0, opacity: 0.7 }} />
+      }
+      <span className="text-[12px] underline truncate">{filename}</span>
+    </a>
+  );
+}
+
 /* ── Message bubble ─────────────────────────────────────────────────────────── */
 function Bubble({
   msg, isMe, showAvatar, showName, memberCount, myId, onReply,
@@ -179,7 +218,7 @@ function Bubble({
         )}
 
         <div
-          className="px-3 py-2 rounded-2xl text-[13px] leading-snug"
+          className="rounded-2xl text-[13px] leading-snug overflow-hidden"
           style={{
             background: isMe ? "var(--accent)" : "var(--background-elev)",
             color: isMe ? "#0a0a09" : "var(--foreground)",
@@ -188,14 +227,19 @@ function Bubble({
             borderBottomLeftRadius: !isMe ? 4 : undefined,
           }}
         >
-          {msg.reply_to_content && (
-            <QuotedBubble
-              content={msg.reply_to_content}
-              sender={msg.reply_to_sender ?? "…"}
-              isMe={isMe}
-            />
+          {msg.attachment_url && <AttachmentView url={msg.attachment_url} isMe={isMe} />}
+          {(msg.reply_to_content || msg.content) && (
+            <div className="px-3 py-2">
+              {msg.reply_to_content && (
+                <QuotedBubble
+                  content={msg.reply_to_content}
+                  sender={msg.reply_to_sender ?? "…"}
+                  isMe={isMe}
+                />
+              )}
+              {msg.content}
+            </div>
           )}
-          {msg.content}
         </div>
 
         <div className={`flex items-center gap-1 mt-0.5 ${isMe ? "justify-end mr-1" : "ml-1"}`}>
@@ -241,9 +285,11 @@ function Thread({
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [typing, setTyping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState<{ file: File; previewUrl: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -264,7 +310,7 @@ function Thread({
 
     let q = supabase
       .from("messages")
-      .select("id,sender_id,content,created_at,reply_to_id,read_by")
+      .select("id,sender_id,content,created_at,reply_to_id,read_by,attachment_url")
       .eq("establishment_id", estId)
       .order("created_at");
 
@@ -281,6 +327,7 @@ function Thread({
       ...m,
       sender_name: map[m.sender_id] ?? "…",
       read_by: m.read_by ?? [],
+      attachment_url: m.attachment_url ?? null,
     }));
 
     // Resolve reply_to content
@@ -369,16 +416,32 @@ function Thread({
 
   async function send() {
     const content = text.trim();
-    if (!content || sending) return;
+    if ((!content && !uploadPreview) || sending) return;
     setSending(true);
     setText("");
     if (inputRef.current) { inputRef.current.style.height = "auto"; }
+
+    let attachment_url: string | null = null;
+    if (uploadPreview) {
+      const file = uploadPreview.file;
+      const ext = file.name.split(".").pop();
+      const path = `${estId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data: upData } = await supabase.storage.from("chat-media").upload(path, file, { upsert: false });
+      if (upData) {
+        const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+        attachment_url = urlData.publicUrl;
+      }
+      URL.revokeObjectURL(uploadPreview.previewUrl);
+      setUploadPreview(null);
+    }
+
     const payload: any = {
       establishment_id: estId,
       sender_id: myId,
       recipient_id: conv.id ?? null,
       content,
       read_by: [myId],
+      attachment_url,
     };
     if (replyTo) payload.reply_to_id = replyTo.id;
     setReplyTo(null);
@@ -386,6 +449,14 @@ function Thread({
     setSending(false);
     inputRef.current?.focus();
     scrollToBottom();
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setUploadPreview({ file, previewUrl });
+    e.target.value = "";
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -479,11 +550,44 @@ function Thread({
       {/* Reply preview */}
       {replyTo && <ReplyPreview msg={replyTo} onCancel={() => setReplyTo(null)} />}
 
+      {/* File preview */}
+      {uploadPreview && (
+        <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0"
+          style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
+          {uploadPreview.file.type.startsWith("image/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={uploadPreview.previewUrl} alt="preview" className="w-14 h-14 object-cover rounded-lg" />
+          ) : (
+            <div className="flex items-center gap-2">
+              <FileText size={20} style={{ color: "var(--accent)" }} />
+              <span className="text-[12px] truncate max-w-[160px]">{uploadPreview.file.name}</span>
+            </div>
+          )}
+          <button onClick={() => { URL.revokeObjectURL(uploadPreview.previewUrl); setUploadPreview(null); }} className="ml-auto p-0.5">
+            <X size={14} style={{ color: "var(--foreground-dim)" }} />
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div
         className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
         style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)" }}
       >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,application/pdf,video/mp4"
+          className="hidden"
+          onChange={onFileChange}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+        >
+          <Paperclip size={15} style={{ color: "var(--foreground-dim)" }} />
+        </button>
         <textarea
           ref={inputRef}
           value={text}
@@ -502,9 +606,9 @@ function Thread({
         />
         <button
           onClick={send}
-          disabled={!text.trim() || sending}
+          disabled={(!text.trim() && !uploadPreview) || sending}
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-opacity"
-          style={{ background: "var(--accent)", opacity: !text.trim() ? 0.4 : 1 }}
+          style={{ background: "var(--accent)", opacity: (!text.trim() && !uploadPreview) ? 0.4 : 1 }}
         >
           <Send size={15} style={{ color: "#0a0a09" }} />
         </button>
