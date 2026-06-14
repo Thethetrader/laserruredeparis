@@ -381,7 +381,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
 
   if (msg.deleted_at) {
     return (
-      <div className={`flex items-center gap-2 ${isMe ? "justify-end" : "justify-start"}`} style={{ paddingLeft: !isMe && !showAvatar ? 40 : 0 }}>
+      <div className={`flex items-center gap-2 ${isMe ? "justify-end" : "justify-start"}`}>
         {!isMe && <div style={{ width: 28 }} />}
         <p className="text-[11px] italic px-3 py-1.5 rounded-xl"
           style={{ color: "var(--foreground-dim)", background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
@@ -392,8 +392,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
   }
 
   return (
-    <div className={`flex items-end gap-2 group ${isMe ? "flex-row-reverse" : "flex-row"}`}
-      style={{ paddingLeft: !isMe && !showAvatar ? 40 : 0 }}>
+    <div className={`flex items-end gap-2 group ${isMe ? "flex-row-reverse" : "flex-row"}`}>
       {!isMe && <div style={{ width: 28, flexShrink: 0 }}>{showAvatar && <Avatar name={msg.sender_name} size={28} />}</div>}
 
       <div style={{ maxWidth: "72%", position: "relative" }}
@@ -605,6 +604,8 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     if (pollData) payload.poll = pollData;
     setReplyTo(null);
     await supabase.from("messages").insert(payload);
+    await fetchMessages();
+    scrollToBottom(false);
 
     const senderName = (await supabase.from("profiles").select("first_name,last_name").eq("id", myId).maybeSingle()).data;
     const senderDisplay = senderName ? `${senderName.first_name ?? ""} ${senderName.last_name ?? ""}`.trim() : "Nouveau message";
