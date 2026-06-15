@@ -1071,32 +1071,46 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           )}
 
           {/* 2. Retours clients */}
-          <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-              <div className="flex items-center gap-2">
-                <MessageSquare size={14} style={{ color: "var(--accent)" }} />
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
+          {(() => {
+            const grouped = Object.values(
+              data.feedback_items.reduce((acc, f) => {
+                const key = f.content.trim().toLowerCase();
+                if (!acc[key]) acc[key] = { content: f.content, count: 0, category: f.category as FeedbackCategory };
+                acc[key].count++;
+                return acc;
+              }, {} as Record<string, { content: string; count: number; category: FeedbackCategory }>)
+            ).sort((a, b) => b.count - a.count).slice(0, 4);
+            return (
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                  <div className="flex items-center gap-2">
+                    <MessageSquare size={14} style={{ color: "var(--accent)" }} />
+                    <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Retours clients ce mois</p>
+                  </div>
+                </div>
+                <div style={{ background: "var(--background-elev)" }}>
+                  {grouped.length === 0 ? (
+                    <p className="px-5 py-4 text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun retour ce mois</p>
+                  ) : grouped.map((item, i) => {
+                    const meta = CATEGORY_META[item.category];
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-5 py-3.5"
+                        style={{ borderBottom: i < grouped.length - 1 ? "1px solid var(--border-soft)" : "none" }}>
+                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+                        <p className="flex-1 text-[13px] truncate" style={{ color: "var(--foreground)" }}>{item.content}</p>
+                        <span className="text-[13px] font-semibold flex-shrink-0" style={{ color: meta.color }}>{item.count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <a href="/customer-feedback"
+                  className="block w-full text-center py-3 text-[12px] font-medium"
+                  style={{ background: "var(--background-elev)", borderTop: "1px solid var(--border-soft)", color: "var(--accent)" }}>
+                  Voir plus
+                </a>
               </div>
-              <a href="/customer-feedback" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
-            </div>
-            <div style={{ background: "var(--background-elev)" }}>
-              {(["compliment", "complaint", "suggestion", "incident"] as FeedbackCategory[]).map((cat, i, arr) => {
-                const meta = CATEGORY_META[cat];
-                const count = data.feedback_summary[cat];
-                return (
-                  <button key={cat} onClick={() => count > 0 && setFeedbackModal(cat)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 text-left transition-opacity active:opacity-70"
-                    style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-soft)" : "none", cursor: count > 0 ? "pointer" : "default" }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
-                      <p className="text-[13px]" style={{ color: "var(--foreground)" }}>{meta.label}</p>
-                    </div>
-                    <p className="text-[15px] font-semibold" style={{ color: count > 0 ? meta.color : "var(--foreground-dim)" }}>{count}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            );
+          })()}
 
 
         </div>
