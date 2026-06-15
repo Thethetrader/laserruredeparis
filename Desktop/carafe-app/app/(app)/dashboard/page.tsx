@@ -1401,14 +1401,14 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {/* PROTOCOLES — lectures en attente */}
               {kpiPopup === "protocols" && (
                 <div>
-                  {protocols.filter(p => p.read_count < p.total_members && p.total_members > 0).length === 0 ? (
+                  {protocols.filter(p => p.show_on_dashboard && p.read_count < p.total_members && p.total_members > 0).length === 0 ? (
                     <div className="px-5 py-10 text-center">
                       <p className="text-2xl mb-1">✓</p>
                       <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Tous les protocoles ont été lus</p>
                     </div>
                   ) : (
                     <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                      {protocols.filter(p => p.read_count < p.total_members).map(p => {
+                      {protocols.filter(p => p.show_on_dashboard && p.read_count < p.total_members).map(p => {
                         const pct = p.total_members > 0 ? Math.round((p.read_count / p.total_members) * 100) : 0;
                         const remaining = p.total_members - p.read_count;
                         return (
