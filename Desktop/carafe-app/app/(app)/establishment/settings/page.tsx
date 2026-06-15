@@ -176,10 +176,8 @@ export default function EstablishmentSettingsPage() {
   if (!establishment) return null;
 
   const CA_MODES: { value: CAMode; label: string; desc: string }[] = [
-    { value: "disabled",    label: "Désactivé",     desc: "Pas de suivi du CA" },
-    { value: "per_service", label: "Par service",    desc: "Midi et soir séparément" },
-    { value: "per_day",     label: "Par jour",       desc: "1 montant par journée" },
-    { value: "per_month",   label: "Par mois",       desc: "1 montant par mois" },
+    { value: "disabled",  label: "Désactivé", desc: "Pas de suivi du CA" },
+    { value: "per_month", label: "Par mois",  desc: "1 montant par mois" },
   ];
 
   return (
