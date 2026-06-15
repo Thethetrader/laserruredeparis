@@ -21,7 +21,6 @@ interface Msg {
   id: string;
   sender_id: string;
   sender_name: string;
-  sender_avatar_url: string | null;
   content: string;
   created_at: string;
   edited_at: string | null;
@@ -43,10 +42,9 @@ interface Conv {
   last_message: string;
   last_at: string;
   unread: number;
-  avatar_url: string | null;
 }
 
-interface Member { id: string; name: string; role: string; avatarUrl: string | null; }
+interface Member { id: string; name: string; role: string; }
 
 /* ── Utils ──────────────────────────────────────────────────────────────────── */
 function initials(name: string) {
@@ -78,21 +76,13 @@ function avatarColor(name: string) {
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "✅"];
 
 /* ── Avatar ─────────────────────────────────────────────────────────────────── */
-function Avatar({ name, size = 36, online, avatarUrl }: { name: string; size?: number; online?: boolean; avatarUrl?: string | null }) {
+function Avatar({ name, size = 36, online }: { name: string; size?: number; online?: boolean }) {
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarUrl} alt={name}
-          className="rounded-full w-full h-full object-cover"
-          style={{ display: "block" }}
-          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-      ) : (
-        <div className="rounded-full flex items-center justify-center w-full h-full text-white font-semibold"
-          style={{ background: avatarColor(name), fontSize: size * 0.36 }}>
-          {initials(name)}
-        </div>
-      )}
+      <div className="rounded-full flex items-center justify-center w-full h-full text-white font-semibold"
+        style={{ background: avatarColor(name), fontSize: size * 0.36 }}>
+        {initials(name)}
+      </div>
       {online && (
         <div className="absolute bottom-0 right-0 rounded-full border-2"
           style={{ width: size * 0.3, height: size * 0.3, background: "#22c55e", borderColor: "var(--background)" }} />
@@ -375,7 +365,7 @@ function EditInput({ msg, onSave, onCancel, supabase }: { msg: Msg; onSave: () =
 
 /* ── Message bubble ──────────────────────────────────────────────────────────── */
 function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager, isEditing,
-  onReply, onReaction, onContextMenu, onVote, onEditDone, onEditClose, supabase }: {
+  onReply, onReaction, onContextMenu, onVote, onEditDone, onEditClose, onDelete, supabase }: {
   msg: Msg; isMe: boolean; showAvatar: boolean; showName: boolean;
   memberCount: number; myId: string; isManager: boolean; isEditing: boolean;
   onReply: (m: Msg) => void;
@@ -384,6 +374,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
   onVote: (msgId: string, optId: string) => void;
   onEditDone: () => void;
   onEditClose: () => void;
+  onDelete: (m: Msg) => void;
   supabase: ReturnType<typeof createClient>;
 }) {
   const [showEmoji, setShowEmoji] = useState(false);
@@ -403,7 +394,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
 
   return (
     <div className={`flex items-end gap-2 group ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-      {!isMe && <div style={{ width: 28, flexShrink: 0 }}>{showAvatar && <Avatar name={msg.sender_name} size={28} avatarUrl={msg.sender_avatar_url} />}</div>}
+      {!isMe && <div style={{ width: 28, flexShrink: 0 }}>{showAvatar && <Avatar name={msg.sender_name} size={28} />}</div>}
 
       <div style={{ maxWidth: "72%", position: "relative" }}
         onDoubleClick={() => onReply(msg)}
@@ -415,9 +406,8 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
           <p className="text-[10px] mb-1 ml-1 font-semibold" style={{ color: avatarColor(msg.sender_name) }}>{msg.sender_name}</p>
         )}
 
-        {/* Emoji shortcut button — OUTSIDE overflow:hidden bubble */}
-        <div className={`absolute -top-3 ${isMe ? "left-1" : "right-1"} z-20 opacity-0 group-hover:opacity-100 transition-opacity`}
-          style={{ position: "absolute" }}>
+        {/* Hover actions — emoji + delete */}
+        <div className={`absolute -top-3 ${isMe ? "left-1" : "right-1"} z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowEmoji(p => !p)}
               className="w-6 h-6 flex items-center justify-center rounded-full text-[11px]"
@@ -430,6 +420,13 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
               alignRight={isMe}
             />}
           </div>
+          {(isMe || isManager) && (
+            <button onClick={() => onDelete(msg)}
+              className="w-6 h-6 flex items-center justify-center rounded-full"
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
+              <Trash2 size={11} style={{ color: "#ef4444" }} />
+            </button>
+          )}
         </div>
 
         <div className="rounded-2xl text-[13px] leading-snug overflow-hidden"
@@ -498,16 +495,13 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
 
   const fetchMessages = useCallback(async () => {
     const { data: members } = await supabase
-      .from("establishment_members").select("profile_id, profiles(first_name, last_name, avatar_url)")
+      .from("establishment_members").select("profile_id, profiles(first_name, last_name)")
       .eq("establishment_id", estId).eq("is_active", true);
-    const nameMap: Record<string, string> = {};
-    const avatarMap: Record<string, string | null> = {};
+    const map: Record<string, string> = {};
     (members ?? []).forEach((m: any) => {
       const p = m.profiles as any;
-      nameMap[m.profile_id] = `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu";
-      avatarMap[m.profile_id] = p?.avatar_url ?? null;
+      map[m.profile_id] = `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu";
     });
-    const map = nameMap;
 
     let q = supabase.from("messages")
       .select("id,sender_id,content,created_at,edited_at,deleted_at,reply_to_id,read_by,attachment_url,reactions,is_pinned,poll")
@@ -526,7 +520,6 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     const resolved: Msg[] = (data ?? []).map((m: any) => ({
       ...m,
       sender_name: map[m.sender_id] ?? "…",
-      sender_avatar_url: avatarMap[m.sender_id] ?? null,
       read_by: m.read_by ?? [],
       reactions: m.reactions ?? {},
       attachment_url: m.attachment_url ?? null,
@@ -670,6 +663,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
 
   async function deleteMsg(msg: Msg) {
     await supabase.from("messages").update({ deleted_at: new Date().toISOString() }).eq("id", msg.id);
+    await fetchMessages();
   }
 
   async function voteOnPoll(msgId: string, optionId: string) {
@@ -704,7 +698,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
         </button>
         {conv.id === null
           ? <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.25)" }}><Users size={16} style={{ color: "var(--accent)" }} /></div>
-          : <Avatar name={conv.name} size={36} online={conv.id ? onlineUsers.has(conv.id) : false} avatarUrl={conv.avatar_url} />
+          : <Avatar name={conv.name} size={36} online={conv.id ? onlineUsers.has(conv.id) : false} />
         }
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{conv.name}</p>
@@ -760,6 +754,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
                 onVote={voteOnPoll}
                 onEditDone={fetchMessages}
                 onEditClose={() => setEditingMsgId(null)}
+                onDelete={deleteMsg}
                 supabase={supabase}
               />
             </div>
@@ -849,7 +844,7 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
               style={{ background: active ? "rgba(6,182,212,0.06)" : "transparent", borderBottom: "1px solid var(--border-soft)", borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent" }}>
               {conv.id === null
                 ? <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.25)" }}><Users size={18} style={{ color: "var(--accent)" }} /></div>
-                : <Avatar name={conv.name} size={40} online={!!isOnline} avatarUrl={conv.avatar_url} />
+                : <Avatar name={conv.name} size={40} online={!!isOnline} />
               }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
@@ -888,13 +883,13 @@ export default function ChatPage() {
 
   const loadConvs = useCallback(async (uid: string, eid: string, manager: boolean) => {
     const { data: members } = await supabase.from("establishment_members")
-      .select("profile_id, role, profiles(first_name, last_name, avatar_url)")
+      .select("profile_id, role, profiles(first_name, last_name)")
       .eq("establishment_id", eid).eq("is_active", true);
 
     const allMembers: Member[] = (members ?? []).filter((m: any) => m.profile_id !== uid).map((m: any) => {
       const p = m.profiles as any;
       const name = `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu";
-      return { id: m.profile_id, name, role: m.role, avatarUrl: p?.avatar_url ?? null };
+      return { id: m.profile_id, name, role: m.role };
     });
     setMemberCount((members ?? []).length);
 
@@ -903,7 +898,7 @@ export default function ChatPage() {
     const { data: genMsgs } = await supabase.from("messages").select("content,created_at,sender_id,read_by")
       .eq("establishment_id", eid).is("recipient_id", null).order("created_at", { ascending: false }).limit(50);
     list.push({
-      id: null, name: "Général", type: "general", avatar_url: null,
+      id: null, name: "Général", type: "general",
       last_message: (genMsgs?.[0] as any)?.content ?? "",
       last_at: (genMsgs?.[0] as any)?.created_at ?? "",
       unread: (genMsgs ?? []).filter((m: any) => m.sender_id !== uid && !(m.read_by ?? []).includes(uid)).length,
@@ -916,7 +911,7 @@ export default function ChatPage() {
         .or(`and(sender_id.eq.${uid},recipient_id.eq.${m.id}),and(sender_id.eq.${m.id},recipient_id.eq.${uid})`)
         .order("created_at", { ascending: false }).limit(50);
       list.push({
-        id: m.id, name: m.name, type: "direct", avatar_url: m.avatarUrl,
+        id: m.id, name: m.name, type: "direct",
         last_message: (dms?.[0] as any)?.content ?? "",
         last_at: (dms?.[0] as any)?.created_at ?? "",
         unread: (dms ?? []).filter((msg: any) => msg.sender_id !== uid && !(msg.read_by ?? []).includes(uid)).length,
