@@ -192,6 +192,87 @@ export default function EstablishmentSettingsPage() {
         <p className="text-[12px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{establishment.city ?? ""}</p>
       </div>
 
+      {/* Postes */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+            {tipSettings.mode === "dispatch" ? "Renommer, coloriser et définir le coefficient de chaque poste" : "Renommer ou masquer un poste selon votre établissement"}
+          </p>
+        </div>
+        <div style={{ background: "var(--background-elev)" }}>
+          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
+            const label = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
+            return (
+              <div key={status} className="flex items-center gap-3 px-4 py-3"
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <input type="color" value={tipSettings.colors[status] ?? STAFF_STATUSES[status].color}
+                  onChange={e => setColor(status, e.target.value)}
+                  className="w-6 h-6 rounded-full cursor-pointer flex-shrink-0"
+                  style={{ border: "none", padding: 0, background: "none" }} />
+                <input
+                  type="text"
+                  value={label}
+                  onChange={e => setLabel(status, e.target.value)}
+                  className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+                {tipSettings.mode === "dispatch" && (
+                  <input type="number" min="0" max="5" step="0.1"
+                    value={tipSettings.coefficients[status]}
+                    onChange={e => setCoef(status, e.target.value)}
+                    className="w-14 px-2 py-1 rounded-base text-center text-[12px] font-mono outline-none flex-shrink-0"
+                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
+                )}
+                <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Ajouter un poste masqué */}
+          {tipSettings.hidden.length > 0 && (
+            <div className="px-4 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--foreground-dim)" }}>Postes masqués</p>
+              <div className="flex flex-wrap gap-2">
+                {tipSettings.hidden.map(status => (
+                  <button key={status} onClick={() => toggleHidden(status)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px]"
+                    style={{ background: "var(--background)", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
+                    <span>+</span> {tipSettings.labels[status] ?? STAFF_STATUSES[status].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Planning mode */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode de planning</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez comment vous créez le planning de l&apos;équipe</p>
+        </div>
+        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
+          {([
+            { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
+            { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
+          ]).map(opt => (
+            <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
+              className="p-3 rounded-xl text-left transition-all"
+              style={{
+                background: planningMode === opt.value ? "rgba(245,158,11,0.08)" : "var(--background)",
+                border: `1px solid ${planningMode === opt.value ? "rgba(245,158,11,0.3)" : "var(--border)"}`,
+              }}>
+              <p className="text-[13px] font-semibold" style={{ color: planningMode === opt.value ? "#F59E0B" : "var(--foreground)" }}>{opt.label}</p>
+              <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--foreground-dim)" }}>{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Tips mode */}
       <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
         <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
@@ -249,87 +330,6 @@ export default function EstablishmentSettingsPage() {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Planning mode */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode de planning</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez comment vous créez le planning de l&apos;équipe</p>
-        </div>
-        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
-          {([
-            { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
-            { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
-          ]).map(opt => (
-            <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
-              className="p-3 rounded-xl text-left transition-all"
-              style={{
-                background: planningMode === opt.value ? "rgba(245,158,11,0.08)" : "var(--background)",
-                border: `1px solid ${planningMode === opt.value ? "rgba(245,158,11,0.3)" : "var(--border)"}`,
-              }}>
-              <p className="text-[13px] font-semibold" style={{ color: planningMode === opt.value ? "#F59E0B" : "var(--foreground)" }}>{opt.label}</p>
-              <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "var(--foreground-dim)" }}>{opt.desc}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Postes */}
-      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
-        <div className="px-4 py-3" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-          <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Postes</p>
-          <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>
-            {tipSettings.mode === "dispatch" ? "Renommer, coloriser et définir le coefficient de chaque poste" : "Renommer ou masquer un poste selon votre établissement"}
-          </p>
-        </div>
-        <div style={{ background: "var(--background-elev)" }}>
-          {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden.includes(s)).map((status, i, arr) => {
-            const label = tipSettings.labels[status] ?? STAFF_STATUSES[status].label;
-            return (
-              <div key={status} className="flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <input type="color" value={tipSettings.colors[status] ?? STAFF_STATUSES[status].color}
-                  onChange={e => setColor(status, e.target.value)}
-                  className="w-6 h-6 rounded-full cursor-pointer flex-shrink-0"
-                  style={{ border: "none", padding: 0, background: "none" }} />
-                <input
-                  type="text"
-                  value={label}
-                  onChange={e => setLabel(status, e.target.value)}
-                  className="flex-1 px-2 py-1 rounded-base text-[13px] outline-none"
-                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                />
-                {tipSettings.mode === "dispatch" && (
-                  <input type="number" min="0" max="5" step="0.1"
-                    value={tipSettings.coefficients[status]}
-                    onChange={e => setCoef(status, e.target.value)}
-                    className="w-14 px-2 py-1 rounded-base text-center text-[12px] font-mono outline-none flex-shrink-0"
-                    style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-dim)" }} />
-                )}
-                <button onClick={() => toggleHidden(status)} className="p-1.5 rounded-base flex-shrink-0" style={{ color: "var(--danger)" }}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            );
-          })}
-
-          {/* Ajouter un poste masqué */}
-          {tipSettings.hidden.length > 0 && (
-            <div className="px-4 py-2.5" style={{ borderTop: "1px solid var(--border)" }}>
-              <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: "var(--foreground-dim)" }}>Postes masqués</p>
-              <div className="flex flex-wrap gap-2">
-                {tipSettings.hidden.map(status => (
-                  <button key={status} onClick={() => toggleHidden(status)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px]"
-                    style={{ background: "var(--background)", border: "1px dashed var(--border-strong)", color: "var(--foreground-dim)" }}>
-                    <span>+</span> {tipSettings.labels[status] ?? STAFF_STATUSES[status].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Notifications programmées */}
