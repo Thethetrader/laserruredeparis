@@ -828,6 +828,15 @@ export default function PlanningPage() {
     }
   }
 
+  /* ── Cancel published planning → back to draft ── */
+  async function handleCancelPublish() {
+    if (!planningWeek) return;
+    const supabase = createClient();
+    await supabase.from("planning_weeks").update({ status: "draft" }).eq("id", planningWeek.id);
+    await supabase.from("planning_shifts").update({ confirmation_status: "pending" }).eq("planning_week_id", planningWeek.id);
+    await load(weekStart);
+  }
+
   /* ── Regenerate ── */
   async function handleRegenerate() {
     if (!planningWeek) return;
@@ -1446,6 +1455,7 @@ export default function PlanningPage() {
               weekDates={weekDates}
               employees={employees}
               onReassign={shift => setReassignShift(shift)}
+              onCancel={handleCancelPublish}
             />
           )}
 
@@ -1818,12 +1828,16 @@ function DraftView({ shifts, weekDates, employees, onValidate, onRegenerate, val
    PUBLISHED VIEW
 ══════════════════════════════════════════════════════════════════════════════ */
 
-function PublishedView({ shifts, weekDates, employees, onReassign }: {
+function PublishedView({ shifts, weekDates, employees, onReassign, onCancel }: {
   shifts: PlanningShift[];
   weekDates: Date[];
   employees: EmployeeInfo[];
   onReassign: (shift: PlanningShift) => void;
+  onCancel: () => void;
 }) {
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
   const confirmed = shifts.filter(s => s.confirmation_status === "confirmed").length;
   const pending   = shifts.filter(s => s.confirmation_status === "pending").length;
   const modified  = shifts.filter(s => s.confirmation_status === "modified").length;
@@ -1849,6 +1863,38 @@ function PublishedView({ shifts, weekDates, employees, onReassign }: {
           {modified > 0 && <span className="text-[11px] font-bold" style={{ color: "#EF4444" }}>✗ {modified}</span>}
         </div>
       </div>
+
+      {!confirmCancel ? (
+        <button
+          onClick={() => setConfirmCancel(true)}
+          className="w-full py-2.5 rounded-xl text-[13px] font-medium"
+          style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", color: "#EF4444" }}
+        >
+          Annuler le planning
+        </button>
+      ) : (
+        <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <p className="text-[13px] font-medium" style={{ color: "#EF4444" }}>Annuler le planning ?</p>
+          <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Le planning sera dépublié. Les employés ne le verront plus. Tu pourras le modifier et le republier.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmCancel(false)}
+              className="flex-1 py-2 rounded-lg text-[13px]"
+              style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={async () => { setCancelling(true); await onCancel(); setCancelling(false); setConfirmCancel(false); }}
+              disabled={cancelling}
+              className="flex-1 py-2 rounded-lg text-[13px] font-semibold"
+              style={{ background: "#EF4444", color: "#fff", opacity: cancelling ? 0.6 : 1 }}
+            >
+              {cancelling ? "Dépublication…" : "Confirmer"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
         <WeekGrid shifts={shifts} weekDates={weekDates} showStatus onShiftClick={onReassign} />
