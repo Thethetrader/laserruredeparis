@@ -1284,6 +1284,7 @@ export default function PlanningPage() {
 
           {/* ── Rules (collapsible, AI mode only) ── */}
           {planningMode === "ai" && (!planningWeek || planningWeek.status === "draft") && (
+            <>
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="flex items-center" style={{ background: "var(--background-elev)" }}>
                 <button
@@ -1384,6 +1385,7 @@ export default function PlanningPage() {
                 </div>
               </div>
             )}
+            </>
           )}
 
           {/* ── Generate button (AI mode only) ── */}
