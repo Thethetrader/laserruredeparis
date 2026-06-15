@@ -492,6 +492,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
   const fileRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const needsScrollRef = useRef(false);
   const msgRefs = useRef<Record<string, HTMLDivElement>>({});
 
   const pinnedMsg = messages.find(m => m.is_pinned && !m.deleted_at) ?? null;
@@ -557,9 +558,18 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, []);
 
+  // Scroll to bottom after messages render (when entering a conv)
+  useEffect(() => {
+    if (needsScrollRef.current) {
+      needsScrollRef.current = false;
+      scrollToBottom(false);
+    }
+  }, [messages, scrollToBottom]);
+
   // Load messages when conversation changes
   useEffect(() => {
-    fetchMessages().then(() => scrollToBottom(false));
+    needsScrollRef.current = true;
+    fetchMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv.id]);
 
@@ -645,10 +655,36 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     scrollToBottom();
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function compressImage(file: File): Promise<File> {
+    return new Promise(resolve => {
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        const MAX = 1280;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w >= h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+        }, "image/jpeg", 0.82);
+      };
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file); };
+      img.src = blobUrl;
+    });
+  }
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadPreview({ file, previewUrl: URL.createObjectURL(file) });
+    const processed = file.type.startsWith("image/") ? await compressImage(file) : file;
+    setUploadPreview({ file: processed, previewUrl: URL.createObjectURL(processed) });
     e.target.value = "";
   }
 
