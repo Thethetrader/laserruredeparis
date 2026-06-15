@@ -370,13 +370,15 @@ export default function DashboardPage() {
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
 
+    // Only count active (visible) protocols for reads KPI — hidden ones don't create pending reads
+    const activeProtocolIds = new Set(rawProtocols.filter(p => p.show_on_dashboard).map(p => p.id));
     const readsByProfile: Record<string, number> = {};
-    reads.forEach(r => { readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
+    reads.forEach(r => { if (activeProtocolIds.has(r.protocol_id)) readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
 
     const myReadIds = new Set(reads.filter(r => r.profile_id === user.id).map(r => r.protocol_id));
-    const totalProtocols = rawProtocols.length;
-    const unreadMandatory = rawProtocols.filter(p => p.is_mandatory && !myReadIds.has(p.id)).length;
-    const unreadTotal = rawProtocols.filter(p => !myReadIds.has(p.id)).length;
+    const totalProtocols = activeProtocolIds.size;
+    const unreadMandatory = rawProtocols.filter(p => p.is_mandatory && p.show_on_dashboard && !myReadIds.has(p.id)).length;
+    const unreadTotal = rawProtocols.filter(p => p.show_on_dashboard && !myReadIds.has(p.id)).length;
 
     const totalNonOwners = members.filter(m => m.role === "employee").length;
     const readCountByProtocol: Record<string, number> = {};
