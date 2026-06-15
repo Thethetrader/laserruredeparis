@@ -44,6 +44,7 @@ interface MemberScore {
   job_title: string | null;
   score: number;
   delays_count: number;
+  today_delay_count: number;
   protocols_read: number;
   protocols_total: number;
   badge: "gold" | "silver" | "bronze" | null;
@@ -204,9 +205,9 @@ const DEV_DATA_MANAGER: DashboardData = {
   role: "owner", my_profile_id: DEV_PROFILE_ID, my_first_name: "Dev", establishment_id: "dev-establishment",
   protocols: DEV_PROTOCOLS,
   leaderboard: [
-    { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
-    { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
-    { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, protocols_read: 1, protocols_total: 3, badge: "bronze" },
+    { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, today_delay_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
+    { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, today_delay_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
+    { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, today_delay_count: 1, protocols_read: 1, protocols_total: 3, badge: "bronze" },
   ],
   feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
   feedback_items: DEV_FEEDBACK_ITEMS,
@@ -230,9 +231,9 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
   role: "employee", my_profile_id: "profile-3", my_first_name: "Rayan", establishment_id: "dev-establishment",
   protocols: DEV_PROTOCOLS_EMPLOYEE,
   leaderboard: [
-    { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
-    { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
-    { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, protocols_read: 1, protocols_total: 3, badge: "bronze" },
+    { profile_id: "profile-2", name: "Yasmine Benali", first_name: "Yasmine", last_name: "Benali", avatar_url: null, job_title: "Chef de salle", score: 68, delays_count: 0, today_delay_count: 0, protocols_read: 3, protocols_total: 3, badge: "gold" },
+    { profile_id: DEV_PROFILE_ID, name: "Dev Mode", first_name: "Dev", last_name: "Mode", avatar_url: null, job_title: "Responsable", score: 45, delays_count: 1, today_delay_count: 1, protocols_read: 3, protocols_total: 3, badge: "silver" },
+    { profile_id: "profile-3", name: "Rayan Dupont", first_name: "Rayan", last_name: "Dupont", avatar_url: null, job_title: "Serveur", score: 23, delays_count: 2, today_delay_count: 1, protocols_read: 1, protocols_total: 3, badge: "bronze" },
   ],
   feedback_summary: { compliment: 2, complaint: 1, suggestion: 1, incident: 1, total: 5 },
   feedback_items: DEV_FEEDBACK_ITEMS,
@@ -369,6 +370,8 @@ export default function DashboardPage() {
 
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
+    const todayDelayCounts: Record<string, number> = {};
+    delays.filter(d => d.shift_date === today).forEach(d => { todayDelayCounts[d.employee_id] = (todayDelayCounts[d.employee_id] ?? 0) + 1; });
 
     // Only count protocols whose category still exists in the establishment's protocol_categories
     const estProtoCats = ((memberData as unknown as { establishments?: { protocol_categories?: Array<{ id: string }> } }).establishments?.protocol_categories ?? []);
@@ -413,7 +416,8 @@ export default function DashboardPage() {
         const p = m.profiles;
         const fn = p?.first_name ?? "";
         const ln = p?.last_name ?? "";
-        return { profile_id: m.profile_id, name: `${fn} ${ln}`.trim() || "-", first_name: fn, last_name: ln, avatar_url: p?.avatar_url ?? null, job_title: m.job_title, score, delays_count: del, protocols_read: read, protocols_total: totalProtocols, badge: null as MemberScore["badge"] };
+        const todayDel = todayDelayCounts[m.profile_id] ?? 0;
+        return { profile_id: m.profile_id, name: `${fn} ${ln}`.trim() || "-", first_name: fn, last_name: ln, avatar_url: p?.avatar_url ?? null, job_title: m.job_title, score, delays_count: del, today_delay_count: todayDel, protocols_read: read, protocols_total: totalProtocols, badge: null as MemberScore["badge"] };
       })
       .sort((a, b) => b.score - a.score)
       .map((m, i) => ({ ...m, badge: (["gold", "silver", "bronze"][i] ?? null) as MemberScore["badge"] }));
@@ -1337,12 +1341,12 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {data.leaderboard.filter(m => m.delays_count > 0).map(m => (
+                        {data.leaderboard.filter(m => m.today_delay_count > 0).map(m => (
                           <div key={m.profile_id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
                             <KarafAvatar firstName={m.first_name} lastName={m.last_name} avatarUrl={m.avatar_url} size={28} />
                             <p className="text-sm flex-1" style={{ color: "var(--foreground)" }}>{m.name}</p>
                             <span className="text-[11px] font-medium px-2 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)" }}>
-                              {m.delays_count} retard{m.delays_count > 1 ? "s" : ""}
+                              {m.today_delay_count} retard{m.today_delay_count > 1 ? "s" : ""}
                             </span>
                           </div>
                         ))}
