@@ -535,8 +535,12 @@ export default function ProtocolsPage() {
   }
 
   const allCategories = categories.map(c => c.id);
+  const orphanedProtocols = protocols.filter(p => !allCategories.includes(p.category));
 
-  const getCat = (id: string) => categories.find(c => c.id === id) ?? { id, name: id, color: "rgba(113,113,122,0.15)" };
+  const getCat = (id: string) => {
+    if (id === "__orphaned__") return { id: "__orphaned__", name: "Autres", color: "rgba(113,113,122,0.18)" };
+    return categories.find(c => c.id === id) ?? { id, name: id, color: "rgba(113,113,122,0.15)" };
+  };
   const getCatIcon = (id: string): LucideIcon => ICON_POOL[categories.findIndex(c => c.id === id) % ICON_POOL.length] ?? BookOpen;
 
   const categoryProtocols = (cat: string) => protocols.filter(p => p.category === cat);
@@ -545,7 +549,7 @@ export default function ProtocolsPage() {
     categoryProtocols(cat).filter(p => !reads.has(p.id)).length;
 
   const filteredProtocols = selectedCategory
-    ? [...protocols.filter(p => p.category === selectedCategory)].sort((a, b) => {
+    ? [...(selectedCategory === "__orphaned__" ? orphanedProtocols : protocols.filter(p => p.category === selectedCategory))].sort((a, b) => {
         if (isManager) return 0;
         const aRead = reads.has(a.id);
         const bRead = reads.has(b.id);
@@ -671,6 +675,27 @@ export default function ProtocolsPage() {
               </button>
             );
           })}
+          {orphanedProtocols.length > 0 && (
+            <button key="__orphaned__" onClick={() => setSelectedCategory("__orphaned__")}
+              className="rounded-xl p-4 text-left transition-all active:scale-[0.98]"
+              style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="rounded-lg p-2" style={{ background: "rgba(113,113,122,0.18)" }}>
+                  <BookOpen size={16} strokeWidth={1.5} style={{ color: "var(--foreground-muted)" }} />
+                </div>
+                {!isManager && orphanedProtocols.filter(p => !reads.has(p.id)).length > 0 && (
+                  <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(239,68,68,0.12)", color: "var(--danger)" }}>
+                    {orphanedProtocols.filter(p => !reads.has(p.id)).length}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--foreground)" }}>Autres</p>
+              <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>
+                {orphanedProtocols.length} protocole{orphanedProtocols.length !== 1 ? "s" : ""}
+              </p>
+            </button>
+          )}
         </div>
 
         {protocols.length === 0 && (
@@ -747,8 +772,10 @@ export default function ProtocolsPage() {
   /* ── Category detail view ── */
   const catData = getCat(selectedCategory!);
   const catLabel = catData.name;
-  const CatIcon = getCatIcon(selectedCategory!);
-  const catUnread = categoryUnread(selectedCategory!);
+  const CatIcon = selectedCategory === "__orphaned__" ? BookOpen : getCatIcon(selectedCategory!);
+  const catUnread = selectedCategory === "__orphaned__"
+    ? orphanedProtocols.filter(p => !reads.has(p.id)).length
+    : categoryUnread(selectedCategory!);
   const catUnreadMandatory = filteredProtocols.filter(p => !reads.has(p.id) && p.is_mandatory).length;
   const catAttachments = filteredProtocols.filter(p => p.attachment_url);
 
@@ -785,7 +812,7 @@ export default function ProtocolsPage() {
             </p>
           </div>
         </div>
-        {isManager && (
+        {isManager && selectedCategory !== "__orphaned__" && (
           <button onClick={() => openFormForCategory(selectedCategory)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md flex-shrink-0"
             style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>
@@ -895,7 +922,7 @@ export default function ProtocolsPage() {
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
           <BookOpen size={32} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 12 }} />
           <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Aucun protocole dans cette catégorie</p>
-          {isManager && (
+          {isManager && selectedCategory !== "__orphaned__" && (
             <button onClick={() => openFormForCategory(selectedCategory)} className="mt-4 text-sm" style={{ color: "var(--accent)" }}>
               Créer le premier protocole
             </button>
