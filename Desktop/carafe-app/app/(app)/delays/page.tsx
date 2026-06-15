@@ -28,6 +28,7 @@ interface Delay {
 interface TeamMemberOption {
   profile_id: string;
   name: string;
+  avatar_url?: string | null;
 }
 
 const SHIFT_LABELS: Record<ShiftType, string> = {
@@ -135,7 +136,7 @@ export default function DelaysPage() {
       query,
       supabase
         .from("establishment_members")
-        .select("profile_id, profiles(first_name, last_name)")
+        .select("profile_id, profiles(first_name, last_name, avatar_url)")
         .eq("establishment_id", memberData.establishment_id)
         .eq("is_active", true),
     ]);
@@ -144,10 +145,11 @@ export default function DelaysPage() {
 
     const opts: TeamMemberOption[] = (teamData ?? []).map((m: {
       profile_id: string;
-      profiles: { first_name: string | null; last_name: string | null } | null;
+      profiles: { first_name: string | null; last_name: string | null; avatar_url?: string | null } | null;
     }) => ({
       profile_id: m.profile_id,
       name: `${m.profiles?.first_name ?? ""} ${m.profiles?.last_name ?? ""}`.trim() || m.profile_id,
+      avatar_url: m.profiles?.avatar_url ?? null,
     }));
     setTeamOptions(opts);
     setLoading(false);
@@ -388,11 +390,22 @@ export default function DelaysPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  {isManager && (
-                    <p className="text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
-                      {teamOptions.find(t => t.profile_id === delay.employee_id)?.name ?? delay.employee_name ?? "Inconnu"}
-                    </p>
-                  )}
+                  {isManager && (() => {
+                    const member = teamOptions.find(t => t.profile_id === delay.employee_id);
+                    const name = member?.name ?? delay.employee_name ?? "Inconnu";
+                    const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+                    return (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                          {member?.avatar_url
+                            ? <img src={member.avatar_url} alt={name} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-[9px] font-bold" style={{ background: "rgba(245,158,11,0.12)", color: "var(--warning)" }}>{initials}</div>
+                          }
+                        </div>
+                        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{name}</p>
+                      </div>
+                    );
+                  })()}
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>
                       {new Date(delay.shift_date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}

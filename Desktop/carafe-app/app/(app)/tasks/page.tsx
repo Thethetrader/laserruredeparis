@@ -440,7 +440,7 @@ export default function TasksManagerPage() {
   const filterButtons = ["all", "manager", ...activeStatuses] as string[];
 
   return (
-    <div className="px-4 py-6 lg:px-8 pb-32 max-w-2xl">
+    <div className="px-4 py-6 lg:px-8 pb-32 max-w-4xl">
       <div className="mb-6">
         <MonoLabel size="xs" className="mb-1 block">Tâches du jour</MonoLabel>
         <div className="flex items-center justify-between">
