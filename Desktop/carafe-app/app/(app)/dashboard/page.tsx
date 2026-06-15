@@ -298,7 +298,7 @@ export default function DashboardPage() {
 
     // Charger tous les membres pour pouvoir préférer employee si nécessaire
     const { data: allMembers } = await supabase.from("establishment_members")
-      .select("role, job_title, establishment_id, establishments(tip_settings)")
+      .select("role, job_title, establishment_id, establishments(tip_settings, protocol_categories)")
       .eq("profile_id", user.id).eq("is_active", true);
 
     const activeMember = validActiveId ? allMembers?.find(m => m.establishment_id === validActiveId) : null;
@@ -322,7 +322,7 @@ export default function DashboardPage() {
     const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
-      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
+      supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, category, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
       supabase.from("protocol_reads").select("protocol_id, profile_id"),
       supabase.from("customer_feedback").select("id, category, content, table_number, created_at").eq("establishment_id", estId).gte("created_at", monthStart).order("created_at", { ascending: false }),
       supabase.from("challenges").select("id, title, description, target_value, current_value, unit, ends_at").eq("establishment_id", estId).eq("status", "active"),
@@ -334,7 +334,7 @@ export default function DashboardPage() {
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
-    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; steps?: unknown; attachment_url?: string | null; attachment_type?: string | null; created_at?: string | null }>;
+    const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; category?: string | null; steps?: unknown; attachment_url?: string | null; attachment_type?: string | null; created_at?: string | null }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
@@ -370,21 +370,28 @@ export default function DashboardPage() {
     const delayCounts: Record<string, number> = {};
     delays.forEach(d => { delayCounts[d.employee_id] = (delayCounts[d.employee_id] ?? 0) + 1; });
 
+    // Only count protocols whose category still exists in the establishment's protocol_categories
+    const estProtoCats = ((memberData as unknown as { establishments?: { protocol_categories?: Array<{ id: string }> } }).establishments?.protocol_categories ?? []);
+    const validCatIds = new Set(estProtoCats.map(c => c.id));
+    const visibleRawProtocols = validCatIds.size > 0
+      ? rawProtocols.filter(p => p.category && validCatIds.has(p.category))
+      : rawProtocols;
+
     // Only count active (visible) protocols for reads KPI — hidden ones don't create pending reads
-    const activeProtocolIds = new Set(rawProtocols.filter(p => p.show_on_dashboard).map(p => p.id));
+    const activeProtocolIds = new Set(visibleRawProtocols.filter(p => p.show_on_dashboard).map(p => p.id));
     const readsByProfile: Record<string, number> = {};
     reads.forEach(r => { if (activeProtocolIds.has(r.protocol_id)) readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
 
     const myReadIds = new Set(reads.filter(r => r.profile_id === user.id).map(r => r.protocol_id));
     const totalProtocols = activeProtocolIds.size;
-    const unreadMandatory = rawProtocols.filter(p => p.is_mandatory && p.show_on_dashboard && !myReadIds.has(p.id)).length;
-    const unreadTotal = rawProtocols.filter(p => p.show_on_dashboard && !myReadIds.has(p.id)).length;
+    const unreadMandatory = visibleRawProtocols.filter(p => p.is_mandatory && p.show_on_dashboard && !myReadIds.has(p.id)).length;
+    const unreadTotal = visibleRawProtocols.filter(p => p.show_on_dashboard && !myReadIds.has(p.id)).length;
 
     const totalNonOwners = members.filter(m => m.role === "employee").length;
     const readCountByProtocol: Record<string, number> = {};
     reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
 
-    const protocols: Protocol[] = rawProtocols.map(p => ({
+    const protocols: Protocol[] = visibleRawProtocols.map(p => ({
       id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
       show_on_dashboard: p.show_on_dashboard ?? false,
       steps: Array.isArray(p.steps) ? (p.steps as Array<{ text: string; frequency?: string; photo_url?: string } | string>).map(s => typeof s === "string" ? { text: s } : s) : null,
