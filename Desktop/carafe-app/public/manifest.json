@@ -3,6 +3,7 @@
   "short_name": "Karaf",
   "description": "Communication pro pour la restauration",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#09090B",

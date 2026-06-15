@@ -407,6 +407,24 @@ export default function TasksManagerPage() {
       setSavingOneShot(false);
       return;
     }
+
+    // Notif push à la personne assignée
+    if (newOneShotAssignedTo && member) {
+      const taskTitle = rows.length === 1 ? rows[0].title : `${rows.length} tâches`;
+      fetch("/api/push/send-to-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          establishmentId: member.establishment_id,
+          targetProfileId: newOneShotAssignedTo,
+          senderProfileId: userId,
+          title: "Nouvelle tâche assignée",
+          body: taskTitle,
+          url: "/me/tasks",
+        }),
+      }).catch(() => {});
+    }
+
     await load();
     setShowOneShotModal(false);
     resetOneShotForm();
