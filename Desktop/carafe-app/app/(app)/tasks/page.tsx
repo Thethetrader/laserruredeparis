@@ -192,10 +192,10 @@ export default function TasksManagerPage() {
     const _uid = (await supabase.auth.getUser()).data.user?.id ?? "";
     const _ceid = (typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null)?.[1];
     const _re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let _mq = supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings)").eq("profile_id", _uid).eq("is_active", true);
+    let _mq = supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings, protocol_categories)").eq("profile_id", _uid).eq("is_active", true);
     if (_ceid && _re.test(_ceid)) _mq = _mq.eq("establishment_id", _ceid);
     let { data: member } = await _mq.limit(1).maybeSingle();
-    if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings)").eq("profile_id", _uid).eq("is_active", true).limit(1).maybeSingle());
+    if (!member && _ceid && _re.test(_ceid)) ({ data: member } = await supabase.from("establishment_members").select("establishment_id, role, establishments(tip_settings, protocol_categories)").eq("profile_id", _uid).eq("is_active", true).limit(1).maybeSingle());
 
     if (!member) { setLoading(false); return; }
     setUserRole(member.role);
@@ -227,7 +227,10 @@ export default function TasksManagerPage() {
       ((shots ?? []) as (TaskOneShot & { profiles: { first_name: string | null; last_name: string | null } | null })[])
         .map(s => ({ ...s, creator_name: s.profiles ? `${s.profiles.first_name ?? ""} ${s.profiles.last_name ?? ""}`.trim() : "—" }))
     );
-    setProtocols((protos ?? []) as Protocol[]);
+    const protoCats = ((member as unknown as { establishments?: { protocol_categories?: Array<{ id: string }> } | null }).establishments?.protocol_categories ?? []);
+    const validProtoCatIds = new Set(protoCats.map((c: { id: string }) => c.id));
+    const allProtos = (protos ?? []) as Protocol[];
+    setProtocols(validProtoCatIds.size > 0 ? allProtos.filter(p => validProtoCatIds.has(p.category)) : allProtos);
     setMembers(
       ((memberRows ?? []) as Array<{ profile_id: string; profiles: { first_name: string | null; last_name: string | null } | null }>).map(m => ({
         profile_id: m.profile_id,
@@ -407,24 +410,6 @@ export default function TasksManagerPage() {
       setSavingOneShot(false);
       return;
     }
-
-    // Notif push à la personne assignée
-    if (newOneShotAssignedTo && member) {
-      const taskTitle = rows.length === 1 ? rows[0].title : `${rows.length} tâches`;
-      fetch("/api/push/send-to-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          establishmentId: member.establishment_id,
-          targetProfileId: newOneShotAssignedTo,
-          senderProfileId: userId,
-          title: "Nouvelle tâche assignée",
-          body: taskTitle,
-          url: "/me/tasks",
-        }),
-      }).catch(() => {});
-    }
-
     await load();
     setShowOneShotModal(false);
     resetOneShotForm();
