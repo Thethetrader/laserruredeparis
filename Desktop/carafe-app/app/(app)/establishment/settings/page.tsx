@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw, LogOut } from "lucide-react";
+import { Check, ToggleLeft, ToggleRight, Trash2, RotateCcw, LogOut, Bell, Plus, X } from "lucide-react";
 import {
   STAFF_STATUSES, parseTipSettings, DEFAULT_TIP_SETTINGS,
   parseCASettings, DEFAULT_CA_SETTINGS,
@@ -18,6 +18,20 @@ const DEV_MODE = false;
 
 interface EstablishmentInfo { id: string; name: string; city: string | null; }
 
+interface NotifSchedule {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  hour: number;
+  days_of_week: number[];
+  target_role: string | null;
+  is_active: boolean;
+}
+
+const DAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon first
+
 export default function EstablishmentSettingsPage() {
   const supabase = createClient();
   const router = useRouter();
@@ -29,6 +43,13 @@ export default function EstablishmentSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [notifSchedules, setNotifSchedules] = useState<NotifSchedule[]>([]);
+  const [showNewNotif, setShowNewNotif] = useState(false);
+  const [newNotif, setNewNotif] = useState({
+    title: "", body: "", url: "/dashboard",
+    hour: 15, days_of_week: [1, 2, 3, 4, 5], target_role: "" as string,
+  });
+  const [savingNotif, setSavingNotif] = useState(false);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -53,7 +74,54 @@ export default function EstablishmentSettingsPage() {
     setTipSettings(parseTipSettings(est.tip_settings));
     setCASettings(parseCASettings(est.ca_settings));
     setPlanningMode(parsePlanningMode(est.planning_mode));
+    await loadSchedules(est.id);
     setLoading(false);
+  }
+
+  async function loadSchedules(estId: string) {
+    const { data } = await supabase
+      .from("notification_schedules")
+      .select("*")
+      .eq("establishment_id", estId)
+      .order("created_at", { ascending: true });
+    setNotifSchedules((data as NotifSchedule[]) ?? []);
+  }
+
+  async function createSchedule() {
+    if (!establishment || !newNotif.title.trim() || !newNotif.body.trim()) return;
+    setSavingNotif(true);
+    await supabase.from("notification_schedules").insert({
+      establishment_id: establishment.id,
+      title: newNotif.title.trim(),
+      body: newNotif.body.trim(),
+      url: newNotif.url.trim() || "/dashboard",
+      hour: newNotif.hour,
+      days_of_week: newNotif.days_of_week,
+      target_role: newNotif.target_role || null,
+    });
+    await loadSchedules(establishment.id);
+    setNewNotif({ title: "", body: "", url: "/dashboard", hour: 15, days_of_week: [1, 2, 3, 4, 5], target_role: "" });
+    setShowNewNotif(false);
+    setSavingNotif(false);
+  }
+
+  async function toggleSchedule(id: string, active: boolean) {
+    await supabase.from("notification_schedules").update({ is_active: active }).eq("id", id);
+    setNotifSchedules(prev => prev.map(s => s.id === id ? { ...s, is_active: active } : s));
+  }
+
+  async function deleteSchedule(id: string) {
+    await supabase.from("notification_schedules").delete().eq("id", id);
+    setNotifSchedules(prev => prev.filter(s => s.id !== id));
+  }
+
+  function toggleDay(day: number) {
+    setNewNotif(prev => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter(d => d !== day)
+        : [...prev.days_of_week, day],
+    }));
   }
 
   function setMode(mode: TipMode) { setTipSettings(prev => ({ ...prev, mode })); }
@@ -189,11 +257,10 @@ export default function EstablishmentSettingsPage() {
           <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Mode de planning</p>
           <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Choisissez comment vous créez le planning de l&apos;équipe</p>
         </div>
-        <div className="p-4 flex flex-col gap-3" style={{ background: "var(--background-elev)" }}>
+        <div className="p-4 grid grid-cols-2 gap-3" style={{ background: "var(--background-elev)" }}>
           {([
             { value: "ai" as PlanningMode, label: "IA", desc: "Générez automatiquement le planning à partir des besoins définis" },
             { value: "manual" as PlanningMode, label: "Manuel", desc: "Créez les shifts vous-même, poste par poste, jour par jour" },
-            { value: "none" as PlanningMode, label: "Pas de planning", desc: "Désactivez la gestion du planning. Aucun shift, aucune vue équipe" },
           ]).map(opt => (
             <button key={opt.value} onClick={() => setPlanningMode(opt.value)}
               className="p-3 rounded-xl text-left transition-all"
@@ -263,6 +330,138 @@ export default function EstablishmentSettingsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Notifications programmées */}
+      <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid var(--border)" }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <div>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Notifications programmées</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Envoi automatique à heure fixe (heure de Paris)</p>
+          </div>
+          <button
+            onClick={() => setShowNewNotif(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
+            style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)", color: "var(--accent)" }}>
+            {showNewNotif ? <X size={13} /> : <Plus size={13} />}
+            {showNewNotif ? "Annuler" : "Ajouter"}
+          </button>
+        </div>
+
+        {/* New schedule form */}
+        {showNewNotif && (
+          <div className="p-4 space-y-3" style={{ background: "var(--background-elev)", borderBottom: notifSchedules.length > 0 ? "1px solid var(--border)" : undefined }}>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre</p>
+                <input
+                  type="text" placeholder="Retour client"
+                  value={newNotif.title}
+                  onChange={e => setNewNotif(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Heure</p>
+                <input
+                  type="number" min={0} max={23}
+                  value={newNotif.hour}
+                  onChange={e => setNewNotif(prev => ({ ...prev, hour: Math.max(0, Math.min(23, parseInt(e.target.value) || 0)) }))}
+                  className="w-full px-3 py-2 rounded-lg text-[13px] text-center outline-none font-mono"
+                  style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Corps du message</p>
+              <input
+                type="text" placeholder="N'oubliez pas de noter les retours clients du service"
+                value={newNotif.body}
+                onChange={e => setNewNotif(prev => ({ ...prev, body: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg text-[13px] outline-none"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+              />
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Jours</p>
+              <div className="flex gap-1.5">
+                {DAY_ORDER.map(day => (
+                  <button
+                    key={day}
+                    onClick={() => toggleDay(day)}
+                    className="w-8 h-8 rounded-lg text-[11px] font-semibold font-mono transition-all"
+                    style={{
+                      background: newNotif.days_of_week.includes(day) ? "rgba(6,182,212,0.12)" : "var(--background)",
+                      border: `1px solid ${newNotif.days_of_week.includes(day) ? "rgba(6,182,212,0.35)" : "var(--border)"}`,
+                      color: newNotif.days_of_week.includes(day) ? "var(--accent)" : "var(--foreground-dim)",
+                    }}>
+                    {DAY_LABELS[day]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: "var(--foreground-dim)" }}>Destinataires</p>
+              <div className="flex gap-2">
+                {[["", "Tous"], ["staff", "Staff"], ["manager", "Managers"]].map(([val, label]) => (
+                  <button key={val} onClick={() => setNewNotif(prev => ({ ...prev, target_role: val }))}
+                    className="px-3 py-1.5 rounded-lg text-[12px] transition-all"
+                    style={{
+                      background: newNotif.target_role === val ? "rgba(6,182,212,0.08)" : "var(--background)",
+                      border: `1px solid ${newNotif.target_role === val ? "rgba(6,182,212,0.3)" : "var(--border)"}`,
+                      color: newNotif.target_role === val ? "var(--accent)" : "var(--foreground-dim)",
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={createSchedule}
+              disabled={savingNotif || !newNotif.title.trim() || !newNotif.body.trim() || newNotif.days_of_week.length === 0}
+              className="w-full py-2.5 rounded-lg text-[13px] font-semibold transition-all"
+              style={{
+                background: "var(--accent)",
+                color: "#09090B",
+                opacity: (savingNotif || !newNotif.title.trim() || !newNotif.body.trim() || newNotif.days_of_week.length === 0) ? 0.5 : 1,
+              }}>
+              {savingNotif ? "Enregistrement…" : "Créer la notification"}
+            </button>
+          </div>
+        )}
+
+        {/* Existing schedules */}
+        {notifSchedules.length === 0 && !showNewNotif && (
+          <div className="px-4 py-6 flex flex-col items-center gap-2" style={{ background: "var(--background-elev)" }}>
+            <Bell size={20} style={{ color: "var(--foreground-dim)" }} />
+            <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Aucune notification programmée</p>
+          </div>
+        )}
+        {notifSchedules.map((s, i) => (
+          <div key={s.id} className="px-4 py-3 flex items-start gap-3"
+            style={{ background: "var(--background-elev)", borderTop: i > 0 || showNewNotif ? "1px solid var(--border)" : undefined }}>
+            <Bell size={15} className="mt-0.5 flex-shrink-0" style={{ color: s.is_active ? "var(--accent)" : "var(--foreground-dim)" }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium truncate" style={{ color: "var(--foreground)" }}>{s.title}</p>
+              <p className="text-[11px] truncate" style={{ color: "var(--foreground-dim)" }}>{s.body}</p>
+              <p className="text-[10px] font-mono mt-0.5" style={{ color: "var(--foreground-dim)" }}>
+                {String(s.hour).padStart(2, "0")}h00 · {DAY_ORDER.filter(d => s.days_of_week.includes(d)).map(d => DAY_LABELS[d]).join(" ")}
+                {s.target_role ? ` · ${s.target_role === "staff" ? "Staff" : "Managers"}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => toggleSchedule(s.id, !s.is_active)}>
+                {s.is_active
+                  ? <ToggleRight size={24} style={{ color: "var(--accent)" }} />
+                  : <ToggleLeft size={24} style={{ color: "var(--foreground-dim)" }} />}
+              </button>
+              <button onClick={() => deleteSchedule(s.id)} className="p-1 rounded" style={{ color: "var(--danger)" }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Save */}
