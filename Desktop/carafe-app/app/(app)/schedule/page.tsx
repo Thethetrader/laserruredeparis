@@ -37,6 +37,7 @@ interface PollInvitee {
   poll_id: string;
   member_id: string;
   member_name: string;
+  member_avatar?: string | null;
 }
 
 interface PollWithDetails extends Poll {
@@ -50,6 +51,7 @@ interface TeamMember {
   profile_id: string;
   first_name: string | null;
   last_name: string | null;
+  avatar_url?: string | null;
 }
 
 const DEV_MEMBERS: TeamMember[] = [
@@ -191,8 +193,11 @@ function PollCard({ poll, currentUserId, onVote, isManager }: {
               const cfg = vote ? VOTE_CONFIG[vote.response] : null;
               return (
                 <div key={inv.member_id} className="flex items-center gap-2.5 py-1.5 px-3 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                    {initials}
+                  <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden" style={{ border: "1px solid rgba(6,182,212,0.2)" }}>
+                    {inv.member_avatar
+                      ? <img src={inv.member_avatar} alt={inv.member_name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-[9px] font-bold" style={{ background: "rgba(6,182,212,0.12)", color: "var(--accent)" }}>{initials}</div>
+                    }
                   </div>
                   <span className="flex-1 text-sm" style={{ color: "var(--foreground-muted)" }}>{inv.member_name}</span>
                   {cfg ? (
@@ -330,8 +335,11 @@ function CreatePollForm({ members, onSubmit, onCancel }: {
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left"
                 style={{ background: selected ? "rgba(6,182,212,0.06)" : "var(--background-soft)", border: `1px solid ${selected ? "rgba(6,182,212,0.25)" : "var(--border)"}` }}
               >
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}>
-                  {initials}
+                <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden" style={{ border: "1px solid rgba(6,182,212,0.2)" }}>
+                  {m.avatar_url
+                    ? <img src={m.avatar_url} alt={name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-[9px] font-bold" style={{ background: "rgba(6,182,212,0.12)", color: "var(--accent)" }}>{initials}</div>
+                  }
                 </div>
                 <span className="flex-1 text-sm" style={{ color: selected ? "var(--foreground)" : "var(--foreground-muted)" }}>{name}</span>
                 <div className="w-4 h-4 rounded flex items-center justify-center" style={{ background: selected ? "var(--accent)" : "transparent", border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}` }}>
@@ -404,9 +412,9 @@ export default function SchedulePage() {
 
     const pollIds = pollRows.map(p => p.id);
     const [{ data: votes }, { data: invitees }, { data: allMembers }] = await Promise.all([
-      supabase.from("schedule_votes").select("*, profiles(first_name,last_name)").in("poll_id", pollIds),
-      supabase.from("schedule_poll_invitees").select("*, profiles(first_name,last_name)").in("poll_id", pollIds),
-      supabase.from("establishment_members").select("id, profile_id, profiles(first_name,last_name)").eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("schedule_votes").select("*, profiles(first_name,last_name,avatar_url)").in("poll_id", pollIds),
+      supabase.from("schedule_poll_invitees").select("*, profiles(first_name,last_name,avatar_url)").in("poll_id", pollIds),
+      supabase.from("establishment_members").select("id, profile_id, profiles(first_name,last_name,avatar_url)").eq("establishment_id", estId).eq("is_active", true),
     ]);
 
     const getName = (p: { first_name: string | null; last_name: string | null } | null) =>
@@ -426,6 +434,7 @@ export default function SchedulePage() {
         poll_id: i.poll_id,
         member_id: i.member_id,
         member_name: getName((i as any).profiles),
+        member_avatar: (i as any).profiles?.avatar_url ?? null,
       })),
     }));
 
@@ -435,6 +444,7 @@ export default function SchedulePage() {
       profile_id: m.profile_id,
       first_name: (m as any).profiles?.first_name ?? null,
       last_name: (m as any).profiles?.last_name ?? null,
+      avatar_url: (m as any).profiles?.avatar_url ?? null,
     })));
   }
 
@@ -512,7 +522,7 @@ export default function SchedulePage() {
             Proposer un créneau
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>
-            Choisis les gens, le créneau, et soumet — tout le monde vote.
+            Choisis les gens, le créneau, et soumet. Tout le monde vote.
           </p>
         </div>
         {isManager && !showForm && (
