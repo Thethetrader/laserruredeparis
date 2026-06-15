@@ -388,9 +388,9 @@ export default function DelaysPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  {isManager && delay.employee_name && (
+                  {isManager && (
                     <p className="text-sm font-medium mb-1" style={{ color: "var(--foreground)" }}>
-                      {delay.employee_name}
+                      {teamOptions.find(t => t.profile_id === delay.employee_id)?.name ?? delay.employee_name ?? "Inconnu"}
                     </p>
                   )}
                   <div className="flex flex-wrap items-center gap-3">
