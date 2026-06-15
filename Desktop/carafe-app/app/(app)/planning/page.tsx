@@ -33,6 +33,7 @@ interface PlanningRules {
   allow_overtime: boolean;
   consecutive_rest_days: boolean;
   allow_split_shifts: boolean;
+  custom_rules?: string[];
 }
 
 interface DayConfig {
@@ -532,6 +533,8 @@ export default function PlanningPage() {
   const [editingDay,   setEditingDay]   = useState<string | null>(null);
   const [savingDay,    setSavingDay]    = useState(false);
   const [rulesOpen,    setRulesOpen]    = useState(false);
+  const [customRulesModal, setCustomRulesModal] = useState(false);
+  const [newCustomRule,    setNewCustomRule]    = useState("");
 
   /* ── Planning mode ── */
   const [planningMode,    setPlanningMode]    = useState<PlanningMode>("ai");
@@ -1273,14 +1276,30 @@ export default function PlanningPage() {
           {/* ── Rules (collapsible, AI mode only) ── */}
           {planningMode === "ai" && (!planningWeek || planningWeek.status === "draft") && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <button
-                onClick={() => setRulesOpen(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3"
-                style={{ background: "var(--background-elev)" }}
-              >
-                <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>Règles de génération IA</span>
-                {rulesOpen ? <ChevronUp size={14} style={{ color: "var(--foreground-dim)" }} /> : <ChevronDown size={14} style={{ color: "var(--foreground-dim)" }} />}
-              </button>
+              <div className="flex items-center" style={{ background: "var(--background-elev)" }}>
+                <button
+                  onClick={() => setRulesOpen(v => !v)}
+                  className="flex-1 flex items-center justify-between px-4 py-3"
+                >
+                  <span className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>
+                    Règles de génération IA
+                    {(rules.custom_rules?.length ?? 0) > 0 && (
+                      <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded-full" style={{ background: "rgba(6,182,212,0.12)", color: "var(--accent)" }}>
+                        +{rules.custom_rules!.length}
+                      </span>
+                    )}
+                  </span>
+                  {rulesOpen ? <ChevronUp size={14} style={{ color: "var(--foreground-dim)" }} /> : <ChevronDown size={14} style={{ color: "var(--foreground-dim)" }} />}
+                </button>
+                <button
+                  onClick={() => setCustomRulesModal(true)}
+                  className="px-3 py-3 flex-shrink-0"
+                  style={{ borderLeft: "1px solid var(--border)", color: "var(--foreground-dim)" }}
+                  title="Règles personnalisées"
+                >
+                  <Settings2 size={14} />
+                </button>
+              </div>
               {rulesOpen && (
                 <div className="px-4 py-3 space-y-2.5" style={{ background: "var(--background)" }}>
                   {(
@@ -1302,9 +1321,60 @@ export default function PlanningPage() {
                       </div>
                     </label>
                   ))}
+                  {(rules.custom_rules?.length ?? 0) > 0 && (
+                    <div className="pt-1 space-y-1.5">
+                      <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--foreground-dim)" }}>Règles personnalisées</p>
+                      {rules.custom_rules!.map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg" style={{ background: "rgba(6,182,212,0.06)", border: "1px solid rgba(6,182,212,0.15)" }}>
+                          <span className="flex-1 text-[12px]" style={{ color: "var(--foreground-muted)" }}>{r}</span>
+                          <button onClick={() => setRules(prev => ({ ...prev, custom_rules: prev.custom_rules!.filter((_, j) => j !== i) }))} style={{ color: "var(--foreground-dim)" }}><X size={12} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Modal règles personnalisées */}
+            {customRulesModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={e => { if (e.target === e.currentTarget) setCustomRulesModal(false); }}>
+                <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Règles personnalisées</p>
+                    <button onClick={() => setCustomRulesModal(false)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+                  </div>
+                  <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Décris tes propres contraintes en langage naturel. L&apos;IA les respectera lors de la génération.</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={newCustomRule}
+                      onChange={e => setNewCustomRule(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && newCustomRule.trim()) { setRules(r => ({ ...r, custom_rules: [...(r.custom_rules ?? []), newCustomRule.trim()] })); setNewCustomRule(""); } }}
+                      placeholder="Ex : Karim ne travaille pas le lundi"
+                      className="flex-1 px-3 py-2 text-[13px] rounded-lg outline-none"
+                      style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                    />
+                    <button
+                      onClick={() => { if (newCustomRule.trim()) { setRules(r => ({ ...r, custom_rules: [...(r.custom_rules ?? []), newCustomRule.trim()] })); setNewCustomRule(""); } }}
+                      className="px-3 py-2 rounded-lg"
+                      style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {(rules.custom_rules ?? []).length === 0 ? (
+                      <p className="text-[12px] text-center py-3" style={{ color: "var(--foreground-dim)" }}>Aucune règle personnalisée</p>
+                    ) : (rules.custom_rules ?? []).map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
+                        <span className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{r}</span>
+                        <button onClick={() => setRules(prev => ({ ...prev, custom_rules: prev.custom_rules!.filter((_, j) => j !== i) }))} style={{ color: "var(--foreground-dim)" }}><X size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           )}
 
           {/* ── Generate button (AI mode only) ── */}
