@@ -9,33 +9,19 @@ webpush.setVapidDetails(
 );
 
 export async function POST(req: NextRequest) {
-  const { establishmentId, title, body, url, targetProfileId, senderProfileId } = await req.json();
+  const { targetProfileId, title, body, url } = await req.json();
+  if (!targetProfileId) return NextResponse.json({ error: 'Missing targetProfileId' }, { status: 400 });
 
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  let query = supabase.from('push_subscriptions').select('*').eq('establishment_id', establishmentId);
+  const { data: subs } = await supabase
+    .from('push_subscriptions')
+    .select('*')
+    .eq('profile_id', targetProfileId);
 
-  if (targetProfileId) {
-    // DM → only the recipient
-    query = query.eq('profile_id', targetProfileId);
-  } else {
-    // Général → all members except sender
-    const { data: members } = await supabase
-      .from('establishment_members')
-      .select('profile_id')
-      .eq('establishment_id', establishmentId)
-      .eq('is_active', true);
-    const profileIds = (members ?? [])
-      .map((m: { profile_id: string }) => m.profile_id)
-      .filter((id: string) => id !== senderProfileId);
-    if (!profileIds.length) return NextResponse.json({ sent: 0 });
-    query = query.in('profile_id', profileIds);
-  }
-
-  const { data: subs } = await query;
   if (!subs?.length) return NextResponse.json({ sent: 0 });
 
   const payload = JSON.stringify({ title, body, url });
@@ -48,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
       sent++;
     } catch {
-      // expired or invalid subscription, skip
+      // Subscription expired or invalid, skip silently
     }
   }
   return NextResponse.json({ sent });

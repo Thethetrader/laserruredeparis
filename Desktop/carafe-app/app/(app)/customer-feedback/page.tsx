@@ -308,9 +308,16 @@ export default function CustomerFeedbackPage() {
   };
 
   const deleteFeedback = async (id: string) => {
+    const backup = feedbacks.find(f => f.id === id);
     setFeedbacks(prev => prev.filter(f => f.id !== id));
     setDeleteTarget(null);
-    if (!DEV_MODE) await supabase.from("customer_feedback").delete().eq("id", id);
+    if (!DEV_MODE) {
+      const { error } = await supabase.from("customer_feedback").delete().eq("id", id);
+      if (error && backup) {
+        setFeedbacks(prev => [backup, ...prev]);
+        showToast("Erreur : impossible de supprimer ce retour");
+      }
+    }
   };
 
   const addFeedback = (fb: FeedbackView, msg?: string) => {

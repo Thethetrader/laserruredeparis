@@ -288,6 +288,7 @@ export default function TasksManagerPage() {
       task_one_shot_id: oneShotId || null,
       validated_by: userId!,
       service_date: today,
+      is_catchup: false,
     });
     // Supprimer le claim si existant
     if (templateId) await supabase.from("task_claims").delete().eq("task_template_id", templateId).eq("service_date", today);
@@ -422,11 +423,23 @@ export default function TasksManagerPage() {
     filterRole === "all" || t.target_role === filterRole || t.target_role === "all"
   );
 
+  const visibleOneShots = isManager
+    ? oneShots
+    : oneShots.filter(s =>
+        s.assigned_to === userId ||
+        (s.assigned_to === null && (s.target_role === "all" || s.target_role === userRole))
+      );
+
   const byCategory = (cat: TaskCategory) =>
     filteredTemplates.filter(t => t.category === cat && isWindowOpen(t.category, currentHour));
 
-  const totalTasks = filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).length + oneShots.length;
-  const doneTasks = completions.length;
+  const visibleTemplateIds = new Set(filteredTemplates.filter(t => isWindowOpen(t.category, currentHour)).map(t => t.id));
+  const visibleOneShotIds  = new Set(visibleOneShots.map(s => s.id));
+  const totalTasks = visibleTemplateIds.size + visibleOneShotIds.size;
+  const doneTasks  = completions.filter(c =>
+    (c.task_template_id && visibleTemplateIds.has(c.task_template_id)) ||
+    (c.task_one_shot_id  && visibleOneShotIds.has(c.task_one_shot_id))
+  ).length;
   const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const allDone = totalTasks > 0 && doneTasks >= totalTasks;
 
@@ -448,12 +461,20 @@ export default function TasksManagerPage() {
         {isManager && (
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowOneShotModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
+              style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
+            >
+              <Zap size={12} />
+              Ponctuelle
+            </button>
+            <button
               onClick={() => setShowAddTask(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-base text-[12px] font-medium transition-colors"
               style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}
             >
               <Plus size={12} />
-              Nouvelle tâche
+              Récurrente
             </button>
           </div>
         )}
@@ -642,19 +663,19 @@ export default function TasksManagerPage() {
           })}
 
           {/* Tâches ponctuelles (one-shots) */}
-          {oneShots.length > 0 && (
+          {visibleOneShots.length > 0 && (
             <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               <div className="flex items-center justify-between px-4 py-3" style={{ background: "var(--background-elev)" }}>
                 <div className="flex items-center gap-2">
                   <Zap size={14} style={{ color: "var(--foreground-dim)" }} />
                   <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>Ponctuelles</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: oneShots.filter(s => completionMap.has(s.id)).length === oneShots.length ? "rgba(16,185,129,0.12)" : "var(--background)", color: oneShots.filter(s => completionMap.has(s.id)).length === oneShots.length ? "var(--success)" : "var(--foreground-dim)" }}>
-                    {oneShots.filter(s => completionMap.has(s.id)).length}/{oneShots.length}
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: visibleOneShots.filter(s => completionMap.has(s.id)).length === visibleOneShots.length ? "rgba(16,185,129,0.12)" : "var(--background)", color: visibleOneShots.filter(s => completionMap.has(s.id)).length === visibleOneShots.length ? "var(--success)" : "var(--foreground-dim)" }}>
+                    {visibleOneShots.filter(s => completionMap.has(s.id)).length}/{visibleOneShots.length}
                   </span>
                 </div>
               </div>
               <div className="divide-y" style={{ borderTop: "1px solid var(--border-soft)", borderColor: "var(--border-soft)" }}>
-                {oneShots.map(shot => {
+                {visibleOneShots.map(shot => {
                   const comp = completionMap.get(shot.id);
                   const isDone = !!comp;
                   const isValidatingThis = validating === shot.id;
@@ -737,6 +758,101 @@ export default function TasksManagerPage() {
           <button className="absolute top-4 right-4" style={{ color: "white" }} onClick={() => setLightboxUrl(null)}><X size={24} /></button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightboxUrl} alt="" className="max-w-full max-h-full rounded-xl object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+
+      {showOneShotModal && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowOneShotModal(false); resetOneShotForm(); } }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="flex items-center justify-between px-5 py-4 sticky top-0"
+              style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Tâche ponctuelle</p>
+              <button onClick={() => { setShowOneShotModal(false); resetOneShotForm(); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Titre</label>
+                <input
+                  value={newOneShotTitle}
+                  onChange={e => setNewOneShotTitle(e.target.value)}
+                  placeholder="Ex : Vérifier la livraison boissons"
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Description (optionnelle)</label>
+                <textarea
+                  value={newOneShotDesc}
+                  onChange={e => setNewOneShotDesc(e.target.value)}
+                  placeholder="Détails supplémentaires…"
+                  rows={2}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Assigner à une personne</label>
+                <select
+                  value={newOneShotAssignedTo}
+                  onChange={e => setNewOneShotAssignedTo(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                >
+                  <option value="">— Toute l&apos;équipe —</option>
+                  {members.map(m => (
+                    <option key={m.profile_id} value={m.profile_id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              {!newOneShotAssignedTo && (
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Rôle cible</label>
+                  <select
+                    value={newOneShotRole}
+                    onChange={e => setNewOneShotRole(e.target.value as TaskTargetRole)}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+                  >
+                    <option value="all">Tous</option>
+                    <option value="manager">Manager</option>
+                    {(Object.keys(STAFF_STATUSES) as StaffStatus[]).filter(s => !tipSettings.hidden?.includes(s)).map(s => (
+                      <option key={s} value={s}>{tipSettings.labels?.[s] ?? STAFF_STATUSES[s]?.label ?? s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div onClick={() => setNewOneShotRequiresPhoto(v => !v)}
+                    className="w-8 h-4.5 rounded-full flex items-center px-0.5 transition-colors cursor-pointer"
+                    style={{ background: newOneShotRequiresPhoto ? "var(--accent)" : "var(--border)", width: 34, height: 18 }}>
+                    <div className="w-3.5 h-3.5 rounded-full bg-white transition-transform" style={{ transform: newOneShotRequiresPhoto ? "translateX(16px)" : "translateX(0)" }} />
+                  </div>
+                  <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>Photo requise</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div onClick={() => setNewOneShotIsCritical(v => !v)}
+                    className="rounded-full flex items-center px-0.5 transition-colors cursor-pointer"
+                    style={{ background: newOneShotIsCritical ? "#F59E0B" : "var(--border)", width: 34, height: 18 }}>
+                    <div className="w-3.5 h-3.5 rounded-full bg-white transition-transform" style={{ transform: newOneShotIsCritical ? "translateX(16px)" : "translateX(0)" }} />
+                  </div>
+                  <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>HACCP</span>
+                </label>
+              </div>
+              <button
+                onClick={createOneShot}
+                disabled={savingOneShot || !newOneShotTitle.trim()}
+                className="w-full py-3 rounded-xl text-sm font-semibold"
+                style={{ background: "var(--accent)", color: "#fff", opacity: (savingOneShot || !newOneShotTitle.trim()) ? 0.5 : 1 }}
+              >
+                {savingOneShot ? "Création…" : "Créer la tâche"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

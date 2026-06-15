@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
-import { Trophy, BookOpen, MessageSquare, Zap, Plus, X, Award, Star } from "lucide-react";
+import { Trophy, BookOpen, MessageSquare, Zap, Plus, X, Award, Star, Settings2 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 
 const DEV_MODE = false;
@@ -146,6 +146,7 @@ export default function ScoringPage() {
   const [events, setEvents] = useState<ScoreEvent[]>([]);
   const [myProfileId, setMyProfileId] = useState<string>("");
   const [myRole, setMyRole] = useState<string>("employee");
+  const [estId, setEstId] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -175,8 +176,22 @@ export default function ScoringPage() {
     if (!memberData) { setLoading(false); return; }
 
     setMyRole(memberData.role);
-    // scoring_settings, score_events, members would be fetched here
-    setSettings(DEV_SETTINGS);
+    setEstId(memberData.establishment_id);
+    const estId = memberData.establishment_id;
+
+    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+
+    const [{ data: settingsData }, { data: eventsData }, { data: membersData }] = await Promise.all([
+      supabase.from("scoring_settings").select("*").eq("establishment_id", estId).maybeSingle(),
+      supabase.from("score_events").select("*").eq("establishment_id", estId).gte("created_at", startOfMonth.toISOString()),
+      supabase.from("establishment_members").select("profile_id, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
+    ]);
+
+    setSettings(settingsData ?? DEV_SETTINGS);
+    setEvents((eventsData ?? []) as ScoreEvent[]);
+    setMembers(((membersData ?? []) as Array<{ profile_id: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>)
+      .map(m => ({ profile_id: m.profile_id, first_name: m.profiles?.first_name ?? null, last_name: m.profiles?.last_name ?? null, avatar_url: m.profiles?.avatar_url ?? null, job_title: m.job_title ?? null }))
+    );
     setLoading(false);
   }
 
@@ -209,38 +224,82 @@ export default function ScoringPage() {
   const month = new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   return isManager
-    ? <ManagerScoringView scored={scored} settings={settings} myProfileId={myProfileId} month={month} />
+    ? <ManagerScoringView scored={scored} settings={settings} myProfileId={myProfileId} month={month} estId={estId} onRefresh={loadData} />
     : <EmployeeScoringView scored={scored} settings={settings} myProfileId={myProfileId} month={month} />;
 }
 
 /* ─── MANAGER VIEW ─────────────────────────────────── */
-function ManagerScoringView({ scored, settings, myProfileId, month }: {
+function ManagerScoringView({ scored, settings, myProfileId, month, estId, onRefresh }: {
   scored: ScoredMember[];
   settings: ScoringSettings;
   myProfileId: string;
   month: string;
+  estId: string;
+  onRefresh: () => void;
 }) {
-  const [bonusTarget, setBonusTarget] = useState<string | null>(null);
+  const supabase = createClient();
+  const [actionModal, setActionModal] = useState<"bonus" | "google_review" | "challenge_won" | null>(null);
+  const [actionTarget, setActionTarget] = useState<string>("");
   const [bonusPoints, setBonusPoints] = useState(5);
   const [bonusReason, setBonusReason] = useState("");
+  const [googleQty, setGoogleQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const podium = scored.slice(0, 3);
-  const bonusTargetMember = bonusTarget ? scored.find(m => m.profile_id === bonusTarget) : null;
+  const actionTargetMember = actionTarget ? scored.find(m => m.profile_id === actionTarget) : null;
 
-  const submitBonus = async () => {
-    if (!bonusTarget || bonusReason.trim().length < 10 || bonusTarget === myProfileId) return;
+  const defaultTarget = scored.find(m => m.profile_id !== myProfileId)?.profile_id ?? "";
+
+  async function submitAction() {
+    if (!actionTarget) return;
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 400));
-    const name = bonusTargetMember ? (bonusTargetMember.first_name ?? "ce membre") : "ce membre";
-    setSuccessMsg(`+${bonusPoints} pts attribués à ${name} ✓`);
-    setBonusTarget(null);
+
+    let source_type: string;
+    let points: number;
+    let source_label: string | null = null;
+    let reason: string | null = null;
+
+    if (actionModal === "bonus") {
+      if (bonusReason.trim().length < 10) { setSubmitting(false); return; }
+      source_type = "manual_bonus";
+      points = bonusPoints;
+      reason = bonusReason.trim();
+    } else if (actionModal === "google_review") {
+      source_type = "review_received";
+      points = 5 * googleQty;
+      source_label = `${googleQty} avis Google`;
+    } else {
+      source_type = "challenge_won";
+      points = settings.points_challenge_won;
+      source_label = "Défi remporté";
+    }
+
+    const myName = scored.find(m => m.profile_id === myProfileId);
+    const attributed_by_name = myName ? `${myName.first_name ?? ""} ${myName.last_name ?? ""}`.trim() : null;
+
+    if (!DEV_MODE && estId) {
+      await supabase.from("score_events").insert({
+        establishment_id: estId,
+        profile_id: actionTarget,
+        source_type,
+        source_label,
+        reason,
+        attributed_by_name,
+        points,
+      });
+    }
+
+    const name = actionTargetMember ? (actionTargetMember.first_name ?? "ce membre") : "ce membre";
+    setSuccessMsg(`+${points} pts attribués à ${name} ✓`);
+    setActionModal(null);
+    setActionTarget("");
     setBonusReason("");
     setBonusPoints(5);
+    setGoogleQty(1);
     setSubmitting(false);
-    setTimeout(() => setSuccessMsg(null), 3000);
-  };
+    setTimeout(() => { setSuccessMsg(null); onRefresh(); }, 2000);
+  }
 
   return (
     <div className="px-4 py-8 lg:px-8 max-w-4xl">
@@ -250,12 +309,26 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
           <MonoLabel size="xs" className="mb-2 block">Score équipe</MonoLabel>
           <h1 className="text-2xl font-semibold capitalize" style={{ color: "var(--foreground)" }}>{month}</h1>
         </div>
-        <button
-          onClick={() => { setBonusTarget(scored.find(m => m.profile_id !== myProfileId)?.profile_id ?? null); setBonusReason(""); setBonusPoints(5); }}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg"
-          style={{ background: "var(--warning)", color: "var(--primary-foreground)" }}>
-          <Plus size={14} /> Attribuer un bonus
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setActionModal("google_review"); setActionTarget(defaultTarget); }}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-lg"
+            style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+            ⭐ Avis Google
+          </button>
+          <button
+            onClick={() => { setActionModal("challenge_won"); setActionTarget(defaultTarget); }}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium rounded-lg"
+            style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>
+            🏆 Défi
+          </button>
+          <button
+            onClick={() => { setActionModal("bonus"); setActionTarget(defaultTarget); setBonusReason(""); setBonusPoints(5); }}
+            className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium rounded-lg"
+            style={{ background: "var(--warning)", color: "var(--primary-foreground)" }}>
+            <Plus size={13} /> Bonus
+          </button>
+        </div>
       </div>
 
       {successMsg && (
@@ -338,74 +411,91 @@ function ManagerScoringView({ scored, settings, myProfileId, month }: {
         </div>
       </div>
 
-      {/* Bonus modal */}
-      {bonusTarget && (
+      {/* Action modal */}
+      {actionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) setBonusTarget(null); }}>
-          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                  Attribuer un bonus
-                  {bonusTargetMember && <span style={{ color: "var(--warning)" }}> à {bonusTargetMember.first_name}</span>}
-                </p>
-                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Le bonus ne peut pas être retiré</p>
-              </div>
-              <button onClick={() => setBonusTarget(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+          onClick={e => { if (e.target === e.currentTarget) setActionModal(null); }}>
+          <div className="w-full max-w-sm rounded-2xl p-5 space-y-4" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                {actionModal === "google_review" && "⭐ Avis Google"}
+                {actionModal === "challenge_won" && "🏆 Défi remporté"}
+                {actionModal === "bonus" && "💛 Bonus manuel"}
+              </p>
+              <button onClick={() => setActionModal(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
             </div>
 
-            <div className="mb-4">
+            <div>
               <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>Membre</label>
-              <select value={bonusTarget} onChange={e => setBonusTarget(e.target.value)}
+              <select value={actionTarget} onChange={e => setActionTarget(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                 style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                {scored.filter(m => m.profile_id !== myProfileId).map(m => (
+                {scored.map(m => (
                   <option key={m.profile_id} value={m.profile_id}>
-                    {`${m.first_name ?? ""} ${m.last_name ?? ""}`.trim()} {m.score} pts
+                    {`${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() || m.profile_id}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
-                Points ({settings.manual_bonus_min}–{settings.manual_bonus_max})
-              </label>
-              <div className="flex items-center gap-3">
-                <input type="range" min={settings.manual_bonus_min} max={settings.manual_bonus_max} value={bonusPoints}
-                  onChange={e => setBonusPoints(parseInt(e.target.value))}
-                  className="flex-1" style={{ accentColor: "var(--warning)" }} />
-                <span className="text-2xl font-bold w-14 text-right" style={{ color: "var(--warning)" }}>+{bonusPoints}</span>
+            {actionModal === "google_review" && (
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+                  Nombre d&apos;avis · <span style={{ color: "var(--accent)" }}>+{5 * googleQty} pts</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setGoogleQty(q => Math.max(1, q - 1))}
+                    className="w-8 h-8 rounded-full text-lg font-bold flex items-center justify-center"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>−</button>
+                  <span className="text-3xl font-bold flex-1 text-center" style={{ color: "var(--accent)" }}>{googleQty}</span>
+                  <button onClick={() => setGoogleQty(q => q + 1)}
+                    className="w-8 h-8 rounded-full text-lg font-bold flex items-center justify-center"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}>+</button>
+                </div>
+                <p className="text-[11px] text-center mt-1" style={{ color: "var(--foreground-dim)" }}>5 pts par avis</p>
               </div>
-            </div>
+            )}
 
-            <div className="mb-4">
-              <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
-                Motif
-                {bonusReason.length > 0 && bonusReason.length < 10 && (
-                  <span style={{ color: "var(--danger)" }}> (min. 10 caractères)</span>
-                )}
-              </label>
-              <textarea
-                value={bonusReason} onChange={e => setBonusReason(e.target.value)}
-                placeholder="Ex: Excellent travail lors de la soirée privée, gestion impeccable..."
-                rows={3}
-                className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
-                style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-                onFocus={e => e.currentTarget.style.borderColor = "var(--warning)"}
-                onBlur={e => e.currentTarget.style.borderColor = "var(--border)"}
-                autoFocus
-              />
-              <p className="text-[10px] font-mono mt-1 text-right" style={{ color: bonusReason.length >= 10 ? "var(--success)" : "var(--foreground-dim)" }}>
-                {bonusReason.length} / 10 min
-              </p>
-            </div>
+            {actionModal === "challenge_won" && (
+              <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                <p className="text-3xl font-bold" style={{ color: "#F59E0B" }}>+{settings.points_challenge_won}</p>
+                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>points pour le défi remporté</p>
+              </div>
+            )}
 
-            <button onClick={submitBonus} disabled={submitting || bonusReason.trim().length < 10}
-              className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity"
-              style={{ background: "var(--warning)", color: "var(--primary-foreground)", opacity: (submitting || bonusReason.trim().length < 10) ? 0.5 : 1 }}>
-              {submitting ? "Envoi…" : `Attribuer +${bonusPoints} pts`}
+            {actionModal === "bonus" && (
+              <>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+                    Points ({settings.manual_bonus_min}–{settings.manual_bonus_max})
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input type="range" min={settings.manual_bonus_min} max={settings.manual_bonus_max} value={bonusPoints}
+                      onChange={e => setBonusPoints(parseInt(e.target.value))}
+                      className="flex-1" style={{ accentColor: "var(--warning)" }} />
+                    <span className="text-2xl font-bold w-14 text-right" style={{ color: "var(--warning)" }}>+{bonusPoints}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-widest mb-1.5" style={{ color: "var(--foreground-dim)" }}>
+                    Motif {bonusReason.length > 0 && bonusReason.length < 10 && <span style={{ color: "var(--danger)" }}>(min. 10 car.)</span>}
+                  </label>
+                  <textarea value={bonusReason} onChange={e => setBonusReason(e.target.value)}
+                    placeholder="Ex: Excellent travail lors de la soirée privée…"
+                    rows={2}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
+                    style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                </div>
+              </>
+            )}
+
+            <button
+              onClick={submitAction}
+              disabled={submitting || (actionModal === "bonus" && bonusReason.trim().length < 10)}
+              className="w-full py-3 text-sm font-semibold rounded-lg"
+              style={{ background: actionModal === "bonus" ? "var(--warning)" : "var(--accent)", color: "#fff", opacity: (submitting || (actionModal === "bonus" && bonusReason.trim().length < 10)) ? 0.5 : 1 }}>
+              {submitting ? "Envoi…" : actionModal === "google_review" ? `Attribuer +${5 * googleQty} pts` : actionModal === "challenge_won" ? `Attribuer +${settings.points_challenge_won} pts` : `Attribuer +${bonusPoints} pts`}
             </button>
           </div>
         </div>

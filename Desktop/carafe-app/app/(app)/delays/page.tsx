@@ -82,6 +82,7 @@ export default function DelaysPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [filterPerson, setFilterPerson] = useState("");
 
   // Form state
   const [formEmployee, setFormEmployee] = useState(DEV_MODE ? DEV_PROFILE_ID : "");
@@ -371,8 +372,59 @@ export default function DelaysPage() {
         </div>
       )}
 
+      {/* Par personne (manager only) */}
+      {isManager && thisMonthDelays.length > 0 && (
+        <div className="rounded-xl overflow-hidden mb-6" style={{ border: "1px solid var(--border)" }}>
+          <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Par personne ce mois</p>
+            <select
+              value={filterPerson}
+              onChange={e => setFilterPerson(e.target.value)}
+              className="text-[11px] rounded-md px-2 py-1 outline-none"
+              style={{ background: "var(--background-soft)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+            >
+              <option value="">Tous</option>
+              {teamOptions.map(t => (
+                <option key={t.profile_id} value={t.profile_id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+          {teamOptions
+            .map(t => {
+              const count = thisMonthDelays.filter(d => d.employee_id === t.profile_id).length;
+              const totalMins = thisMonthDelays.filter(d => d.employee_id === t.profile_id).reduce((s, d) => s + d.delay_minutes, 0);
+              return { ...t, count, totalMins };
+            })
+            .filter(t => t.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .map((t, i, arr) => {
+              const initials = t.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <div key={t.profile_id}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+                  style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-soft)" : "none", background: filterPerson === t.profile_id ? "rgba(6,182,212,0.04)" : "var(--background)" }}
+                  onClick={() => setFilterPerson(prev => prev === t.profile_id ? "" : t.profile_id)}
+                >
+                  <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                    {t.avatar_url
+                      ? <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-[9px] font-bold" style={{ background: "rgba(245,158,11,0.12)", color: "var(--warning)" }}>{initials}</div>
+                    }
+                  </div>
+                  <p className="flex-1 text-[13px]" style={{ color: "var(--foreground)" }}>{t.name}</p>
+                  <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>{t.totalMins}min</p>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-1" style={{ background: t.count >= 3 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: t.count >= 3 ? "#EF4444" : "#F59E0B" }}>
+                    {t.count} retard{t.count > 1 ? "s" : ""}
+                  </span>
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
       {/* Delays list */}
-      {delays.length === 0 ? (
+      {delays.filter(d => !filterPerson || d.employee_id === filterPerson).length === 0 ? (
         <div
           className="rounded-xl flex flex-col items-center justify-center py-16"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
@@ -382,7 +434,7 @@ export default function DelaysPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {delays.map(delay => (
+          {delays.filter(d => !filterPerson || d.employee_id === filterPerson).map(delay => (
             <div
               key={delay.id}
               className="rounded-xl px-5 py-4"

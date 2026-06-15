@@ -320,7 +320,7 @@ export default function DashboardPage() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes, scoreEventsRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, category, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
@@ -331,7 +331,8 @@ export default function DashboardPage() {
       supabase.from("feedback_reads").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency, target_role").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
-      supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`)
+      supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`),
+      supabase.from("score_events").select("profile_id, points").eq("establishment_id", estId).gte("created_at", monthStart),
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
@@ -406,13 +407,20 @@ export default function DashboardPage() {
       total_members: totalNonOwners,
     }));
 
+    const scoreEvents = (scoreEventsRes.data ?? []) as Array<{ profile_id: string; points: number }>;
+    const scoreByProfile: Record<string, number> = {};
+    scoreEvents.forEach(e => { scoreByProfile[e.profile_id] = (scoreByProfile[e.profile_id] ?? 0) + e.points; });
+    const hasScoreEvents = scoreEvents.length > 0;
+
     const leaderboard: MemberScore[] = members
       .filter(m => m.role !== "owner")
       .map(m => {
         const del = delayCounts[m.profile_id] ?? 0;
         const read = readsByProfile[m.profile_id] ?? 0;
         const bonus = totalProtocols > 0 ? Math.round((read / totalProtocols) * 40) : 0;
-        const score = Math.max(0, 100 - del * 10 + bonus);
+        const score = hasScoreEvents
+          ? (scoreByProfile[m.profile_id] ?? 0)
+          : Math.max(0, 100 - del * 10 + bonus);
         const p = m.profiles;
         const fn = p?.first_name ?? "";
         const ln = p?.last_name ?? "";
