@@ -423,8 +423,16 @@ export default function DelaysPage() {
         </div>
       )}
 
-      {/* Delays list */}
-      {delays.filter(d => !filterPerson || d.employee_id === filterPerson).length === 0 ? (
+      {/* Delays list — manager voit le détail seulement après sélection d'une personne */}
+      {isManager && !filterPerson ? (
+        <div
+          className="rounded-xl flex flex-col items-center justify-center py-12"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}
+        >
+          <Clock size={28} strokeWidth={1} style={{ color: "var(--foreground-dim)", marginBottom: 10 }} />
+          <p className="text-sm" style={{ color: "var(--foreground-dim)" }}>Sélectionnez une personne pour voir ses retards</p>
+        </div>
+      ) : delays.filter(d => !filterPerson || d.employee_id === filterPerson).length === 0 ? (
         <div
           className="rounded-xl flex flex-col items-center justify-center py-16"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}

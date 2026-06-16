@@ -17,11 +17,10 @@ export const STAFF_STATUSES: Record<StaffStatus, { label: string; color: string;
   autre:        { label: "Autre",         color: "#A1A1AA", defaultCoef: 0.7 },
 };
 
-export type PlanningMode = "ai" | "manual" | "none";
+export type PlanningMode = "ai" | "manual";
 
 export function parsePlanningMode(raw: unknown): PlanningMode {
   if (raw === "manual") return "manual";
-  if (raw === "none") return "none";
   return "ai";
 }
 

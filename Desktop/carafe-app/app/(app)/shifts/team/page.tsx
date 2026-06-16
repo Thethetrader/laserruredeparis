@@ -40,15 +40,6 @@ interface ValidationStatus {
   validated_at: string | null;
 }
 
-interface PlanningShiftItem {
-  id: string;
-  user_id: string;
-  shift_date: string;
-  service: string;
-  confirmation_status: "pending" | "confirmed" | "modified";
-  staff_status: StaffStatus | null;
-}
-
 // Net → Brut : ÷ 0.78 (cotisations salariales ~22%)
 // Brut → Coût employeur : × 1.45 (cotisations patronales ~45%)
 function netToGross(net: number) { return net / 0.78; }
@@ -712,7 +703,6 @@ export default function ShiftsTeamPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [shifts, setShifts] = useState<TeamShift[]>([]);
-  const [planningShifts, setPlanningShifts] = useState<PlanningShiftItem[]>([]);
   const [tipSettings, setTipSettings] = useState<TipSettings>(DEFAULT_TIP_SETTINGS);
   const [caSettings, setCASettings] = useState<CASettings>(DEFAULT_CA_SETTINGS);
   const [monthlyCA, setMonthlyCA] = useState<number | null>(null);
@@ -755,10 +745,9 @@ export default function ShiftsTeamPage() {
     const last = new Date(y, m + 1, 0).getDate();
     const to = `${y}-${String(m + 1).padStart(2, "0")}-${last}`;
     // Pas de FK shifts→profiles donc pas de JOIN direct — on utilise establishment_members qui a la FK
-    const [{ data: rawShifts }, { data: memberMap }, { data: rawPlanningShifts }] = await Promise.all([
+    const [{ data: rawShifts }, { data: memberMap }] = await Promise.all([
       supabase.from("shifts").select("*").eq("establishment_id", eid).gte("shift_date", from).lte("shift_date", to).order("shift_date"),
       supabase.from("establishment_members").select("profile_id, staff_status, tips_enabled, profiles(first_name)").eq("establishment_id", eid).eq("is_active", true),
-      supabase.from("planning_shifts").select("id, user_id, shift_date, service, confirmation_status, planning_weeks!inner(status)").eq("establishment_id", eid).eq("planning_weeks.status", "published").gte("shift_date", from).lte("shift_date", to),
     ]);
     const memberByUser = Object.fromEntries((memberMap ?? []).map(m => [m.profile_id, m]));
     const mapped: TeamShift[] = (rawShifts ?? []).map((s: Record<string, unknown>) => {
@@ -767,11 +756,6 @@ export default function ShiftsTeamPage() {
       return { ...(s as unknown as TeamShift), first_name: firstName, staff_status: (mem?.staff_status ?? null) as StaffStatus | null, tips_enabled: mem?.tips_enabled ?? true };
     });
     setShifts(mapped);
-    const mappedPlanning: PlanningShiftItem[] = (rawPlanningShifts ?? []).map((s: Record<string, unknown>) => {
-      const mem = memberByUser[s.user_id as string];
-      return { id: s.id as string, user_id: s.user_id as string, shift_date: s.shift_date as string, service: s.service as string, confirmation_status: (s.confirmation_status as "pending" | "confirmed" | "modified") ?? "pending", staff_status: (mem?.staff_status ?? null) as StaffStatus | null };
-    });
-    setPlanningShifts(mappedPlanning);
 
     // Load validation status per employee
     const { data: membersData } = await supabase
@@ -829,11 +813,6 @@ export default function ShiftsTeamPage() {
   for (const s of shifts) {
     if (!shiftsByDate.has(s.shift_date)) shiftsByDate.set(s.shift_date, []);
     shiftsByDate.get(s.shift_date)!.push(s);
-  }
-  const planningByDate = new Map<string, PlanningShiftItem[]>();
-  for (const s of planningShifts) {
-    if (!planningByDate.has(s.shift_date)) planningByDate.set(s.shift_date, []);
-    planningByDate.get(s.shift_date)!.push(s);
   }
   const selectedShifts = selected ? (shiftsByDate.get(selected) ?? []) : [];
   const totalDispatched = shifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
@@ -900,24 +879,12 @@ export default function ShiftsTeamPage() {
               if (!day) return <div key={`e-${i}`} style={{ minHeight: 80, borderRadius: 8 }} />;
               const dateStr = toDateStr(day);
               const dayShifts = shiftsByDate.get(dateStr) ?? [];
-              const dayPlanning = planningByDate.get(dateStr) ?? [];
               const isToday = dateStr === toDateStr(today);
               const dayTips = dayShifts.filter(s => s.tips_enabled).reduce((sum, s) => sum + (s.tips ?? 0) + (s.tips_2 ?? 0), 0);
-              // Planning shifts whose user hasn't yet entered real hours
-              const realUserIds = new Set(dayShifts.map(s => s.user_id));
-              const pendingPlanning = dayPlanning.filter(s => !realUserIds.has(s.user_id));
-              const hasPending = pendingPlanning.some(s => s.confirmation_status === "pending");
-              const hasRefused = pendingPlanning.some(s => s.confirmation_status === "modified");
-              const cellBg = dayShifts.length > 0
-                ? "rgba(6,182,212,0.04)"
-                : hasRefused ? "rgba(239,68,68,0.05)"
-                : hasPending ? "rgba(249,115,22,0.05)"
-                : pendingPlanning.length > 0 ? "rgba(16,185,129,0.04)"
-                : "var(--background-elev)";
               return (
                 <button key={dateStr} onClick={() => setSelected(dateStr)}
                   className="relative flex flex-col items-start overflow-hidden transition-colors text-left hover:bg-white/[0.02] lg:min-h-[96px]"
-                  style={{ minHeight: 80, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: cellBg, cursor: "pointer" }}>
+                  style={{ minHeight: 80, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: dayShifts.length > 0 ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
                   <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                     style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                     {day.getDate()}
@@ -926,10 +893,6 @@ export default function ShiftsTeamPage() {
                     {dayShifts.map(s => {
                       const color = s.staff_status ? (tipSettings.colors[s.staff_status] ?? STAFF_STATUSES[s.staff_status]?.color ?? "var(--accent)") : "var(--foreground-dim)";
                       return <span key={s.id} className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color, opacity: s.tips_enabled ? 1 : 0.5 }} />;
-                    })}
-                    {pendingPlanning.map(s => {
-                      const dotColor = s.confirmation_status === "modified" ? "#EF4444" : s.confirmation_status === "confirmed" ? "#10B981" : "#F97316";
-                      return <span key={s.id} className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: dotColor }} />;
                     })}
                   </div>
                   {dayTips > 0 && (

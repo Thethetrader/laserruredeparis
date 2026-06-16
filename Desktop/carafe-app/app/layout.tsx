@@ -27,10 +27,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/logo.png", sizes: "any", type: "image/png" },
+      { url: "/FONDCLAIRLOGO.png", sizes: "any", type: "image/png" },
     ],
-    apple: "/logo.png",
-    shortcut: "/logo.png",
+    apple: "/FONDCLAIRLOGO.png",
+    shortcut: "/FONDCLAIRLOGO.png",
   },
 };
 
@@ -64,11 +64,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }
           #splash.fade { opacity: 0; pointer-events: none; }
           #splash img { width: 140px; height: 140px; object-fit: contain; }
+          #splash .logo-dark { display: none; }
+          #splash .logo-light { display: block; mix-blend-mode: multiply; }
         `}</style>
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
         <div id="splash">
-          <img src="/logo.png" alt="Karaf" />
+          <img src="/logo.png" alt="Karaf" className="logo-dark" />
+          <img src="/FONDCLAIRLOGO.png" alt="Karaf" className="logo-light" />
         </div>
         {/* Script placed after #splash so the element exists in DOM */}
         <script dangerouslySetInnerHTML={{ __html: `

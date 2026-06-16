@@ -103,6 +103,7 @@ interface EmployeeInfo {
   name: string;
   status: string;
   hourly_rate: number;
+  avatar_url?: string | null;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
@@ -645,7 +646,7 @@ export default function PlanningPage() {
     // Load employees for reassignment
     const { data: memberRows } = await supabase
       .from("establishment_members")
-      .select("profile_id, staff_status, profiles(first_name)")
+      .select("profile_id, staff_status, profiles(first_name, avatar_url)")
       .eq("establishment_id", resolvedEid)
       .eq("is_active", true);
 
@@ -655,6 +656,7 @@ export default function PlanningPage() {
         name: m.profiles?.first_name ?? "Employé",
         status: m.staff_status ?? "autre",
         hourly_rate: 12,
+        avatar_url: m.profiles?.avatar_url ?? null,
       }))
     );
 
@@ -1268,8 +1270,24 @@ export default function PlanningPage() {
                 })}
               </div>
 
-              {/* Day config panel */}
-              {editingDay && (
+            </div>
+          )}
+
+          {/* Day config panel — bottom sheet modal */}
+          {planningMode === "ai" && (!planningWeek || planningWeek.status === "draft") && editingDay && (
+            <div
+              className="fixed inset-0 z-50 flex items-end justify-center"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              onClick={e => { if (e.target === e.currentTarget) setEditingDay(null); }}
+            >
+              <div
+                className="w-full max-w-lg rounded-t-2xl overflow-y-auto animate-in slide-in-from-bottom-4 duration-200"
+                style={{ background: "var(--background)", border: "1px solid var(--border)", maxHeight: "85vh" }}
+              >
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                  <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Configuration du jour</p>
+                  <button onClick={() => setEditingDay(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+                </div>
                 <DayConfigPanel
                   dateStr={editingDay}
                   weekDates={weekDates}
@@ -1278,7 +1296,7 @@ export default function PlanningPage() {
                   onSave={() => saveDay(editingDay)}
                   saving={savingDay}
                 />
-              )}
+              </div>
             </div>
           )}
 
@@ -1846,10 +1864,13 @@ function PublishedView({ shifts, weekDates, employees, onReassign, onCancel }: {
 
   const byEmployee = Object.values(
     shifts.reduce((acc, s) => {
-      if (!acc[s.user_id]) acc[s.user_id] = { name: s.first_name ?? "?", shifts: [] };
+      if (!acc[s.user_id]) {
+        const emp = employees.find(e => e.id === s.user_id);
+        acc[s.user_id] = { name: s.first_name ?? "?", avatar_url: emp?.avatar_url ?? null, shifts: [] };
+      }
       acc[s.user_id].shifts.push(s);
       return acc;
-    }, {} as Record<string, { name: string; shifts: PlanningShift[] }>)
+    }, {} as Record<string, { name: string; avatar_url: string | null | undefined; shifts: PlanningShift[] }>)
   );
 
   return (
@@ -1911,18 +1932,27 @@ function PublishedView({ shifts, weekDates, employees, onReassign, onCancel }: {
 
       <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
         <p className="text-[10px] font-mono uppercase tracking-wider mb-3" style={{ color: "var(--foreground-dim)" }}>Confirmations</p>
-        {byEmployee.map(({ name, shifts: emp }) => {
+        {byEmployee.map(({ name, avatar_url, shifts: emp }) => {
           const anyModified  = emp.some(s => s.confirmation_status === "modified");
           const allConfirmed = emp.every(s => s.confirmation_status === "confirmed");
           const statusColor  = anyModified ? "#EF4444" : allConfirmed ? "#10B981" : "#F59E0B";
           const statusLabel  = anyModified ? "Refusé" : allConfirmed ? "Confirmé" : "En attente";
           const modShifts    = emp.filter(s => s.confirmation_status === "modified");
+          const nameInitials = (name).split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
           return (
             <div key={name} className="px-3 py-2.5 rounded-xl"
               style={{ background: "var(--background)", border: "1px solid var(--border-soft)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{name}</span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+                    {avatar_url
+                      ? <img src={avatar_url} alt={name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-[9px] font-bold" style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)" }}>{nameInitials}</div>
+                    }
+                  </div>
+                  <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{name}</span>
+                </div>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg flex-shrink-0"
                   style={{ color: statusColor, background: `${statusColor}15`, border: `1px solid ${statusColor}30` }}>
                   {statusLabel}
                 </span>
@@ -2005,6 +2035,7 @@ function ReassignPopup({ shift, employees, planningShifts, reassigning, onReassi
             const count = shiftCountByEmp[emp.id] ?? 0;
             const statusInfo = STAFF_STATUSES[emp.status as StaffStatus];
             const color = statusInfo?.color ?? "#A1A1AA";
+            const empInitials = (emp.name ?? "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
             return (
               <button
                 key={emp.id}
@@ -2013,7 +2044,12 @@ function ReassignPopup({ shift, employees, planningShifts, reassigning, onReassi
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-80"
                 style={{ background: "var(--background)", border: "1px solid var(--border)", opacity: reassigning ? 0.5 : 1 }}
               >
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden" style={{ border: `1.5px solid ${color}55` }}>
+                  {emp.avatar_url
+                    ? <img src={emp.avatar_url} alt={emp.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${color}22`, color }}>{empInitials}</div>
+                  }
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{emp.name}</p>
                   <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{statusInfo?.label ?? emp.status}</p>
@@ -2225,9 +2261,13 @@ function ManualPlanningGrid({
                 <td className="py-2 px-1"
                   style={{ borderRight: "1px solid var(--border)", borderBottom: "1px solid var(--border-soft)", verticalAlign: "middle", width: 56 }}>
                   <div className="flex flex-col items-center gap-0.5">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-                      style={{ background: `${statusColor}22`, color: statusColor }}>
-                      {initials}
+                    <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden"
+                      style={{ border: `1.5px solid ${statusColor}55` }}>
+                      {emp.avatar_url
+                        ? <img src={emp.avatar_url} alt={emp.name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold"
+                            style={{ background: `${statusColor}22`, color: statusColor }}>{initials}</div>
+                      }
                     </div>
                     <p className="text-[8px] font-medium leading-tight text-center truncate w-full px-0.5"
                       style={{ color: "var(--foreground)" }}>{firstName}</p>

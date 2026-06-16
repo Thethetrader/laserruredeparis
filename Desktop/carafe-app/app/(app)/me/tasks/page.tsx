@@ -160,6 +160,7 @@ export default function MyTasksPage() {
   const [showWeek, setShowWeek] = useState(false);
   const [protocolModal, setProtocolModal] = useState<Protocol | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [deletingOneShotId, setDeletingOneShotId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const today = new Date().toISOString().split("T")[0];
@@ -278,6 +279,19 @@ export default function MyTasksPage() {
     });
     setModalNotes("");
     setModalPhoto(null);
+  }
+
+  async function deleteOneShot(id: string) {
+    setDeletingOneShotId(id);
+    if (DEV_MODE) {
+      setOneShots(prev => prev.filter(s => s.id !== id));
+      setDeletingOneShotId(null);
+      return;
+    }
+    const supabase = createClient();
+    await supabase.from("task_one_shots").delete().eq("id", id);
+    setOneShots(prev => prev.filter(s => s.id !== id));
+    setDeletingOneShotId(null);
   }
 
   async function submitValidation() {
@@ -584,6 +598,15 @@ export default function MyTasksPage() {
                         style={{ background: "rgba(6,182,212,0.1)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.2)" }}
                       >
                         Valider
+                      </button>
+                      <button
+                        onClick={() => deleteOneShot(shot.id)}
+                        disabled={deletingOneShotId === shot.id}
+                        className="flex-shrink-0 p-1.5 rounded-base transition-opacity"
+                        style={{ color: "var(--foreground-dim)", opacity: deletingOneShotId === shot.id ? 0.4 : 1 }}
+                        title="Supprimer"
+                      >
+                        <X size={14} />
                       </button>
                     </div>
                   );
