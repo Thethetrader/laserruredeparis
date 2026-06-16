@@ -143,6 +143,16 @@
   .app-main-safe-pb {
     padding-bottom: calc(60px + env(safe-area-inset-bottom));
   }
+
+  /* Chat: full-height flex container, anchored — no scroll drift */
+  .chat-fullscreen {
+    display: flex;
+    overflow: hidden;
+    height: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - 60px - env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 1024px) {
+    .chat-fullscreen { height: 100dvh; }
+  }
   @media (min-width: 1024px) {
     .app-main-safe-pb { padding-bottom: 0; }
   }
@@ -187,24 +197,6 @@
 }
 
 html { scroll-behavior: smooth; }
-
-/* Chat full-screen layout — breaks out of main padding */
-.chat-fullscreen {
-  position: fixed;
-  top: calc(56px + env(safe-area-inset-top));
-  bottom: calc(60px + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
-  display: flex;
-  overflow: hidden;
-}
-@media (min-width: 1024px) {
-  .chat-fullscreen {
-    top: 0;
-    bottom: 0;
-    left: 240px;
-  }
-}
 
 ::selection {
   background: rgba(6, 182, 212, 0.2);

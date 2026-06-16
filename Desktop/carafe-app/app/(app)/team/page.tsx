@@ -106,8 +106,8 @@ export default function TeamPage() {
   const [bonusReason, setBonusReason] = useState("");
   const [sendingBonus, setSendingBonus] = useState(false);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
-  // Scoring dropdown + modals
-  const [scoreDropdownOpen, setScoreDropdownOpen] = useState<string | null>(null);
+  // Scoring picker + modals
+  const [scorePickerTarget, setScorePickerTarget] = useState<TeamMember | null>(null);
   const [scoreModal, setScoreModal] = useState<"review" | "challenge" | null>(null);
   const [scoreTarget, setScoreTarget] = useState<TeamMember | null>(null);
   const [reviewQty, setReviewQty] = useState(1);
@@ -777,43 +777,13 @@ export default function TeamPage() {
                       style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
                       Bravo
                     </button>
-                    {/* Points dropdown */}
-                    <div className="relative">
-                      <button
-                        onClick={() => setScoreDropdownOpen(scoreDropdownOpen === member.profile_id ? null : member.profile_id)}
-                        className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
-                        style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                        <Zap size={11} /> Points <ChevronDown size={10} />
-                      </button>
-                      {scoreDropdownOpen === member.profile_id && (
-                        <div className="absolute left-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl min-w-[170px]"
-                          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-                          <button
-                            onClick={() => { setScoreTarget(member); setReviewQty(1); setScoreModal("review"); setScoreDropdownOpen(null); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
-                            <Star size={13} style={{ color: "#F59E0B" }} fill="#F59E0B" />
-                            <span style={{ color: "var(--foreground)" }}>Avis Google</span>
-                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>×5 pts</span>
-                          </button>
-                          <div style={{ height: 1, background: "var(--border)" }} />
-                          <button
-                            onClick={() => { setScoreTarget(member); setScoreModal("challenge"); setScoreDropdownOpen(null); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
-                            <Trophy size={13} style={{ color: "var(--accent)" }} />
-                            <span style={{ color: "var(--foreground)" }}>Défi remporté</span>
-                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>{scoringSettings?.points_challenge_won ?? 20} pts</span>
-                          </button>
-                          <div style={{ height: 1, background: "var(--border)" }} />
-                          <button
-                            onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); setScoreDropdownOpen(null); }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
-                            <Zap size={13} style={{ color: "var(--warning)" }} />
-                            <span style={{ color: "var(--foreground)" }}>Bonus libre</span>
-                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>1–20 pts</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    {/* Points picker */}
+                    <button
+                      onClick={() => setScorePickerTarget(member)}
+                      className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
+                      style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                      <Zap size={11} /> Points <ChevronDown size={10} />
+                    </button>
                     <button onClick={() => toggleActive(member.id, true)}
                       className="ml-auto text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
                       style={{ background: "rgba(239,68,68,0.07)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.18)" }}>
@@ -974,9 +944,67 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* Close dropdown on outside click */}
-      {scoreDropdownOpen && (
-        <div className="fixed inset-0 z-20" onClick={() => setScoreDropdownOpen(null)} />
+      {/* ── Score picker modal ── */}
+      {scorePickerTarget && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setScorePickerTarget(null); }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-4">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Attribuer des points</p>
+                <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>à {scorePickerTarget.first_name ?? scorePickerTarget.email}</p>
+              </div>
+              <button onClick={() => setScorePickerTarget(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div style={{ borderTop: "1px solid var(--border)" }}>
+              <button
+                onClick={() => { setScoreTarget(scorePickerTarget); setReviewQty(1); setScoreModal("review"); setScorePickerTarget(null); }}
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
+                style={{ borderBottom: "1px solid var(--border-soft)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(245,158,11,0.05)"}
+                onMouseLeave={e => e.currentTarget.style.background = ""}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)" }}>
+                  <Star size={18} style={{ color: "#F59E0B" }} fill="#F59E0B" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Avis Google</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>5 points par avis obtenu</p>
+                </div>
+                <ChevronDown size={14} className="-rotate-90" style={{ color: "var(--foreground-dim)" }} />
+              </button>
+              <button
+                onClick={() => { setScoreTarget(scorePickerTarget); setScoreModal("challenge"); setScorePickerTarget(null); }}
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
+                style={{ borderBottom: "1px solid var(--border-soft)" }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(6,182,212,0.05)"}
+                onMouseLeave={e => e.currentTarget.style.background = ""}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.1)" }}>
+                  <Trophy size={18} style={{ color: "var(--accent)" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Défi remporté</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{scoringSettings?.points_challenge_won ?? 20} points attribués</p>
+                </div>
+                <ChevronDown size={14} className="-rotate-90" style={{ color: "var(--foreground-dim)" }} />
+              </button>
+              <button
+                onClick={() => { setBonusTarget(scorePickerTarget); setBonusPoints(5); setBonusReason(""); setScorePickerTarget(null); }}
+                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(245,158,11,0.05)"}
+                onMouseLeave={e => e.currentTarget.style.background = ""}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.1)" }}>
+                  <Zap size={18} style={{ color: "var(--warning)" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--foreground)" }}>Bonus libre</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>1 à 20 points avec motif</p>
+                </div>
+                <ChevronDown size={14} className="-rotate-90" style={{ color: "var(--foreground-dim)" }} />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Avis Google modal ── */}

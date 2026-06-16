@@ -819,7 +819,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
       {pinnedMsg && <PinnedBanner msg={pinnedMsg} onClick={() => msgRefs.current[pinnedMsg.id]?.scrollIntoView({ behavior: "smooth", block: "center" })} />}
 
       {/* Messages */}
-      <div ref={scrollRef} onScroll={() => setShowScrollBtn(!isNearBottom())} className="flex-1 overflow-y-auto px-4 py-4"
+      <div ref={scrollRef} onScroll={() => setShowScrollBtn(!isNearBottom())} className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4"
         style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center flex-1 gap-3 opacity-30">
