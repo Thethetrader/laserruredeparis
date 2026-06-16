@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, Search, Copy, Check, Clock, Calendar } from "lucide-react";
+import { Plus, Users, Star, ThumbsUp, ThumbsDown, X, Camera, ChevronRight, Zap, Search, Copy, Check, Clock, Calendar, ChevronDown, Trophy } from "lucide-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/types/database";
 import { useDevRole } from "@/hooks/useDevRole";
@@ -78,7 +78,7 @@ const DEV_KUDOS: Kudos[] = [
 ];
 
 export default function TeamPage() {
-  const supabase = createClient();
+  const supabase = useRef(createClient()).current;
   const [devRole] = useDevRole();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [kudosList, setKudosList] = useState<Kudos[]>(DEV_MODE ? DEV_KUDOS : []);
@@ -106,6 +106,13 @@ export default function TeamPage() {
   const [bonusReason, setBonusReason] = useState("");
   const [sendingBonus, setSendingBonus] = useState(false);
   const [bonusSuccess, setBonusSuccess] = useState<string | null>(null);
+  // Scoring dropdown + modals
+  const [scoreDropdownOpen, setScoreDropdownOpen] = useState<string | null>(null);
+  const [scoreModal, setScoreModal] = useState<"review" | "challenge" | null>(null);
+  const [scoreTarget, setScoreTarget] = useState<TeamMember | null>(null);
+  const [reviewQty, setReviewQty] = useState(1);
+  const [sendingScore, setSendingScore] = useState(false);
+  const [scoringSettings, setScoringSettings] = useState<{ points_challenge_won: number } | null>(null);
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState<"name" | "availability">("name");
   const [availDay, setAvailDay] = useState("");
@@ -173,6 +180,15 @@ export default function TeamPage() {
       availability: (m.profiles?.availability ?? []) as AvailabilitySlot[],
     }));
     setMembers(mapped);
+
+    // Load scoring settings
+    const { data: scoreSettings } = await supabase
+      .from("scoring_settings")
+      .select("points_challenge_won")
+      .eq("establishment_id", memberData.establishment_id)
+      .maybeSingle();
+    if (scoreSettings) setScoringSettings(scoreSettings);
+
     setLoading(false);
   }
 
@@ -227,15 +243,55 @@ export default function TeamPage() {
     setSendingKudos(false);
   };
 
+  const myName = () => {
+    const me = members.find(m => m.profile_id === myProfileId);
+    return me ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() || "Manager" : "Manager";
+  };
+
   const submitBonus = async () => {
     if (!bonusTarget || bonusReason.trim().length < 10) return;
     setSendingBonus(true);
-    await new Promise(r => setTimeout(r, 400));
+    if (!DEV_MODE) {
+      await supabase.from("score_events").insert({
+        establishment_id: establishmentId,
+        profile_id: bonusTarget.profile_id,
+        source_type: "manual_bonus",
+        source_label: "Bonus manuel",
+        reason: bonusReason,
+        attributed_by_name: myName(),
+        points: bonusPoints,
+      });
+    }
     setBonusSuccess(`+${bonusPoints} pts attribués à ${bonusTarget.first_name ?? bonusTarget.email} ✓`);
     setBonusTarget(null);
     setBonusReason("");
     setBonusPoints(5);
     setSendingBonus(false);
+    setTimeout(() => setBonusSuccess(null), 3000);
+  };
+
+  const submitScore = async (type: "review" | "challenge") => {
+    if (!scoreTarget) return;
+    setSendingScore(true);
+    const pts = type === "review" ? reviewQty * 5 : (scoringSettings?.points_challenge_won ?? 20);
+    const label = type === "review" ? `${reviewQty} avis Google` : "Défi remporté";
+    const sourceType = type === "review" ? "google_review" : "challenge_won";
+    if (!DEV_MODE) {
+      await supabase.from("score_events").insert({
+        establishment_id: establishmentId,
+        profile_id: scoreTarget.profile_id,
+        source_type: sourceType,
+        source_label: label,
+        reason: label,
+        attributed_by_name: myName(),
+        points: pts,
+      });
+    }
+    setBonusSuccess(`+${pts} pts attribués à ${scoreTarget.first_name ?? scoreTarget.email} ✓`);
+    setScoreModal(null);
+    setScoreTarget(null);
+    setReviewQty(1);
+    setSendingScore(false);
     setTimeout(() => setBonusSuccess(null), 3000);
   };
 
@@ -715,17 +771,49 @@ export default function TeamPage() {
                   </Link>
                 </div>
                 {isManager && member.profile_id !== myProfileId && (
-                  <div className="px-4 pb-3 flex gap-2" style={{ borderTop: "1px solid var(--border-soft)" }}>
+                  <div className="px-4 pb-3 flex gap-2 items-center" style={{ borderTop: "1px solid var(--border-soft)" }}>
                     <button onClick={() => { setKudosTarget(member); setKudosMessage(""); setKudosType("positive"); }}
                       className="text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
                       style={{ background: "rgba(245,158,11,0.08)", color: "#F59E0B", border: "1px solid rgba(245,158,11,0.2)" }}>
                       Bravo
                     </button>
-                    <button onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); }}
-                      className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
-                      style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                      <Zap size={11} /> Bonus
-                    </button>
+                    {/* Points dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setScoreDropdownOpen(scoreDropdownOpen === member.profile_id ? null : member.profile_id)}
+                        className="flex items-center gap-1 text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
+                        style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                        <Zap size={11} /> Points <ChevronDown size={10} />
+                      </button>
+                      {scoreDropdownOpen === member.profile_id && (
+                        <div className="absolute left-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl min-w-[170px]"
+                          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                          <button
+                            onClick={() => { setScoreTarget(member); setReviewQty(1); setScoreModal("review"); setScoreDropdownOpen(null); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
+                            <Star size={13} style={{ color: "#F59E0B" }} fill="#F59E0B" />
+                            <span style={{ color: "var(--foreground)" }}>Avis Google</span>
+                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>×5 pts</span>
+                          </button>
+                          <div style={{ height: 1, background: "var(--border)" }} />
+                          <button
+                            onClick={() => { setScoreTarget(member); setScoreModal("challenge"); setScoreDropdownOpen(null); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
+                            <Trophy size={13} style={{ color: "var(--accent)" }} />
+                            <span style={{ color: "var(--foreground)" }}>Défi remporté</span>
+                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>{scoringSettings?.points_challenge_won ?? 20} pts</span>
+                          </button>
+                          <div style={{ height: 1, background: "var(--border)" }} />
+                          <button
+                            onClick={() => { setBonusTarget(member); setBonusPoints(5); setBonusReason(""); setScoreDropdownOpen(null); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] font-medium text-left hover:bg-[rgba(6,182,212,0.07)] transition-colors">
+                            <Zap size={13} style={{ color: "var(--warning)" }} />
+                            <span style={{ color: "var(--foreground)" }}>Bonus libre</span>
+                            <span className="ml-auto font-mono text-[10px]" style={{ color: "var(--foreground-dim)" }}>1–20 pts</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button onClick={() => toggleActive(member.id, true)}
                       className="ml-auto text-[11px] font-medium px-3 py-1.5 rounded-md transition-colors"
                       style={{ background: "rgba(239,68,68,0.07)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.18)" }}>
@@ -881,6 +969,83 @@ export default function TeamPage() {
                 opacity: (sendingKudos || !kudosMessage.trim()) ? 0.5 : 1,
               }}>
               {sendingKudos ? "Envoi…" : kudosType === "positive" ? "Envoyer le Bravo" : "Envoyer le feedback"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Close dropdown on outside click */}
+      {scoreDropdownOpen && (
+        <div className="fixed inset-0 z-20" onClick={() => setScoreDropdownOpen(null)} />
+      )}
+
+      {/* ── Avis Google modal ── */}
+      {scoreModal === "review" && scoreTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setScoreModal(null); setScoreTarget(null); } }}>
+          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                  <Star size={15} style={{ color: "#F59E0B" }} fill="#F59E0B" />
+                  Avis Google pour{" "}
+                  <span style={{ color: "var(--warning)" }}>{scoreTarget.first_name ?? scoreTarget.email}</span>
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>5 points par avis obtenu</p>
+              </div>
+              <button onClick={() => { setScoreModal(null); setScoreTarget(null); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="mb-6">
+              <label className="block text-[11px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+                Nombre d&apos;avis obtenus
+              </label>
+              <div className="flex items-center gap-3">
+                <input type="range" min={1} max={10} value={reviewQty}
+                  onChange={e => setReviewQty(parseInt(e.target.value))}
+                  className="flex-1" style={{ accentColor: "#F59E0B" }} />
+                <span className="text-2xl font-bold w-14 text-right" style={{ color: "#F59E0B" }}>{reviewQty}</span>
+              </div>
+              <p className="text-center text-sm mt-3 font-semibold" style={{ color: "var(--warning)" }}>
+                +{reviewQty * 5} points
+              </p>
+            </div>
+            <button onClick={() => submitScore("review")} disabled={sendingScore}
+              className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity flex items-center justify-center gap-2"
+              style={{ background: "#F59E0B", color: "#fff", opacity: sendingScore ? 0.5 : 1 }}>
+              <Star size={15} fill="#fff" />
+              {sendingScore ? "Envoi…" : `Attribuer +${reviewQty * 5} pts`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Défi modal ── */}
+      {scoreModal === "challenge" && scoreTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setScoreModal(null); setScoreTarget(null); } }}>
+          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--foreground)" }}>
+                  <Trophy size={15} style={{ color: "var(--accent)" }} />
+                  Défi remporté par{" "}
+                  <span style={{ color: "var(--accent)" }}>{scoreTarget.first_name ?? scoreTarget.email}</span>
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{scoringSettings?.points_challenge_won ?? 20} points attribués</p>
+              </div>
+              <button onClick={() => { setScoreModal(null); setScoreTarget(null); }} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
+            </div>
+            <div className="rounded-xl p-4 mb-5 text-center" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.2)" }}>
+              <p className="text-4xl font-bold" style={{ color: "var(--accent)" }}>+{scoringSettings?.points_challenge_won ?? 20}</p>
+              <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>points défi</p>
+            </div>
+            <button onClick={() => submitScore("challenge")} disabled={sendingScore}
+              className="w-full py-3 text-sm font-semibold rounded-lg transition-opacity flex items-center justify-center gap-2"
+              style={{ background: "var(--accent)", color: "var(--primary-foreground)", opacity: sendingScore ? 0.5 : 1 }}>
+              <Trophy size={15} />
+              {sendingScore ? "Envoi…" : `Confirmer +${scoringSettings?.points_challenge_won ?? 20} pts`}
             </button>
           </div>
         </div>
