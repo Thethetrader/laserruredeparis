@@ -5,19 +5,18 @@ import { motion, useInView } from "framer-motion";
 import { Check } from "lucide-react";
 
 const features = [
-  "Tous les piliers de Carafe inclus",
-  "Utilisateurs illimités",
-  "Récap hebdomadaire automatique",
-  "Système de Bravos et fiche pro transférable",
-  "Retours client en temps réel",
-  "Tâches récurrentes et passations",
-  "Support par email et chat",
+  "Planning de l'équipe généré par l'IA",
+  "Protocoles accessibles à toute l'équipe",
+  "Challenges, primes et reconnaissance",
+  "Retours clients en temps réel",
+  "Récap hebdo automatique",
+  "Support inclus",
 ];
 
 const plans = [
   {
     name: "Starter",
-    tagline: "Pour les petits restos",
+    tagline: "Pour les petites équipes",
     price: "29",
     limit: "Jusqu'à 10 salariés",
     cta: "Commencer",
@@ -34,9 +33,9 @@ const plans = [
   },
   {
     name: "Pro",
-    tagline: "Pour les grandes équipes",
+    tagline: "Pour les grandes structures",
     price: "99",
-    limit: "30+ salariés (illimité)",
+    limit: "31+ salariés (illimité)",
     cta: "Nous contacter",
     primary: false,
     extra: "+ Support prioritaire",
