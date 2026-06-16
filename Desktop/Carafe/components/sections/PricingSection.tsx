@@ -5,22 +5,21 @@ import { motion, useInView } from "framer-motion";
 import { Check } from "lucide-react";
 
 const features = [
-  "Protocoles centralisés",
-  "Confirmation de lecture",
-  "Gestion des retards",
-  "Challenges & trophées",
-  "Fiches employés",
-  "Avis Google nominatifs",
-  "Passations de service",
-  "Dashboard patron",
+  "Tous les piliers de Carafe inclus",
+  "Utilisateurs illimités",
+  "Récap hebdomadaire automatique",
+  "Système de Bravos et fiche pro transférable",
+  "Retours client en temps réel",
+  "Tâches récurrentes et passations",
+  "Support par email et chat",
 ];
 
 const plans = [
   {
     name: "Starter",
-    tagline: "Pour les petites équipes",
+    tagline: "Pour les petits restos",
     price: "29",
-    limit: "Jusqu'à 15 utilisateurs",
+    limit: "Jusqu'à 10 salariés",
     cta: "Commencer",
     primary: false,
   },
@@ -28,7 +27,7 @@ const plans = [
     name: "Standard",
     tagline: "Pour les équipes établies",
     price: "59",
-    limit: "Jusqu'à 35 utilisateurs",
+    limit: "11 à 30 salariés",
     cta: "Commencer",
     primary: true,
     badge: "Le plus choisi",
@@ -37,7 +36,7 @@ const plans = [
     name: "Pro",
     tagline: "Pour les grandes équipes",
     price: "99",
-    limit: "35+ utilisateurs (illimité)",
+    limit: "30+ salariés (illimité)",
     cta: "Nous contacter",
     primary: false,
     extra: "+ Support prioritaire",
