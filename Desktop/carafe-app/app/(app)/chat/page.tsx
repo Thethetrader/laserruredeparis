@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import {
   ChevronLeft, Send, Users, MessageCircle, Check, CheckCheck,
   CornerDownLeft, X, ChevronDown, Paperclip, FileText,
-  Search, Pin, Trash2, Edit2, BarChart2, Plus,
+  Search, Pin, Trash2, Edit2, BarChart2, Plus, Hash,
 } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
@@ -72,7 +71,9 @@ function dateSeparatorLabel(iso: string) {
 }
 function sameDay(a: string, b: string) { return new Date(a).toDateString() === new Date(b).toDateString(); }
 function avatarColor(name: string) {
-  return `hsl(${(name.charCodeAt(0) * 7 + (name.charCodeAt(1) || 0) * 13) % 360},40%,32%)`;
+  const hues = [210, 280, 340, 30, 160, 50, 190];
+  const idx = (name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % hues.length;
+  return `hsl(${hues[idx]},55%,40%)`;
 }
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "🔥", "👀", "✅"];
@@ -84,8 +85,8 @@ function Avatar({ name, size = 36, online, avatarUrl }: { name: string; size?: n
       {avatarUrl ? (
         <img src={avatarUrl} alt={name} className="rounded-full w-full h-full object-cover" />
       ) : (
-        <div className="rounded-full flex items-center justify-center w-full h-full text-white font-semibold"
-          style={{ background: avatarColor(name), fontSize: size * 0.36 }}>
+        <div className="rounded-full flex items-center justify-center w-full h-full font-bold text-white"
+          style={{ background: avatarColor(name), fontSize: size * 0.38, letterSpacing: "-0.02em" }}>
           {initials(name)}
         </div>
       )}
@@ -102,22 +103,24 @@ function Receipt({ msg, myId, memberCount }: { msg: Msg; myId: string; memberCou
   if (msg.sender_id !== myId) return null;
   const readers = (msg.read_by ?? []).filter(id => id !== myId).length;
   const allRead = readers >= memberCount - 1;
-  if (allRead) return <CheckCheck size={11} style={{ color: "#60a5fa", flexShrink: 0 }} />;
-  if (readers > 0) return <CheckCheck size={11} style={{ color: "rgba(255,255,255,0.6)", flexShrink: 0 }} />;
-  return <Check size={11} style={{ color: "rgba(255,255,255,0.6)", flexShrink: 0 }} />;
+  if (allRead) return <CheckCheck size={12} style={{ color: "rgba(255,255,255,0.9)", flexShrink: 0 }} />;
+  if (readers > 0) return <CheckCheck size={12} style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }} />;
+  return <Check size={12} style={{ color: "rgba(255,255,255,0.5)", flexShrink: 0 }} />;
 }
 
 /* ── Reply preview (input bar) ──────────────────────────────────────────────── */
 function ReplyPreview({ msg, onCancel }: { msg: Msg; onCancel: () => void }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0"
-      style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
-      <CornerDownLeft size={13} style={{ color: "var(--accent)", flexShrink: 0 }} />
+    <div className="flex items-center gap-3 px-4 py-2.5 flex-shrink-0"
+      style={{ background: "var(--background-elev)", borderTop: "1px solid var(--border-soft)" }}>
+      <div className="w-0.5 rounded-full self-stretch" style={{ background: "var(--accent)" }} />
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold" style={{ color: "var(--accent)" }}>{msg.sender_name}</p>
+        <p className="text-[11px] font-semibold mb-0.5" style={{ color: "var(--accent)" }}>{msg.sender_name}</p>
         <p className="text-[11px] truncate" style={{ color: "var(--foreground-dim)" }}>{msg.content || "📎 Fichier"}</p>
       </div>
-      <button onClick={onCancel}><X size={14} style={{ color: "var(--foreground-dim)" }} /></button>
+      <button onClick={onCancel} className="p-1 rounded-full" style={{ background: "var(--background)" }}>
+        <X size={13} style={{ color: "var(--foreground-dim)" }} />
+      </button>
     </div>
   );
 }
@@ -125,10 +128,12 @@ function ReplyPreview({ msg, onCancel }: { msg: Msg; onCancel: () => void }) {
 /* ── Quoted reply in bubble ─────────────────────────────────────────────────── */
 function QuotedBubble({ content, sender, isMe }: { content: string; sender: string; isMe: boolean }) {
   return (
-    <div className="rounded-lg px-2.5 py-1.5 mb-1.5"
-      style={{ background: isMe ? "rgba(0,0,0,0.18)" : "rgba(6,182,212,0.08)", borderLeft: `3px solid ${isMe ? "rgba(255,255,255,0.4)" : "var(--accent)"}` }}>
-      <p className="text-[10px] font-semibold mb-0.5" style={{ color: isMe ? "rgba(255,255,255,0.75)" : "var(--accent)" }}>{sender}</p>
-      <p className="text-[11px] line-clamp-2" style={{ color: isMe ? "rgba(255,255,255,0.7)" : "var(--foreground-dim)" }}>{content || "📎 Fichier"}</p>
+    <div className="rounded-xl px-3 py-2 mb-2 flex gap-2"
+      style={{ background: isMe ? "rgba(0,0,0,0.15)" : "rgba(6,182,212,0.06)", borderLeft: `3px solid ${isMe ? "rgba(255,255,255,0.4)" : "var(--accent)"}` }}>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold mb-0.5" style={{ color: isMe ? "rgba(255,255,255,0.8)" : "var(--accent)" }}>{sender}</p>
+        <p className="text-[11px] line-clamp-2" style={{ color: isMe ? "rgba(255,255,255,0.65)" : "var(--foreground-dim)" }}>{content || "📎 Fichier"}</p>
+      </div>
     </div>
   );
 }
@@ -136,9 +141,9 @@ function QuotedBubble({ content, sender, isMe }: { content: string; sender: stri
 /* ── Date separator ─────────────────────────────────────────────────────────── */
 function DateSep({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 my-3">
+    <div className="flex items-center gap-3 my-4">
       <div className="flex-1 h-px" style={{ background: "var(--border-soft)" }} />
-      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+      <span className="text-[10px] font-semibold px-3 py-1 rounded-full flex-shrink-0 uppercase tracking-wide"
         style={{ color: "var(--foreground-dim)", background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
         {label}
       </span>
@@ -155,17 +160,20 @@ function AttachmentView({ url, isMe }: { url: string; isMe: boolean }) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="Photo" className="w-full object-cover" style={{ maxHeight: 240, display: "block" }}
+        <img src={url} alt="Photo" className="w-full object-cover" style={{ maxHeight: 220, display: "block" }}
           onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
       </a>
     );
   }
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2 px-3 py-2.5"
+      className="flex items-center gap-2.5 px-3 py-2.5"
       style={{ color: isMe ? "rgba(255,255,255,0.9)" : "var(--foreground)", textDecoration: "none" }}>
-      <FileText size={18} style={{ flexShrink: 0, opacity: 0.7 }} />
-      <span className="text-[12px] underline truncate">{filename}</span>
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: isMe ? "rgba(255,255,255,0.15)" : "rgba(6,182,212,0.1)" }}>
+        <FileText size={17} style={{ color: isMe ? "white" : "var(--accent)" }} />
+      </div>
+      <span className="text-[12px] font-medium underline truncate">{filename}</span>
     </a>
   );
 }
@@ -175,15 +183,16 @@ function EmojiPicker({ onPick, onClose, alignRight }: { onPick: (e: string) => v
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-full mb-1 z-50 flex gap-1 p-1.5 rounded-xl shadow-lg"
+      <div className="absolute bottom-full mb-2 z-50 flex gap-1 p-2 rounded-2xl shadow-xl"
         style={{
           background: "var(--background)",
           border: "1px solid var(--border)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
           ...(alignRight ? { right: 0 } : { left: 0 }),
         }}>
         {QUICK_EMOJIS.map(e => (
           <button key={e} onClick={() => { onPick(e); onClose(); }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-lg hover:bg-black/10 transition-colors">
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-[18px] transition-colors hover:bg-black/10">
             {e}
           </button>
         ))}
@@ -197,13 +206,17 @@ function ReactionBar({ reactions, myId, onToggle }: { reactions: Record<string, 
   const entries = Object.entries(reactions).filter(([, u]) => u.length > 0);
   if (!entries.length) return null;
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="flex flex-wrap gap-1 mt-1.5">
       {entries.map(([emoji, users]) => (
         <button key={emoji} onClick={() => onToggle(emoji)}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px]"
-          style={{ background: users.includes(myId) ? "rgba(6,182,212,0.18)" : "var(--background-elev)", border: `1px solid ${users.includes(myId) ? "rgba(6,182,212,0.4)" : "var(--border-soft)"}` }}>
+          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] transition-all"
+          style={{
+            background: users.includes(myId) ? "rgba(6,182,212,0.15)" : "var(--background-elev)",
+            border: `1px solid ${users.includes(myId) ? "rgba(6,182,212,0.5)" : "var(--border-soft)"}`,
+            transform: users.includes(myId) ? "scale(1.05)" : "scale(1)",
+          }}>
           <span>{emoji}</span>
-          <span style={{ color: "var(--foreground-dim)" }}>{users.length}</span>
+          <span className="font-semibold" style={{ color: users.includes(myId) ? "var(--accent)" : "var(--foreground-dim)" }}>{users.length}</span>
         </button>
       ))}
     </div>
@@ -229,18 +242,18 @@ function ContextMenu({ msg, myId, isManager, x, y, onClose, onReply, onEdit, onD
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="fixed z-50 rounded-xl shadow-xl py-1 min-w-[148px]"
-        style={{ left: pos.x, top: pos.y, background: "var(--background)", border: "1px solid var(--border)" }}>
+      <div className="fixed z-50 rounded-2xl shadow-2xl py-1.5 min-w-[160px] overflow-hidden"
+        style={{ left: pos.x, top: pos.y, background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.25)" }}>
         {[
           { icon: CornerDownLeft, label: "Répondre", action: onReply, show: true, danger: false },
           { icon: Edit2, label: "Modifier", action: onEdit, show: canEdit, danger: false },
           { icon: Pin, label: msg.is_pinned ? "Désépingler" : "Épingler", action: onPin, show: isManager, danger: false },
           { icon: Trash2, label: "Supprimer", action: onDelete, show: canDelete, danger: true },
-        ].filter(i => i.show).map(item => (
+        ].filter(i => i.show).map((item, idx, arr) => (
           <button key={item.label} onClick={() => { item.action(); onClose(); }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] hover:bg-black/10 transition-colors"
-            style={{ color: item.danger ? "#ef4444" : "var(--foreground)" }}>
-            <item.icon size={13} />
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-[13px] transition-colors hover:bg-black/5"
+            style={{ color: item.danger ? "#ef4444" : "var(--foreground)", borderTop: idx > 0 ? "1px solid var(--border-soft)" : "none" }}>
+            <item.icon size={14} style={{ opacity: 0.7 }} />
             {item.label}
           </button>
         ))}
@@ -255,24 +268,24 @@ function PollBubble({ poll, myId, isMe, onVote }: { poll: PollData; myId: string
   const myVote = Object.entries(poll.votes).find(([, u]) => u.includes(myId))?.[0];
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[13px] font-semibold" style={{ color: isMe ? "white" : "var(--foreground)" }}>{poll.question}</p>
+      <p className="text-[13px] font-bold" style={{ color: isMe ? "white" : "var(--foreground)" }}>{poll.question}</p>
       {poll.options.map(opt => {
         const votes = poll.votes[opt.id] ?? [];
         const pct = totalVotes > 0 ? Math.round((votes.length / totalVotes) * 100) : 0;
         const voted = myVote === opt.id;
         return (
           <button key={opt.id} onClick={() => onVote(opt.id)}
-            className="relative rounded-lg px-3 py-2 text-left overflow-hidden"
-            style={{ background: voted ? (isMe ? "rgba(0,0,0,0.2)" : "rgba(6,182,212,0.15)") : (isMe ? "rgba(0,0,0,0.1)" : "var(--background)"), border: `1px solid ${voted ? "rgba(6,182,212,0.5)" : "var(--border-soft)"}` }}>
-            {totalVotes > 0 && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: isMe ? "rgba(0,0,0,0.08)" : "rgba(6,182,212,0.08)", transition: "width 0.3s" }} />}
+            className="relative rounded-xl px-3 py-2.5 text-left overflow-hidden transition-all"
+            style={{ background: voted ? (isMe ? "rgba(0,0,0,0.18)" : "rgba(6,182,212,0.12)") : (isMe ? "rgba(0,0,0,0.08)" : "var(--background)"), border: `1px solid ${voted ? "rgba(6,182,212,0.5)" : "var(--border-soft)"}` }}>
+            {totalVotes > 0 && <div className="absolute inset-y-0 left-0 rounded-xl" style={{ width: `${pct}%`, background: isMe ? "rgba(255,255,255,0.08)" : "rgba(6,182,212,0.06)", transition: "width 0.4s ease" }} />}
             <div className="relative flex items-center justify-between gap-2">
-              <span className="text-[12px]" style={{ color: isMe ? "rgba(255,255,255,0.9)" : "var(--foreground)" }}>{opt.label}</span>
-              {votes.length > 0 && <span className="text-[11px] flex-shrink-0" style={{ color: isMe ? "rgba(255,255,255,0.6)" : "var(--foreground-dim)" }}>{pct}% · {votes.length}</span>}
+              <span className="text-[12px] font-medium" style={{ color: isMe ? "rgba(255,255,255,0.9)" : "var(--foreground)" }}>{opt.label}</span>
+              {votes.length > 0 && <span className="text-[11px] flex-shrink-0 font-semibold" style={{ color: isMe ? "rgba(255,255,255,0.6)" : "var(--accent)" }}>{pct}%</span>}
             </div>
           </button>
         );
       })}
-      <p className="text-[10px]" style={{ color: isMe ? "rgba(255,255,255,0.6)" : "var(--foreground-dim)" }}>
+      <p className="text-[10px] font-medium" style={{ color: isMe ? "rgba(255,255,255,0.5)" : "var(--foreground-dim)" }}>
         {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
       </p>
     </div>
@@ -288,34 +301,40 @@ function PollCreator({ onSend, onClose }: { onSend: (p: PollData) => void; onClo
     onSend({ question: question.trim(), options: options.filter(o => o.trim()).map((label, i) => ({ id: String(i), label })), votes: {} });
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-      <div className="w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+      <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4" style={{ background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 24px 48px rgba(0,0,0,0.3)" }}>
         <div className="flex items-center justify-between">
-          <p className="font-semibold text-[15px]">Créer un sondage</p>
-          <button onClick={onClose}><X size={18} style={{ color: "var(--foreground-dim)" }} /></button>
+          <div>
+            <p className="font-bold text-[16px]">Nouveau sondage</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>Posez une question à l'équipe</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full" style={{ background: "var(--background-elev)" }}>
+            <X size={15} style={{ color: "var(--foreground-dim)" }} />
+          </button>
         </div>
         <input value={question} onChange={e => setQuestion(e.target.value)} placeholder="Votre question…"
-          className="rounded-xl px-3 py-2.5 text-[13px] outline-none"
+          className="rounded-2xl px-4 py-3 text-[13px] outline-none font-medium"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
         <div className="flex flex-col gap-2">
           {options.map((opt, i) => (
             <div key={i} className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full border-2 flex-shrink-0" style={{ borderColor: "var(--border)" }} />
               <input value={opt} onChange={e => setOptions(o => o.map((x, j) => j === i ? e.target.value : x))}
                 placeholder={`Option ${i + 1}`} className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none"
                 style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-              {options.length > 2 && <button onClick={() => setOptions(o => o.filter((_, j) => j !== i))}><X size={14} style={{ color: "var(--foreground-dim)" }} /></button>}
+              {options.length > 2 && <button onClick={() => setOptions(o => o.filter((_, j) => j !== i))}><X size={13} style={{ color: "var(--foreground-dim)" }} /></button>}
             </div>
           ))}
           {options.length < 5 && (
-            <button onClick={() => setOptions(o => [...o, ""])} className="flex items-center gap-1.5 text-[12px] px-2 py-1.5" style={{ color: "var(--accent)" }}>
+            <button onClick={() => setOptions(o => [...o, ""])} className="flex items-center gap-1.5 text-[12px] px-3 py-2 rounded-xl font-medium" style={{ color: "var(--accent)", background: "rgba(6,182,212,0.06)", border: "1px dashed rgba(6,182,212,0.3)" }}>
               <Plus size={13} /> Ajouter une option
             </button>
           )}
         </div>
         <button onClick={submit} disabled={!question.trim() || options.filter(o => o.trim()).length < 2}
-          className="rounded-xl py-2.5 text-[13px] font-semibold transition-opacity"
+          className="rounded-2xl py-3 text-[13px] font-bold transition-opacity"
           style={{ background: "var(--accent)", color: "white", opacity: !question.trim() ? 0.4 : 1 }}>
-          Envoyer
+          Envoyer le sondage
         </button>
       </div>
     </div>
@@ -325,13 +344,16 @@ function PollCreator({ onSend, onClose }: { onSend: (p: PollData) => void; onClo
 /* ── Pinned banner ───────────────────────────────────────────────────────────── */
 function PinnedBanner({ msg, onClick }: { msg: Msg; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-2 px-4 py-2 text-left flex-shrink-0"
-      style={{ background: "rgba(6,182,212,0.06)", borderBottom: "1px solid rgba(6,182,212,0.15)" }}>
-      <Pin size={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
-      <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-semibold" style={{ color: "var(--accent)" }}>Message épinglé</p>
-        <p className="text-[11px] truncate" style={{ color: "var(--foreground-dim)" }}>{msg.content || "📎 Fichier"}</p>
+    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-2.5 text-left flex-shrink-0 transition-colors hover:bg-cyan-50/5"
+      style={{ background: "rgba(6,182,212,0.05)", borderBottom: "1px solid rgba(6,182,212,0.12)" }}>
+      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)" }}>
+        <Pin size={11} style={{ color: "var(--accent)" }} />
       </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: "var(--accent)" }}>Message épinglé</p>
+        <p className="text-[12px] truncate" style={{ color: "var(--foreground-dim)" }}>{msg.content || "📎 Fichier"}</p>
+      </div>
+      <ChevronDown size={13} style={{ color: "var(--foreground-dim)", transform: "rotate(-90deg)" }} />
     </button>
   );
 }
@@ -339,11 +361,14 @@ function PinnedBanner({ msg, onClick }: { msg: Msg; onClick: () => void }) {
 /* ── Typing indicator ────────────────────────────────────────────────────────── */
 function TypingDot() {
   return (
-    <div className="flex items-end gap-2">
-      <div style={{ width: 28 }} />
-      <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm flex items-center gap-1"
+    <div className="flex items-end gap-2 mt-1">
+      <div style={{ width: 32 }} />
+      <div className="px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1.5"
         style={{ background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
-        {[0, 1, 2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--foreground-dim)", animationDelay: `${i * 0.15}s` }} />)}
+        {[0, 1, 2].map(i => (
+          <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
+            style={{ background: "var(--foreground-dim)", animationDelay: `${i * 0.15}s`, animationDuration: "0.9s" }} />
+        ))}
       </div>
     </div>
   );
@@ -358,13 +383,13 @@ function EditInput({ msg, onSave, onCancel, supabase }: { msg: Msg; onSave: () =
     onSave();
   }
   return (
-    <div className="flex items-center gap-2 mt-1">
+    <div className="flex items-center gap-2 mt-2">
       <input value={val} onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }}
-        autoFocus className="flex-1 rounded-xl px-3 py-1.5 text-[13px] outline-none"
+        autoFocus className="flex-1 rounded-xl px-3 py-2 text-[13px] outline-none"
         style={{ background: "var(--background-elev)", border: "1px solid var(--accent)", color: "var(--foreground)" }} />
-      <button onClick={save} className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>OK</button>
-      <button onClick={onCancel} className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>✕</button>
+      <button onClick={save} className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ color: "var(--accent)", background: "rgba(6,182,212,0.1)" }}>OK</button>
+      <button onClick={onCancel} className="text-[11px] px-2 py-1 rounded-lg" style={{ color: "var(--foreground-dim)", background: "var(--background-elev)" }}>✕</button>
     </div>
   );
 }
@@ -389,7 +414,7 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
   if (msg.deleted_at) {
     return (
       <div className={`flex items-center gap-2 ${isMe ? "justify-end" : "justify-start"}`}>
-        {!isMe && <div style={{ width: 28 }} />}
+        {!isMe && <div style={{ width: 32 }} />}
         <p className="text-[11px] italic px-3 py-1.5 rounded-xl"
           style={{ color: "var(--foreground-dim)", background: "var(--background-elev)", border: "1px solid var(--border-soft)" }}>
           Message supprimé
@@ -399,58 +424,70 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
   }
 
   return (
-    <div className={`flex items-end gap-2 group ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-      {!isMe && <div style={{ width: 28, flexShrink: 0 }}>{showAvatar && <Avatar name={msg.sender_name} size={28} avatarUrl={msg.sender_avatar_url} />}</div>}
+    <div className={`flex items-end gap-2.5 group ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+      {!isMe && (
+        <div style={{ width: 32, flexShrink: 0 }}>
+          {showAvatar && <Avatar name={msg.sender_name} size={32} avatarUrl={msg.sender_avatar_url} />}
+        </div>
+      )}
 
-      <div style={{ maxWidth: "72%", position: "relative" }}
+      <div style={{ maxWidth: "74%", position: "relative" }}
         onDoubleClick={() => onReply(msg)}
         onContextMenu={e => { e.preventDefault(); onContextMenu(e, msg); }}
         onTouchStart={() => { touchTimer.current = setTimeout(() => onContextMenu({ touches: [{ clientX: 0, clientY: 200 }] } as any, msg), 500); }}
         onTouchEnd={() => { if (touchTimer.current) clearTimeout(touchTimer.current); }}>
 
         {showName && !isMe && (
-          <p className="text-[10px] mb-1 ml-1 font-semibold" style={{ color: avatarColor(msg.sender_name) }}>{msg.sender_name}</p>
+          <p className="text-[11px] mb-1 ml-1 font-bold" style={{ color: avatarColor(msg.sender_name) }}>{msg.sender_name}</p>
         )}
 
-        {/* Hover actions — emoji + delete */}
-        <div className={`absolute -top-3 ${isMe ? "left-1" : "right-1"} z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
+        {/* Hover actions */}
+        <div className={`absolute -top-4 ${isMe ? "left-0" : "right-0"} z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1`}>
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowEmoji(p => !p)}
-              className="w-6 h-6 flex items-center justify-center rounded-full text-[11px]"
-              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
+              className="w-7 h-7 flex items-center justify-center rounded-full text-[13px] transition-all hover:scale-110"
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
               😊
             </button>
             {showEmoji && <EmojiPicker
               onPick={e => { onReaction(msg.id, e); setShowEmoji(false); }}
               onClose={() => setShowEmoji(false)}
-              alignRight={isMe}
+              alignRight={!isMe}
             />}
           </div>
+          <button onClick={() => onReply(msg)}
+            className="w-7 h-7 flex items-center justify-center rounded-full transition-all hover:scale-110"
+            style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+            <CornerDownLeft size={12} style={{ color: "var(--foreground-dim)" }} />
+          </button>
           {(isMe || isManager) && (
             <button onClick={() => onDelete(msg)}
-              className="w-6 h-6 flex items-center justify-center rounded-full"
-              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
-              <Trash2 size={11} style={{ color: "#ef4444" }} />
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-all hover:scale-110"
+              style={{ background: "var(--background)", border: "1px solid var(--border-soft)", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+              <Trash2 size={12} style={{ color: "#ef4444" }} />
             </button>
           )}
         </div>
 
-        <div className="rounded-2xl text-[13px] leading-snug overflow-hidden"
+        <div className="rounded-2xl text-[13px] leading-relaxed overflow-hidden"
           style={{
-            background: isMe ? "var(--accent)" : "var(--background-elev)",
+            background: isMe
+              ? "linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 80%, #0ea5e9) 100%)"
+              : "var(--background-elev)",
             color: isMe ? "white" : "var(--foreground)",
             border: isMe ? "none" : "1px solid var(--border-soft)",
-            borderBottomRightRadius: isMe ? 4 : undefined,
-            borderBottomLeftRadius: !isMe ? 4 : undefined,
+            borderBottomRightRadius: isMe ? 6 : undefined,
+            borderBottomLeftRadius: !isMe ? 6 : undefined,
+            boxShadow: isMe ? "0 2px 12px rgba(6,182,212,0.25)" : "0 1px 4px rgba(0,0,0,0.06)",
           }}>
 
           {msg.attachment_url && <AttachmentView url={msg.attachment_url} isMe={isMe} />}
           {(msg.reply_to_content || msg.content || msg.poll) && (
-            <div className="px-3 py-2">
+            <div className="px-3.5 py-2.5">
               {msg.reply_to_content && <QuotedBubble content={msg.reply_to_content} sender={msg.reply_to_sender ?? "…"} isMe={isMe} />}
               {msg.poll
                 ? <PollBubble poll={msg.poll} myId={myId} isMe={isMe} onVote={id => onVote(msg.id, id)} />
-                : <span style={{ color: isMe ? "white" : "var(--foreground)" }}>{msg.content}{msg.edited_at && <span className="text-[9px] ml-1 opacity-60">(modifié)</span>}</span>}
+                : <span>{msg.content}{msg.edited_at && <span className="text-[9px] ml-1.5 opacity-50 font-medium">(modifié)</span>}</span>}
             </div>
           )}
         </div>
@@ -459,8 +496,8 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
 
         <ReactionBar reactions={msg.reactions} myId={myId} onToggle={e => onReaction(msg.id, e)} />
 
-        <div className={`flex items-center gap-1 mt-0.5 ${isMe ? "justify-end mr-1" : "ml-1"}`}>
-          <span suppressHydrationWarning className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{fmtMsgTime(msg.created_at)}</span>
+        <div className={`flex items-center gap-1.5 mt-1 ${isMe ? "justify-end mr-1" : "ml-1"}`}>
+          <span suppressHydrationWarning className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>{fmtMsgTime(msg.created_at)}</span>
           <Receipt msg={msg} myId={myId} memberCount={memberCount} />
         </div>
       </div>
@@ -546,7 +583,6 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     }
   }, [supabase, estId, myId, conv.id]);
 
-  // Keep a ref to fetchMessages so the subscription closure doesn't go stale
   const fetchMessagesRef = useRef(fetchMessages);
   useEffect(() => { fetchMessagesRef.current = fetchMessages; }, [fetchMessages]);
 
@@ -558,7 +594,6 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, []);
 
-  // Scroll to bottom after messages render (when entering a conv)
   useEffect(() => {
     if (needsScrollRef.current) {
       needsScrollRef.current = false;
@@ -566,14 +601,12 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     }
   }, [messages, scrollToBottom]);
 
-  // Load messages when conversation changes
   useEffect(() => {
     needsScrollRef.current = true;
     fetchMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conv.id]);
 
-  // Realtime subscription — only recreated when the conversation changes
   useEffect(() => {
     const channel = supabase.channel(`chat-${estId}-${conv.id ?? "general"}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
@@ -733,39 +766,52 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     return filtered[i - 1].sender_id !== filtered[i].sender_id || !sameDay(filtered[i - 1].created_at, filtered[i].created_at);
   }
 
+  const isOnline = conv.id ? onlineUsers.has(conv.id) : false;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background)" }}>
-        <button onClick={onBack} className="lg:hidden p-1.5 rounded-lg -ml-1" style={{ color: "var(--foreground-dim)" }}>
+        style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background)", backdropFilter: "blur(12px)" }}>
+        <button onClick={onBack} className="lg:hidden p-2 rounded-xl -ml-1 transition-colors hover:bg-black/5" style={{ color: "var(--foreground-dim)" }}>
           <ChevronLeft size={20} />
         </button>
-        {conv.id === null
-          ? <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.25)" }}><Users size={16} style={{ color: "var(--accent)" }} /></div>
-          : <Avatar name={conv.name} size={36} online={conv.id ? onlineUsers.has(conv.id) : false} avatarUrl={conv.avatar_url} />
-        }
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{conv.name}</p>
+        <div style={{ position: "relative" }}>
           {conv.id === null
-            ? <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Toute l'équipe</p>
-            : conv.id && onlineUsers.has(conv.id) ? <p className="text-[10px]" style={{ color: "#22c55e" }}>En ligne</p> : null
+            ? <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, rgba(6,182,212,0.2), rgba(6,182,212,0.08))", border: "1px solid rgba(6,182,212,0.25)" }}>
+                <Hash size={18} style={{ color: "var(--accent)" }} />
+              </div>
+            : <Avatar name={conv.name} size={40} online={isOnline} avatarUrl={conv.avatar_url} />
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>{conv.name}</p>
+          {conv.id === null
+            ? <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>Toute l'équipe</p>
+            : isOnline
+              ? <p className="text-[11px] font-semibold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />En ligne</p>
+              : null
           }
         </div>
         <button onClick={() => { setShowSearch(s => !s); setSearchQuery(""); }}
-          className="p-2 rounded-lg" style={{ color: showSearch ? "var(--accent)" : "var(--foreground-dim)" }}>
-          <Search size={16} />
+          className="p-2 rounded-xl transition-all"
+          style={{ color: showSearch ? "var(--accent)" : "var(--foreground-dim)", background: showSearch ? "rgba(6,182,212,0.1)" : "transparent" }}>
+          <Search size={17} />
         </button>
       </div>
 
       {/* Search */}
       {showSearch && (
-        <div className="px-4 py-2 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
-          <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher dans la conversation…"
-            className="w-full rounded-xl px-3 py-2 text-[13px] outline-none"
-            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-          {searchQuery && <p className="text-[10px] mt-1" style={{ color: "var(--foreground-dim)" }}>{filtered.length} résultat{filtered.length !== 1 ? "s" : ""}</p>}
+        <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
+          <div className="flex items-center gap-2 rounded-2xl px-3 py-2" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+            <Search size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+            <input autoFocus value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher dans la conversation…"
+              className="flex-1 text-[13px] outline-none bg-transparent"
+              style={{ color: "var(--foreground)" }} />
+            {searchQuery && <button onClick={() => setSearchQuery("")}><X size={13} style={{ color: "var(--foreground-dim)" }} /></button>}
+          </div>
+          {searchQuery && <p className="text-[10px] mt-2 font-medium" style={{ color: "var(--foreground-dim)" }}>{filtered.length} résultat{filtered.length !== 1 ? "s" : ""}</p>}
         </div>
       )}
 
@@ -773,19 +819,23 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
       {pinnedMsg && <PinnedBanner msg={pinnedMsg} onClick={() => msgRefs.current[pinnedMsg.id]?.scrollIntoView({ behavior: "smooth", block: "center" })} />}
 
       {/* Messages */}
-      <div ref={scrollRef} onScroll={() => setShowScrollBtn(!isNearBottom())} className="flex-1 overflow-y-auto px-4 py-3"
+      <div ref={scrollRef} onScroll={() => setShowScrollBtn(!isNearBottom())} className="flex-1 overflow-y-auto px-4 py-4"
         style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-40">
-            <MessageCircle size={28} style={{ color: "var(--foreground-dim)" }} />
-            <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>{searchQuery ? "Aucun résultat" : "Aucun message pour l'instant"}</p>
+          <div className="flex flex-col items-center justify-center flex-1 gap-3 opacity-30">
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: "var(--background-elev)" }}>
+              <MessageCircle size={28} style={{ color: "var(--foreground-dim)" }} />
+            </div>
+            <p className="text-[12px] font-medium" style={{ color: "var(--foreground-dim)" }}>
+              {searchQuery ? "Aucun résultat" : "Aucun message pour l'instant"}
+            </p>
           </div>
         )}
         {filtered.map((msg, i) => {
           const showSep = i === 0 || !sameDay(filtered[i - 1].created_at, msg.created_at);
           const groupStart = isGroupStart(i);
           return (
-            <div key={msg.id} ref={el => { if (el) msgRefs.current[msg.id] = el; }} style={{ marginTop: groupStart && i > 0 ? 8 : 2 }}>
+            <div key={msg.id} ref={el => { if (el) msgRefs.current[msg.id] = el; }} style={{ marginTop: groupStart && i > 0 ? 10 : 2 }}>
               {showSep && <DateSep label={dateSeparatorLabel(msg.created_at)} />}
               <Bubble
                 msg={msg} isMe={msg.sender_id === myId}
@@ -811,8 +861,8 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
 
       {/* Scroll to bottom button */}
       {showScrollBtn && (
-        <button onClick={() => scrollToBottom()} className="absolute right-4 w-9 h-9 rounded-full shadow-lg flex items-center justify-center"
-          style={{ bottom: replyTo || uploadPreview ? 120 : 72, background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+        <button onClick={() => scrollToBottom()} className="absolute right-4 w-10 h-10 rounded-2xl shadow-lg flex items-center justify-center transition-all hover:scale-105"
+          style={{ bottom: replyTo || uploadPreview ? 130 : 80, background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 4px 16px rgba(0,0,0,0.15)" }}>
           <ChevronDown size={18} style={{ color: "var(--foreground-dim)" }} />
         </button>
       )}
@@ -833,35 +883,52 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
       {replyTo && <ReplyPreview msg={replyTo} onCancel={() => setReplyTo(null)} />}
 
       {uploadPreview && (
-        <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
+        <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
           {uploadPreview.file.type.startsWith("image/")
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={uploadPreview.previewUrl} alt="preview" className="w-14 h-14 object-cover rounded-lg" />
-            : <div className="flex items-center gap-2"><FileText size={20} style={{ color: "var(--accent)" }} /><span className="text-[12px] truncate max-w-[160px]">{uploadPreview.file.name}</span></div>
+            ? <img src={uploadPreview.previewUrl} alt="preview" className="w-14 h-14 object-cover rounded-2xl" style={{ border: "2px solid var(--border)" }} />
+            : <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-1" style={{ background: "rgba(6,182,212,0.08)", border: "1px solid var(--border)" }}>
+                <FileText size={20} style={{ color: "var(--accent)" }} />
+                <span className="text-[8px] font-bold uppercase" style={{ color: "var(--accent)" }}>PDF</span>
+              </div>
           }
-          <button onClick={() => { URL.revokeObjectURL(uploadPreview.previewUrl); setUploadPreview(null); }} className="ml-auto"><X size={14} style={{ color: "var(--foreground-dim)" }} /></button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold truncate">{uploadPreview.file.name}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{(uploadPreview.file.size / 1024).toFixed(0)} ko</p>
+          </div>
+          <button onClick={() => { URL.revokeObjectURL(uploadPreview.previewUrl); setUploadPreview(null); }}
+            className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "var(--background)" }}>
+            <X size={13} style={{ color: "var(--foreground-dim)" }} />
+          </button>
         </div>
       )}
 
       {/* Input bar */}
-      <div className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
+      <div className="px-3 py-3 flex-shrink-0"
         style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)", paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
         <input ref={fileRef} type="file" accept="image/*,application/pdf,video/mp4" className="hidden" onChange={onFileChange} />
-        <button onClick={() => fileRef.current?.click()} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <Paperclip size={15} style={{ color: "var(--foreground-dim)" }} />
-        </button>
-        <button onClick={() => setShowPollCreator(true)} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
-          <BarChart2 size={15} style={{ color: "var(--foreground-dim)" }} />
-        </button>
-        <textarea ref={inputRef} value={text} onChange={onInput} onKeyDown={onKeyDown}
-          placeholder="Écrire un message…" rows={1}
-          className="flex-1 resize-none rounded-xl px-3 py-2.5 text-[13px] outline-none"
-          style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", maxHeight: 120, lineHeight: 1.4 }} />
-        <button onClick={() => send()} disabled={(!text.trim() && !uploadPreview) || sending}
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-opacity"
-          style={{ background: "var(--accent)", opacity: (!text.trim() && !uploadPreview) ? 0.4 : 1 }}>
-          <Send size={15} style={{ color: "white" }} />
-        </button>
+        <div className="flex items-end gap-2 rounded-2xl px-3 py-2"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <button onClick={() => fileRef.current?.click()} className="w-8 h-8 flex items-center justify-center rounded-xl flex-shrink-0 transition-all hover:scale-110" style={{ color: "var(--foreground-dim)" }}>
+            <Paperclip size={16} />
+          </button>
+          <button onClick={() => setShowPollCreator(true)} className="w-8 h-8 flex items-center justify-center rounded-xl flex-shrink-0 transition-all hover:scale-110" style={{ color: "var(--foreground-dim)" }}>
+            <BarChart2 size={16} />
+          </button>
+          <textarea ref={inputRef} value={text} onChange={onInput} onKeyDown={onKeyDown}
+            placeholder="Écrire un message…" rows={1}
+            className="flex-1 resize-none text-[13px] outline-none bg-transparent py-1"
+            style={{ color: "var(--foreground)", maxHeight: 120, lineHeight: 1.5 }} />
+          <button onClick={() => send()} disabled={(!text.trim() && !uploadPreview) || sending}
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
+            style={{
+              background: (!text.trim() && !uploadPreview) ? "transparent" : "var(--accent)",
+              color: (!text.trim() && !uploadPreview) ? "var(--foreground-dim)" : "white",
+              transform: (!text.trim() && !uploadPreview) ? "scale(1)" : "scale(1.05)",
+            }}>
+            <Send size={15} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -873,33 +940,59 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
   onSelect: (c: Conv) => void;
   onlineUsers: Set<string>;
 }) {
+  const [search, setSearch] = useState("");
+  const filtered = search.trim()
+    ? convs.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+    : convs;
+
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-soft)" }}>
-        <MonoLabel size="xs" className="mb-1 block">Messages</MonoLabel>
-        <h1 className="text-[20px] font-semibold" style={{ color: "var(--foreground)" }}>Chat équipe</h1>
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4 flex-shrink-0">
+        <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--accent)" }}>Messages</p>
+        <h1 className="text-[22px] font-bold mb-3" style={{ color: "var(--foreground)" }}>Chat équipe</h1>
+        <div className="flex items-center gap-2 rounded-2xl px-3 py-2.5"
+          style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+          <Search size={14} style={{ color: "var(--foreground-dim)", flexShrink: 0 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
+            className="flex-1 text-[13px] outline-none bg-transparent"
+            style={{ color: "var(--foreground)" }} />
+          {search && <button onClick={() => setSearch("")}><X size={12} style={{ color: "var(--foreground-dim)" }} /></button>}
+        </div>
       </div>
+
       <div className="flex-1 overflow-y-auto">
-        {convs.map(conv => {
+        {filtered.map((conv, idx) => {
           const active = selected?.id === conv.id;
-          const isOnline = conv.id && onlineUsers.has(conv.id);
+          const isOnline = conv.id ? onlineUsers.has(conv.id) : false;
+          const hasUnread = conv.unread > 0;
           return (
             <button key={conv.id ?? "general"} onClick={() => onSelect(conv)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-              style={{ background: active ? "rgba(6,182,212,0.06)" : "transparent", borderBottom: "1px solid var(--border-soft)", borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent" }}>
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all"
+              style={{
+                background: active ? "rgba(6,182,212,0.07)" : "transparent",
+                borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-soft)" : "none",
+                borderLeft: `3px solid ${active ? "var(--accent)" : "transparent"}`,
+              }}>
               {conv.id === null
-                ? <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.25)" }}><Users size={18} style={{ color: "var(--accent)" }} /></div>
-                : <Avatar name={conv.name} size={40} online={!!isOnline} avatarUrl={conv.avatar_url} />
+                ? <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: active ? "rgba(6,182,212,0.15)" : "rgba(6,182,212,0.08)", border: `1px solid ${active ? "rgba(6,182,212,0.35)" : "rgba(6,182,212,0.15)"}` }}>
+                    <Hash size={18} style={{ color: "var(--accent)" }} />
+                  </div>
+                : <Avatar name={conv.name} size={44} online={isOnline} avatarUrl={conv.avatar_url} />
               }
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{conv.name}</p>
-                  {conv.last_at && <span suppressHydrationWarning className="text-[10px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{fmtTime(conv.last_at)}</span>}
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <p className="text-[13px] truncate" style={{ fontWeight: hasUnread ? 700 : 600, color: "var(--foreground)" }}>{conv.name}</p>
+                  {conv.last_at && <span suppressHydrationWarning className="text-[10px] flex-shrink-0 font-medium" style={{ color: hasUnread ? "var(--accent)" : "var(--foreground-dim)" }}>{fmtTime(conv.last_at)}</span>}
                 </div>
-                <p className="text-[11px] truncate mt-0.5" style={{ color: "var(--foreground-dim)" }}>{conv.last_message || "Aucun message"}</p>
+                <p className="text-[12px] truncate" style={{ color: hasUnread ? "var(--foreground)" : "var(--foreground-dim)", fontWeight: hasUnread ? 500 : 400 }}>
+                  {conv.last_message || "Aucun message"}
+                </p>
               </div>
               {conv.unread > 0 && (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: "var(--accent)", color: "white" }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+                  style={{ background: "var(--accent)", color: "white" }}>
                   {conv.unread > 9 ? "9+" : conv.unread}
                 </div>
               )}
@@ -913,7 +1006,6 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
 
 /* ── Main ────────────────────────────────────────────────────────────────────── */
 export default function ChatPage() {
-  // Stable supabase instance — createClient() would change every render otherwise
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
 
@@ -992,7 +1084,6 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Realtime conv list refresh
   useEffect(() => {
     if (!estId || !myId) return;
     const ch = supabase.channel(`chat-list-${estId}`)
@@ -1003,7 +1094,6 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estId, myId, isManager]);
 
-  // Presence (online status)
   useEffect(() => {
     if (!estId || !myId) return;
     const ch = supabase.channel(`presence-${estId}`)
@@ -1043,9 +1133,14 @@ export default function ChatPage() {
         {selected
           ? <Thread conv={selected} myId={myId} estId={estId} supabase={supabase} onBack={() => setSelected(null)}
               memberCount={memberCount} isManager={isManager} onlineUsers={onlineUsers} />
-          : <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
-              <MessageCircle size={40} style={{ color: "var(--foreground-dim)" }} />
-              <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Sélectionne une conversation</p>
+          : <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-25">
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: "var(--background-elev)" }}>
+                <MessageCircle size={36} style={{ color: "var(--foreground-dim)" }} />
+              </div>
+              <div className="text-center">
+                <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Aucune conversation sélectionnée</p>
+                <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>Choisissez une conversation à gauche</p>
+              </div>
             </div>
         }
       </div>

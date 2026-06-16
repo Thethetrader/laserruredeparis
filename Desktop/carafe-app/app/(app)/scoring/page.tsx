@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
@@ -140,7 +140,7 @@ type ScoredMember = ScoringMember & { score: number; events: ScoreEvent[] };
 
 export default function ScoringPage() {
   const [devRole] = useDevRole();
-  const supabase = createClient();
+  const supabase = useRef(createClient()).current;
   const [settings, setSettings] = useState<ScoringSettings | null>(null);
   const [members, setMembers] = useState<ScoringMember[]>([]);
   const [events, setEvents] = useState<ScoreEvent[]>([]);
@@ -237,7 +237,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month, estId, onRef
   estId: string;
   onRefresh: () => void;
 }) {
-  const supabase = createClient();
+  const supabase = useRef(createClient()).current;
   const [actionModal, setActionModal] = useState<"bonus" | "google_review" | "challenge_won" | null>(null);
   const [actionTarget, setActionTarget] = useState<string>("");
   const [bonusPoints, setBonusPoints] = useState(5);
@@ -396,7 +396,7 @@ function ManagerScoringView({ scored, settings, myProfileId, month, estId, onRef
                 </div>
                 {m.profile_id !== myProfileId && (
                   <button
-                    onClick={() => { setBonusTarget(m.profile_id); setBonusReason(""); setBonusPoints(5); }}
+                    onClick={() => { setActionModal("bonus"); setActionTarget(m.profile_id); setBonusReason(""); setBonusPoints(5); }}
                     className="text-[11px] font-medium px-2.5 py-1 rounded-md"
                     style={{ background: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.25)" }}>
                     Bonus
