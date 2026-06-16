@@ -4,18 +4,17 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
 const FEATURES = [
-  "Tous les piliers de Carafe inclus",
-  "Utilisateurs illimités",
-  "Récap hebdomadaire automatique",
-  "Système de Bravos et fiche pro transférable",
-  "Retours client en temps réel",
-  "Tâches récurrentes et passations",
-  "Support par email et chat",
+  "Planning de l'équipe généré par l'IA",
+  "Protocoles accessibles à toute l'équipe",
+  "Challenges, primes et reconnaissance",
+  "Retours clients en temps réel",
+  "Récap hebdo automatique",
+  "Support inclus",
 ];
 
 const TABLE_ROWS = [
-  { label: "1 petit étab (< 20 sal.)", total: "29€", devis: false },
-  { label: "1 grand étab (≥ 20 sal.)", total: "39€", devis: false },
+  { label: "1 petit étab (< 10 sal.)", total: "29€", devis: false },
+  { label: "1 grand étab (≥ 10 sal.)", total: "39€", devis: false },
   { label: "2 petits étabs", total: "48€", devis: false },
   { label: "2 grands étabs", total: "68€", devis: false },
   { label: "Petit + grand", total: "58€", devis: false },
@@ -81,7 +80,7 @@ export default function PricingSection() {
             </div>
             <div className="pb-3 flex flex-col items-start">
               <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded mb-1" style={{ background: "var(--background-elev)", color: "var(--foreground-dim)", border: "1px solid var(--border)" }}>ou 39€</span>
-              <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>≥ 20 salariés</span>
+              <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>≥ 10 salariés</span>
             </div>
           </div>
           <p className="text-base mb-8" style={{ color: "var(--foreground-muted)" }}>
