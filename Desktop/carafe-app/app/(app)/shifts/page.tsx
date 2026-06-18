@@ -561,8 +561,8 @@ const days     = getDaysInMonth(year, month);
                   const hasCoupure = shift && shift.start_time_2;
                   return (
                     <button key={dateStr} onClick={() => setSelected(dateStr)}
-                      className="relative flex flex-col items-start justify-start overflow-hidden lg:min-h-[96px]"
-                      style={{ minHeight: 72, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--foreground-muted)" : "1px solid var(--border-soft)", background: shift ? "rgba(6,182,212,0.04)" : "var(--background-elev)", cursor: "pointer" }}>
+                      className="relative flex flex-col items-start justify-start overflow-hidden lg:min-h-[96px] transition-transform duration-150 active:scale-[0.88]"
+                      style={{ minHeight: 72, padding: "6px 4px", borderRadius: 8, border: isToday ? "2px solid var(--accent)" : "1px solid var(--border-soft)", background: shift ? "rgba(6,182,212,0.07)" : "var(--background-elev)", cursor: "pointer", willChange: "transform" }}>
                       <span className="text-[12px] lg:text-[14px] mb-1 flex-shrink-0"
                         style={{ fontWeight: isToday ? 700 : 500, color: isToday ? "var(--foreground)" : "var(--foreground-muted)" }}>
                         {day.getDate()}
