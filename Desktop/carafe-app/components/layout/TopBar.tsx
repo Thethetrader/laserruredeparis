@@ -50,15 +50,15 @@ export function TopBar({ profile, establishment, establishments }: TopBarProps) 
       {/* Right: chat bubble */}
       <Link
         href="/chat"
-        className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+        className="flex items-center justify-center rounded-full flex-shrink-0 transition-opacity active:opacity-70"
         style={{
-          width: 34,
-          height: 34,
-          background: "var(--background-elev)",
-          border: "1px solid var(--border)",
+          width: 36,
+          height: 36,
+          background: "var(--accent)",
+          boxShadow: "0 0 12px rgba(6,182,212,0.35)",
         }}
       >
-        <MessageCircle size={16} strokeWidth={1.8} style={{ color: "var(--foreground-muted)" }} />
+        <MessageCircle size={17} strokeWidth={2} color="var(--background)" />
       </Link>
     </header>
   );
