@@ -338,10 +338,11 @@ export default function ProtocolsPage() {
     if (reads.has(protocolId)) return;
     setReads(prev => new Set([...prev, protocolId]));
     if (DEV_MODE) return;
-    const pid = profileId || (await supabase.auth.getUser()).data.user?.id;
-    if (!pid) return;
-    const { error } = await supabase.from("protocol_reads").insert({ protocol_id: protocolId, profile_id: pid });
-    if (error && error.code !== "23505") console.error("protocol_reads:", error.message);
+    await fetch("/api/protocols/mark-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ protocol_id: protocolId }),
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
