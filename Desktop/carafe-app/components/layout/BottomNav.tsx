@@ -6,11 +6,18 @@ import { useState } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Users, Settings,
   CalendarDays, Clock, Trophy, CalendarCheck2, Zap, MessageSquare,
-  type LucideIcon,
+  Layers, type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
 type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
+
+const opsSubNav: NavItem[] = [
+  { href: "/protocols", icon: BookOpen,     label: "Protocoles" },
+  { href: "/tasks",     icon: ClipboardList, label: "Tâches" },
+];
+
+const opsRoutes = opsSubNav.map(i => i.href);
 
 const teamSubNav: NavItem[] = [
   { href: "/team",        icon: Users,          label: "Équipe" },
@@ -56,8 +63,46 @@ function NavTab({
   );
 }
 
+function PopupGrid({ items, pathname, onClose }: {
+  items: NavItem[]; pathname: string; onClose: () => void;
+}) {
+  return (
+    <div
+      className="lg:hidden fixed inset-x-4 z-50 rounded-2xl p-3"
+      style={{
+        bottom: "calc(64px + env(safe-area-inset-bottom))",
+        background: "var(--background-elev)",
+        border: "1px solid var(--border)",
+        boxShadow: "0 -4px 32px rgba(0,0,0,0.18)",
+      }}
+    >
+      <div className={`grid gap-2 ${items.length === 2 ? "grid-cols-2" : "grid-cols-3 [&>*:last-child:nth-child(3n+1)]:col-start-2"}`}>
+        {items.map(({ href, icon: Icon, label, exact }) => {
+          const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onClose}
+              className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors"
+              style={{
+                background: active ? "var(--accent-bg)" : "var(--background-soft)",
+                color: active ? "var(--accent)" : "var(--foreground)",
+              }}
+            >
+              <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+              <span className="text-[11px] font-medium text-center leading-tight">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname();
+  const [opsOpen, setOpsOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
 
   if (role === "employee") {
@@ -91,48 +136,26 @@ export function BottomNav({ role }: BottomNavProps) {
     );
   }
 
+  const opsActive = opsRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
   const teamActive = teamRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
+  const anyOpen = opsOpen || teamOpen;
 
   return (
     <>
-      {teamOpen && (
+      {anyOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40"
-          onClick={() => setTeamOpen(false)}
+          onClick={() => { setOpsOpen(false); setTeamOpen(false); }}
           style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
         />
       )}
 
+      {opsOpen && (
+        <PopupGrid items={opsSubNav} pathname={pathname} onClose={() => setOpsOpen(false)} />
+      )}
+
       {teamOpen && (
-        <div
-          className="lg:hidden fixed inset-x-4 z-50 rounded-2xl p-3"
-          style={{
-            bottom: "calc(64px + env(safe-area-inset-bottom))",
-            background: "var(--background-elev)",
-            border: "1px solid var(--border)",
-            boxShadow: "0 -4px 32px rgba(0,0,0,0.18)",
-          }}
-        >
-          <div className="grid grid-cols-3 gap-2 [&>*:last-child:nth-child(3n+1)]:col-start-2">
-            {teamSubNav.map(({ href, icon: Icon, label }) => {
-              const active = pathname === href || pathname.startsWith(href + "/");
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors"
-                  style={{
-                    background: active ? "var(--accent-bg)" : "var(--background-soft)",
-                    color: active ? "var(--accent)" : "var(--foreground)",
-                  }}
-                >
-                  <Icon size={20} strokeWidth={active ? 2 : 1.5} />
-                  <span className="text-[11px] font-medium text-center leading-tight">{label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        <PopupGrid items={teamSubNav} pathname={pathname} onClose={() => setTeamOpen(false)} />
       )}
 
       <nav
@@ -143,12 +166,21 @@ export function BottomNav({ role }: BottomNavProps) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <NavTab href="/protocols"              icon={BookOpen}        label="Protocoles" pathname={pathname} />
-        <NavTab href="/tasks"                  icon={ClipboardList}   label="Tâches"     pathname={pathname} />
-        <NavTab href="/dashboard"              icon={LayoutDashboard} label="Accueil"    pathname={pathname} exact />
+        <NavTab href="/customer-feedback" icon={MessageSquare}  label="Retours"    pathname={pathname} />
 
         <button
-          onClick={() => setTeamOpen(o => !o)}
+          onClick={() => { setOpsOpen(o => !o); setTeamOpen(false); }}
+          className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+          style={{ height: 60, color: (opsActive || opsOpen) ? "var(--accent)" : "var(--foreground-dim)" }}
+        >
+          <Layers size={18} strokeWidth={(opsActive || opsOpen) ? 2 : 1.5} />
+          <span className="text-[10px] font-medium">Ops</span>
+        </button>
+
+        <NavTab href="/dashboard" icon={LayoutDashboard} label="Accueil" pathname={pathname} exact />
+
+        <button
+          onClick={() => { setTeamOpen(o => !o); setOpsOpen(false); }}
           className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
           style={{ height: 60, color: (teamActive || teamOpen) ? "var(--accent)" : "var(--foreground-dim)" }}
         >
@@ -156,7 +188,7 @@ export function BottomNav({ role }: BottomNavProps) {
           <span className="text-[10px] font-medium">Team</span>
         </button>
 
-        <NavTab href="/establishment/settings" icon={Settings}        label="Paramètres" pathname={pathname} />
+        <NavTab href="/establishment/settings" icon={Settings} label="Paramètres" pathname={pathname} />
       </nav>
     </>
   );
