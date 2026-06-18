@@ -392,6 +392,7 @@ export default function ProtocolsPage() {
     let attachmentUrl: string | null = null;
     let attachmentType: AttachmentType = null;
     let attachmentName: string | null = null;
+    try {
 
     if (formFile) {
       if (DEV_MODE) {
@@ -490,7 +491,11 @@ export default function ProtocolsPage() {
       }).catch(() => {});
     }
     resetForm();
-    setSubmitting(false);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Erreur inattendue. Réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {

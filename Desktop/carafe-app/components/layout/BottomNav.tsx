@@ -16,6 +16,7 @@ const teamSubNav: NavItem[] = [
   { href: "/team",        icon: Users,          label: "Équipe" },
   { href: "/planning",    icon: Zap,            label: "Planning IA" },
   { href: "/shifts/team", icon: CalendarDays,   label: "Calendrier" },
+  { href: "/shifts",      icon: CalendarDays,   label: "Mes shifts", exact: true },
   { href: "/delays",      icon: Clock,          label: "Retards" },
   { href: "/challenges",  icon: Trophy,         label: "Challenges" },
   { href: "/schedule",    icon: CalendarCheck2, label: "RDV" },
@@ -114,7 +115,7 @@ export function BottomNav({ role }: BottomNavProps) {
             boxShadow: "0 -4px 32px rgba(0,0,0,0.18)",
           }}
         >
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 [&>*:last-child:nth-child(3n+1)]:col-start-2">
             {teamSubNav.map(({ href, icon: Icon, label }) => {
               const active = pathname === href || pathname.startsWith(href + "/");
               return (
