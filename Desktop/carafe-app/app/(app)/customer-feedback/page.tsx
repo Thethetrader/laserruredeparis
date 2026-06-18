@@ -387,11 +387,18 @@ export default function CustomerFeedbackPage() {
       {/* Date range + filters */}
       <div className="mb-6 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>Du</span>
+          <button
+            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            className="flex-shrink-0 px-3 py-2 rounded-xl text-[12px] font-medium transition-all"
+            style={!dateFrom && !dateTo
+              ? { background: "var(--accent)", color: "var(--primary-foreground)" }
+              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            Tous
+          </button>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
             className="flex-1 px-3 py-2 rounded-xl text-[13px]"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", colorScheme: "dark" }} />
-          <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>au</span>
+          <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>–</span>
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
             className="flex-1 px-3 py-2 rounded-xl text-[13px]"
             style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", colorScheme: "dark" }} />
