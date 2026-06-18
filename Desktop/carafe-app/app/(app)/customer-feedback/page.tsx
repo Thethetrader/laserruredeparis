@@ -122,14 +122,6 @@ const DEV_FEEDBACKS: FeedbackView[] = [
   },
 ];
 
-type MonthFilter = "all" | "week" | "month" | "lastmonth";
-
-const MONTH_LABELS: Record<MonthFilter, string> = {
-  all: "Tous",
-  week: "Cette semaine",
-  month: "Ce mois",
-  lastmonth: "Mois dernier",
-};
 
 export default function CustomerFeedbackPage() {
   const supabase = createClient();
@@ -143,7 +135,8 @@ export default function CustomerFeedbackPage() {
   const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [monthFilter, setMonthFilter] = useState<MonthFilter>("week");
+  const [dateFrom, setDateFrom] = useState(() => new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [userRole, setUserRole] = useState<string>("employee");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -161,7 +154,7 @@ export default function CustomerFeedbackPage() {
       return;
     }
     loadData();
-  }, [devRole, monthFilter]);
+  }, [devRole, dateFrom, dateTo]);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -179,17 +172,8 @@ export default function CustomerFeedbackPage() {
     setEstablishmentId(memberData.establishment_id);
     setUserRole(memberData.role);
 
-    const now = new Date();
-    let rangeStart: string | null = null;
-    let rangeEnd: string | null = null;
-    if (monthFilter === "week") {
-      rangeStart = new Date(Date.now() - 7 * 86400000).toISOString();
-    } else if (monthFilter === "month") {
-      rangeStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    } else if (monthFilter === "lastmonth") {
-      rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-      rangeEnd = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    }
+    const rangeStart = dateFrom ? new Date(dateFrom).toISOString() : null;
+    const rangeEnd = dateTo ? new Date(dateTo + "T23:59:59").toISOString() : null;
     const [feedbackRes, confirmedRes, membersRes] = await Promise.all([
       (() => {
         let q = supabase.from("customer_feedback").select("*")
@@ -270,7 +254,7 @@ export default function CustomerFeedbackPage() {
             content: f.content,
             echo_count: f.echo_count,
           })),
-          period: MONTH_LABELS[monthFilter].toLowerCase(),
+          period: `du ${new Date(dateFrom).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} au ${new Date(dateTo).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`,
         }),
       });
       const data = await res.json();
@@ -379,8 +363,8 @@ export default function CustomerFeedbackPage() {
       <div className="flex items-start justify-between mb-5">
         <div>
           <MonoLabel size="xs" className="mb-2 block">Retour client</MonoLabel>
-          <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Retour client</h1>
-          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retour{feedbacks.length !== 1 ? "s" : ""} · {MONTH_LABELS[monthFilter].toLowerCase()}</p>
+          <h1 className="text-2xl font-semibold" style={{ color: "var(--foreground)" }}>Feed</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retour{feedbacks.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {isManager && feedbacks.length > 0 && (
@@ -400,68 +384,48 @@ export default function CustomerFeedbackPage() {
         </div>
       </div>
 
-      {/* Month filter */}
-      <div className="flex gap-2 mb-5">
-        {(["all", "week", "month", "lastmonth"] as MonthFilter[]).map(f => (
-          <button key={f} onClick={() => setMonthFilter(f)}
+      {/* Date range + filters */}
+      <div className="mb-6 space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>Du</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="flex-1 px-3 py-2 rounded-xl text-[13px]"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", colorScheme: "dark" }} />
+          <span className="text-[11px] flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>au</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="flex-1 px-3 py-2 rounded-xl text-[13px]"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)", colorScheme: "dark" }} />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => toggleFilter("negative")}
             className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-            style={monthFilter === f
-              ? { background: "var(--accent)", color: "var(--primary-foreground)" }
+            style={activeFilters.has("negative")
+              ? { background: "rgba(245,158,11,0.2)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.4)" }
               : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-            {MONTH_LABELS[f]}
+            ▼ Négatifs
           </button>
-        ))}
-      </div>
-
-
-      {/* Filter chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: "none" }}>
-        {ITEM_CATS.map(({ key, label }) => {
-          const active = activeFilters.has(key);
-          return (
-            <button key={key} onClick={() => toggleFilter(key)}
-              className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-              style={active
-                ? { background: "var(--accent)", color: "var(--primary-foreground)" }
-                : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-              {label}
-            </button>
-          );
-        })}
-
-        <div className="w-px flex-shrink-0 self-stretch mx-1" style={{ background: "var(--border)" }} />
-
-        <button onClick={() => toggleFilter("negative")}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-          style={activeFilters.has("negative")
-            ? { background: "rgba(245,158,11,0.2)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.4)" }
-            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-          ▼ Négatifs
-        </button>
-        <button onClick={() => toggleFilter("positive")}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-          style={activeFilters.has("positive")
-            ? { background: "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.4)" }
-            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-          ▲ Positifs
-        </button>
-
-        <div className="w-px flex-shrink-0 self-stretch mx-1" style={{ background: "var(--border)" }} />
-
-        <button onClick={() => toggleFilter("mine")}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-          style={activeFilters.has("mine")
-            ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
-            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-          Mes retours
-        </button>
-        <button onClick={() => toggleFilter("echoed")}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-          style={activeFilters.has("echoed")
-            ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
-            : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-          Mes +1
-        </button>
+          <button onClick={() => toggleFilter("positive")}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+            style={activeFilters.has("positive")
+              ? { background: "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.4)" }
+              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            ▲ Positifs
+          </button>
+          <button onClick={() => toggleFilter("mine")}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+            style={activeFilters.has("mine")
+              ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
+              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            Les miens
+          </button>
+          <button onClick={() => toggleFilter("echoed")}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
+            style={activeFilters.has("echoed")
+              ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
+              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+            Mes +1
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -503,12 +467,7 @@ export default function CustomerFeedbackPage() {
               <div key={f.id} className="px-4 py-3" style={{ borderBottom: i < sorted.length - 1 ? "1px solid var(--border)" : "none", background: "var(--background-elev)" }}>
                 <div className="grid items-start" style={{ gridTemplateColumns: "1fr 80px 36px" }}>
                   <div className="min-w-0 pr-3">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>{f.item || f.content.slice(0, 40)}</p>
-                      <span className="flex-shrink-0 text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: "var(--background-soft)", color: "var(--foreground-dim)", border: "1px solid var(--border-soft)" }}>
-                        {CAT_LABELS[f.item_cat]}
-                      </span>
-                    </div>
+                    <p className="text-[13px] font-medium mb-0.5" style={{ color: "var(--foreground)" }}>{f.item || f.content.slice(0, 40)}</p>
                     {f.item && (
                       <p className="text-[12px] leading-snug mb-1" style={{ color: "var(--foreground-muted)", fontStyle: "italic" }}>
                         {f.content}
@@ -594,7 +553,7 @@ export default function CustomerFeedbackPage() {
                 <Sparkles size={15} style={{ color: "var(--accent)" }} />
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Analyse IA</p>
-                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retours · {MONTH_LABELS[monthFilter].toLowerCase()}</p>
+                  <p className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>{feedbacks.length} retours · {new Date(dateFrom).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} – {new Date(dateTo).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</p>
                 </div>
               </div>
               {!analyzing && (

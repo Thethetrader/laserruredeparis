@@ -508,7 +508,7 @@ export default function ProtocolsPage() {
   };
 
   const resetForm = () => {
-    setFormTitle(""); setFormContent(""); setFormCategory("salle");
+    setFormTitle(""); setFormContent(""); setFormCategory(categories[0]?.id as ProtocolCategory ?? "salle");
     setFormMandatory(false); setFormFile(null); setFormSteps([]); setFormGallery([]);
     setFormError(null); setEditingProtocol(null);
     if (fileInputRef.current) fileInputRef.current.value = "";

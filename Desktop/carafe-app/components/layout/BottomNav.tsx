@@ -33,7 +33,7 @@ const teamRoutes = teamSubNav.map(i => i.href);
 
 const employeeNav: NavItem[] = [
   { href: "/dashboard",         icon: LayoutDashboard, label: "Dashboard", exact: true },
-  { href: "/customer-feedback", icon: MessageSquare,   label: "Retours" },
+  { href: "/customer-feedback", icon: MessageSquare,   label: "Feed" },
   { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
   { href: "/me/tasks",          icon: ClipboardList,   label: "Tâches" },
   { href: "/shifts",            icon: CalendarDays,    label: "Mes shifts", exact: true },
@@ -166,7 +166,7 @@ export function BottomNav({ role }: BottomNavProps) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <NavTab href="/customer-feedback" icon={MessageSquare}  label="Retours"    pathname={pathname} />
+        <NavTab href="/customer-feedback" icon={MessageSquare}  label="Feed"    pathname={pathname} />
 
         <button
           onClick={() => { setOpsOpen(o => !o); setTeamOpen(false); }}
@@ -177,7 +177,29 @@ export function BottomNav({ role }: BottomNavProps) {
           <span className="text-[10px] font-medium">Ops</span>
         </button>
 
-        <NavTab href="/dashboard" icon={LayoutDashboard} label="Accueil" pathname={pathname} exact />
+        {(() => {
+          const dashActive = pathname === "/dashboard";
+          return (
+            <Link
+              href="/dashboard"
+              className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+              style={{ height: 60 }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%",
+                background: dashActive ? "var(--accent)" : "var(--background-elev)",
+                border: dashActive ? "none" : "1px solid var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: dashActive ? "0 0 14px rgba(6,182,212,0.35)" : "none",
+                transition: "all 0.2s",
+              }}>
+                <LayoutDashboard size={17} strokeWidth={dashActive ? 2 : 1.5}
+                  color={dashActive ? "var(--background)" : "var(--foreground-dim)"} />
+              </div>
+              <span className="text-[10px] font-medium" style={{ color: dashActive ? "var(--accent)" : "var(--foreground-dim)" }}>Accueil</span>
+            </Link>
+          );
+        })()}
 
         <button
           onClick={() => { setTeamOpen(o => !o); setOpsOpen(false); }}
