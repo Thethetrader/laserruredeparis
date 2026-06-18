@@ -1618,6 +1618,46 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
   const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
   const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
 
+  const [statsPopup, setStatsPopup] = useState<"score" | "shifts" | null>(null);
+  const [lastMonthData, setLastMonthData] = useState<{ score: number; shifts: number } | null>(null);
+  const [currentMonthShifts, setCurrentMonthShifts] = useState<number | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [barsVisible, setBarsVisible] = useState(false);
+
+  const openStatsPopup = async (type: "score" | "shifts") => {
+    setStatsPopup(type);
+    setBarsVisible(false);
+    if (lastMonthData !== null) { setTimeout(() => setBarsVisible(true), 80); return; }
+    setLoadingStats(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const now = new Date();
+      const lastStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastEnd   = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thisStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const [lmScore, lmShifts, cmShifts] = await Promise.all([
+        supabase.from("score_events").select("points")
+          .eq("profile_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
+          .gte("created_at", lastStart.toISOString()).lt("created_at", lastEnd.toISOString()),
+        supabase.from("shifts").select("id")
+          .eq("user_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
+          .gte("shift_date", lastStart.toISOString().slice(0, 10)).lt("shift_date", lastEnd.toISOString().slice(0, 10)),
+        supabase.from("shifts").select("id")
+          .eq("user_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
+          .gte("shift_date", thisStart.toISOString().slice(0, 10)),
+      ]);
+      setLastMonthData({
+        score: (lmScore.data ?? []).reduce((s: number, e: { points: number }) => s + e.points, 0),
+        shifts: (lmShifts.data ?? []).length,
+      });
+      setCurrentMonthShifts((cmShifts.data ?? []).length);
+    } finally {
+      setLoadingStats(false);
+      setTimeout(() => setBarsVisible(true), 80);
+    }
+  };
+
   const openProtocol = async (p: Protocol) => {
     setProtocolPopup(p);
     if (!readProtocols.has(p.id)) {
@@ -2042,13 +2082,31 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
             </div>
           )}
 
+          {/* Shifts ce mois */}
+          <button onClick={() => openStatsPopup("shifts")}
+            className="w-full rounded-xl p-4 text-left flex items-center justify-between transition-opacity active:opacity-70"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            <div>
+              <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Shifts ce mois</p>
+              <p className="text-2xl font-bold font-mono" style={{ color: "var(--foreground)" }}>
+                {currentMonthShifts !== null ? currentMonthShifts : "—"}
+              </p>
+            </div>
+            <BarChart2 size={18} style={{ color: "var(--foreground-dim)" }} />
+          </button>
+
           {/* Score / Ponctualité */}
-          <div className="rounded-xl p-5" style={{ background: myBadge ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
+          <button onClick={() => openStatsPopup("score")}
+            className="w-full rounded-xl p-5 text-left transition-opacity active:opacity-70"
+            style={{ background: myBadge ? "rgba(245,158,11,0.05)" : "var(--background-elev)", border: `1px solid ${myBadge ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Mon score</p>
-              {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={24} />}
+              <div className="flex items-center gap-2">
+                {myBadge && <BadgeRank rank={myBadge.rank} color={myBadge.color} bg={myBadge.bg} size={24} />}
+                <BarChart2 size={13} style={{ color: "var(--foreground-dim)" }} />
+              </div>
             </div>
-            <div className="flex items-end gap-3 mb-3">
+            <div className="flex items-end gap-3">
               <p className="text-4xl font-bold leading-none" style={{ color: myBadge?.color ?? "var(--foreground)" }}>
                 {myStats?.score ?? "—"}
               </p>
@@ -2056,10 +2114,82 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
                 {myRank > 0 ? `${myRank}${myRank === 1 ? "er" : "ème"} sur ${data.leaderboard.length}` : ""}
               </p>
             </div>
-          </div>
+          </button>
 
         </div>
       </div>
+
+      {/* Stats comparison popup */}
+      {statsPopup && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setStatsPopup(null); }}>
+          <div className="w-full max-w-md rounded-t-2xl p-5"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                {statsPopup === "score" ? "Mon score" : "Mes shifts"} — évolution
+              </p>
+              <button onClick={() => setStatsPopup(null)} style={{ color: "var(--foreground-dim)" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {loadingStats ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <span className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: "var(--accent)" }} />
+                <p className="text-[12px]" style={{ color: "var(--foreground-dim)" }}>Chargement…</p>
+              </div>
+            ) : (() => {
+              const current = statsPopup === "score" ? (myStats?.score ?? 0) : (currentMonthShifts ?? 0);
+              const last    = lastMonthData ? (statsPopup === "score" ? lastMonthData.score : lastMonthData.shifts) : null;
+              if (last === null) return <p className="text-center text-sm py-8" style={{ color: "var(--foreground-dim)" }}>Données indisponibles.</p>;
+              const pct = last > 0 ? Math.round(((current - last) / last) * 100) : current > 0 ? 100 : 0;
+              const isUp = pct >= 0;
+              const isNeutral = pct === 0 && last === 0 && current === 0;
+              const maxVal = Math.max(current, last, 1);
+              const unit = statsPopup === "score" ? "pts" : "shifts";
+              return (
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <p className="text-[56px] leading-none font-bold font-mono"
+                      style={{ color: isNeutral ? "var(--foreground-dim)" : isUp ? "var(--success)" : "var(--danger)" }}>
+                      {isNeutral ? "—" : `${isUp ? "+" : ""}${pct}%`}
+                    </p>
+                    <p className="text-[12px] mt-2" style={{ color: "var(--foreground-dim)" }}>
+                      {isNeutral ? "Pas de données à comparer" : `${isUp ? "en hausse" : "en baisse"} vs mois dernier`}
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      { label: "Ce mois", val: current, color: isNeutral ? "var(--foreground-dim)" : isUp ? "var(--success)" : "var(--danger)", delay: "0s", bold: true },
+                      { label: "Mois dernier", val: last, color: "var(--border-strong)", delay: "0.1s", bold: false },
+                    ].map(({ label, val, color, delay, bold }) => (
+                      <div key={label}>
+                        <div className="flex justify-between items-baseline mb-2">
+                          <span className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>{label}</span>
+                          <span className="text-[15px] font-mono" style={{ color: bold ? "var(--foreground)" : "var(--foreground-dim)", fontWeight: bold ? 600 : 400 }}>
+                            {val} <span className="text-[11px]">{unit}</span>
+                          </span>
+                        </div>
+                        <div className="rounded-full overflow-hidden" style={{ height: 10, background: "var(--background-soft)" }}>
+                          <div className="h-full rounded-full"
+                            style={{
+                              width: barsVisible ? `${(val / maxVal) * 100}%` : "0%",
+                              background: color,
+                              transition: `width 0.7s cubic-bezier(0.34,1.56,0.64,1) ${delay}`,
+                            }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Delay modal */}
       {modal === "delay" && (
