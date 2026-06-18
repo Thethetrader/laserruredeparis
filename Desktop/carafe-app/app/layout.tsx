@@ -27,10 +27,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/FONDCLAIRLOGO.png", sizes: "any", type: "image/png" },
+      { url: "/apple-touch-icon.PNG", sizes: "any", type: "image/png" },
     ],
-    apple: "/FONDCLAIRLOGO.png",
-    shortcut: "/FONDCLAIRLOGO.png",
+    apple: "/apple-touch-icon.PNG",
+    shortcut: "/apple-touch-icon.PNG",
   },
 };
 
@@ -58,20 +58,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           html[data-theme="light"] body { background: #fafaf7; }
           #splash {
             position: fixed; inset: 0; z-index: 99999;
-            background: #fafaf7;
+            background: #09090B;
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
           }
           #splash.fade { opacity: 0; pointer-events: none; }
-          #splash img { width: 140px; height: 140px; object-fit: contain; }
-          #splash .logo-dark { display: none; }
-          #splash .logo-light { display: block; mix-blend-mode: multiply; }
+          #splash img { width: 96px; height: 96px; object-fit: cover; border-radius: 22px; }
         `}</style>
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
         <div id="splash">
-          <img src="/logo.png" alt="Karaf" className="logo-dark" />
-          <img src="/FONDCLAIRLOGO.png" alt="Karaf" className="logo-light" />
+          <img src="/apple-touch-icon.PNG" alt="Karaf" />
         </div>
         {/* Script placed after #splash so the element exists in DOM */}
         <script dangerouslySetInnerHTML={{ __html: `
