@@ -295,7 +295,9 @@ export default function ProtocolsPage() {
     setProtocols((protocolData ?? []) as Protocol[]);
     setReads(new Set(Array.from((readData ?? []).map((r: { protocol_id: string }) => r.protocol_id))));
     if (estData?.protocol_categories && Array.isArray(estData.protocol_categories)) {
-      setCategories(estData.protocol_categories as CustomCategory[]);
+      const cats = estData.protocol_categories as CustomCategory[];
+      setCategories(cats);
+      if (cats.length > 0) setFormCategory(cats[0].id as ProtocolCategory);
     }
     setLoading(false);
   }
