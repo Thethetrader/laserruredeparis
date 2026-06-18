@@ -2123,11 +2123,11 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
 
       {/* Stats comparison popup */}
       {statsPopup && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
           onClick={e => { if (e.target === e.currentTarget) setStatsPopup(null); }}>
-          <div className="w-full max-w-md rounded-t-2xl p-5"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)", paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+          <div className="w-full max-w-md rounded-2xl p-5"
+            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
 
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
