@@ -335,9 +335,15 @@ export default function ProtocolsPage() {
   };
 
   const markAsRead = async (protocolId: string) => {
-    if (DEV_MODE) { setReads(prev => new Set(Array.from(prev).concat(protocolId))); return; }
-    await supabase.from("protocol_reads").upsert({ protocol_id: protocolId, profile_id: profileId });
-    setReads(prev => new Set(Array.from(prev).concat(protocolId)));
+    if (reads.has(protocolId)) return;
+    setReads(prev => new Set([...prev, protocolId]));
+    if (DEV_MODE) return;
+    const pid = profileId || (await supabase.auth.getUser()).data.user?.id;
+    if (!pid) return;
+    await supabase.from("protocol_reads").upsert(
+      { protocol_id: protocolId, profile_id: pid },
+      { onConflict: "protocol_id,profile_id" }
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
