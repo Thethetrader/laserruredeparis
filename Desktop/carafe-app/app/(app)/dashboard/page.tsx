@@ -1640,18 +1640,20 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
         supabase.from("score_events").select("points")
           .eq("profile_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
           .gte("created_at", lastStart.toISOString()).lt("created_at", lastEnd.toISOString()),
-        supabase.from("shifts").select("id")
+        supabase.from("shifts").select("tips,tips_2")
           .eq("user_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
           .gte("shift_date", lastStart.toISOString().slice(0, 10)).lt("shift_date", lastEnd.toISOString().slice(0, 10)),
-        supabase.from("shifts").select("id")
+        supabase.from("shifts").select("tips,tips_2")
           .eq("user_id", data.my_profile_id).eq("establishment_id", data.establishment_id)
           .gte("shift_date", thisStart.toISOString().slice(0, 10)),
       ]);
+      const sumTips = (rows: { tips: number | null; tips_2: number | null }[]) =>
+        rows.reduce((s, r) => s + (r.tips ?? 0) + (r.tips_2 ?? 0), 0);
       setLastMonthData({
         score: (lmScore.data ?? []).reduce((s: number, e: { points: number }) => s + e.points, 0),
-        shifts: (lmShifts.data ?? []).length,
+        shifts: sumTips((lmShifts.data ?? []) as { tips: number | null; tips_2: number | null }[]),
       });
-      setCurrentMonthShifts((cmShifts.data ?? []).length);
+      setCurrentMonthShifts(sumTips((cmShifts.data ?? []) as { tips: number | null; tips_2: number | null }[]));
     } finally {
       setLoadingStats(false);
       setTimeout(() => setBarsVisible(true), 80);
@@ -2082,17 +2084,17 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
             </div>
           )}
 
-          {/* Shifts ce mois */}
+          {/* Tips ce mois */}
           <button onClick={() => openStatsPopup("shifts")}
             className="w-full rounded-xl p-4 text-left flex items-center justify-between transition-opacity active:opacity-70"
-            style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+            style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)" }}>
             <div>
-              <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Shifts ce mois</p>
-              <p className="text-2xl font-bold font-mono" style={{ color: "var(--foreground)" }}>
-                {currentMonthShifts !== null ? currentMonthShifts : "—"}
+              <p className="text-[11px] font-mono uppercase tracking-widest mb-1" style={{ color: "var(--foreground-dim)" }}>Tips ce mois</p>
+              <p className="text-2xl font-bold font-mono" style={{ color: "#F59E0B" }}>
+                {currentMonthShifts !== null ? `${currentMonthShifts.toFixed(0)} €` : "—"}
               </p>
             </div>
-            <BarChart2 size={18} style={{ color: "var(--foreground-dim)" }} />
+            <BarChart2 size={18} style={{ color: "#F59E0B", opacity: 0.6 }} />
           </button>
 
           {/* Score / Ponctualité */}
@@ -2129,7 +2131,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
 
             <div className="flex items-center justify-between mb-6">
               <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                {statsPopup === "score" ? "Mon score" : "Mes shifts"} — évolution
+                {statsPopup === "score" ? "Mon score" : "Tips"} — évolution
               </p>
               <button onClick={() => setStatsPopup(null)} style={{ color: "var(--foreground-dim)" }}>
                 <X size={18} />
@@ -2149,7 +2151,7 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
               const isUp = pct >= 0;
               const isNeutral = pct === 0 && last === 0 && current === 0;
               const maxVal = Math.max(current, last, 1);
-              const unit = statsPopup === "score" ? "pts" : "shifts";
+              const unit = statsPopup === "score" ? "pts" : "€";
               return (
                 <div className="space-y-6">
                   <div className="text-center">
