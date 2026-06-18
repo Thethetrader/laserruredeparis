@@ -61,7 +61,7 @@ export function BottomNav({ role }: BottomNavProps) {
 
   useEffect(() => { setTeamOpen(false); }, [pathname]);
 
-  if (role !== "manager") {
+  if (role === "employee") {
     return (
       <nav
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch overflow-x-auto"
