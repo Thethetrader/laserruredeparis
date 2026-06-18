@@ -355,12 +355,19 @@ export default function ProtocolsPage() {
   const extractStepsFromFile = async (file: File) => {
     setExtracting(true);
     setFormSteps([]);
+    setFormError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/protocols/extract-steps", { method: "POST", body: fd });
       const data = await res.json();
+      if (!res.ok || data.error) {
+        setFormError(data.error ?? "Analyse IA échouée. Réessayez.");
+        return;
+      }
       if (data.steps) setFormSteps(data.steps.map((s: string) => ({ text: s })));
+    } catch {
+      setFormError("Analyse IA impossible. Vérifiez votre connexion.");
     } finally {
       setExtracting(false);
     }
