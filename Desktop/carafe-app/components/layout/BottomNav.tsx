@@ -6,17 +6,17 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Users, Settings,
   CalendarDays, Clock, Trophy, CalendarCheck2, Zap, MessageSquare,
-  Layers, type LucideIcon,
+  Layers, User, type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
 type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
 
+/* ── Manager popups ── */
 const opsSubNav: NavItem[] = [
   { href: "/protocols", icon: BookOpen,     label: "Protocoles" },
   { href: "/tasks",     icon: ClipboardList, label: "Tâches" },
 ];
-
 const opsRoutes = opsSubNav.map(i => i.href);
 
 const teamSubNav: NavItem[] = [
@@ -28,20 +28,23 @@ const teamSubNav: NavItem[] = [
   { href: "/challenges",  icon: Trophy,         label: "Challenges" },
   { href: "/schedule",    icon: CalendarCheck2, label: "RDV" },
 ];
-
 const teamRoutes = teamSubNav.map(i => i.href);
 
-const employeeNav: NavItem[] = [
-  { href: "/dashboard",         icon: LayoutDashboard, label: "Dashboard", exact: true },
-  { href: "/customer-feedback", icon: MessageSquare,   label: "Feed" },
-  { href: "/protocols",         icon: BookOpen,        label: "Protocoles" },
-  { href: "/me/tasks",          icon: ClipboardList,   label: "Tâches" },
-  { href: "/shifts",            icon: CalendarDays,    label: "Mes shifts", exact: true },
-  { href: "/delays",            icon: Clock,           label: "Retards" },
-  { href: "/challenges",        icon: Trophy,          label: "Challenges" },
-  { href: "/scoring",           icon: Zap,             label: "Mon Score" },
-  { href: "/schedule",          icon: CalendarCheck2,  label: "RDV" },
+/* ── Employee popups ── */
+const empOpsSubNav: NavItem[] = [
+  { href: "/protocols", icon: BookOpen,     label: "Protocoles" },
+  { href: "/me/tasks",  icon: ClipboardList, label: "Mes tâches" },
 ];
+const empOpsRoutes = empOpsSubNav.map(i => i.href);
+
+const empShiftsSubNav: NavItem[] = [
+  { href: "/shifts",      icon: CalendarDays,   label: "Mes shifts", exact: true },
+  { href: "/delays",      icon: Clock,          label: "Retards" },
+  { href: "/challenges",  icon: Trophy,         label: "Challenges" },
+  { href: "/scoring",     icon: Zap,            label: "Mon Score" },
+  { href: "/schedule",    icon: CalendarCheck2, label: "RDV" },
+];
+const empShiftsRoutes = empShiftsSubNav.map(i => i.href);
 
 interface BottomNavProps { role: UserRole }
 
@@ -59,6 +62,30 @@ function NavTab({
     >
       <Icon size={18} strokeWidth={active ? 2 : 1.5} />
       <span className="text-[10px] font-medium">{label}</span>
+    </Link>
+  );
+}
+
+function HomeTab({ pathname }: { pathname: string }) {
+  const dashActive = pathname === "/dashboard";
+  return (
+    <Link
+      href="/dashboard"
+      className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+      style={{ height: 60 }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: "50%",
+        background: dashActive ? "var(--accent)" : "var(--background-elev)",
+        border: dashActive ? "none" : "1px solid var(--border)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: dashActive ? "0 0 14px rgba(6,182,212,0.35)" : "none",
+        transition: "all 0.2s",
+      }}>
+        <LayoutDashboard size={17} strokeWidth={dashActive ? 2 : 1.5}
+          color={dashActive ? "var(--background)" : "var(--foreground-dim)"} />
+      </div>
+      <span className="text-[10px] font-medium" style={{ color: dashActive ? "var(--accent)" : "var(--foreground-dim)" }}>Accueil</span>
     </Link>
   );
 }
@@ -102,48 +129,82 @@ function PopupGrid({ items, pathname, onClose }: {
 
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname();
-  const [opsOpen, setOpsOpen] = useState(false);
-  const [teamOpen, setTeamOpen] = useState(false);
+  const [opsOpen, setOpsOpen]         = useState(false);
+  const [teamOpen, setTeamOpen]       = useState(false);
+  const [empOpsOpen, setEmpOpsOpen]   = useState(false);
+  const [shiftsOpen, setShiftsOpen]   = useState(false);
 
   useEffect(() => {
     setOpsOpen(false);
     setTeamOpen(false);
+    setEmpOpsOpen(false);
+    setShiftsOpen(false);
   }, [pathname]);
 
+  /* ── Employee nav ── */
   if (role === "employee") {
+    const empOpsActive    = empOpsRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
+    const empShiftsActive = empShiftsRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
+    const anyOpen = empOpsOpen || shiftsOpen;
+
     return (
-      <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch overflow-x-auto"
-        style={{
-          background: "var(--background)",
-          borderTop: "1px solid var(--border-soft)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-          scrollbarWidth: "none",
-        }}
-      >
-        {employeeNav.map(({ href, icon: Icon, label, exact }) => {
-          const active = exact
-            ? pathname === href
-            : pathname === href || pathname.startsWith(href + "/");
-          return (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center justify-center gap-1 flex-shrink-0 transition-colors"
-              style={{ minWidth: 64, height: 60, color: active ? "var(--accent)" : "var(--foreground-dim)" }}
-            >
-              <Icon size={18} strokeWidth={active ? 2 : 1.5} />
-              <span className="text-[9px] font-medium text-center leading-tight px-1">{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <>
+        {anyOpen && (
+          <div
+            className="lg:hidden fixed inset-0 z-40"
+            onClick={() => { setEmpOpsOpen(false); setShiftsOpen(false); }}
+            style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
+          />
+        )}
+
+        {empOpsOpen && (
+          <PopupGrid items={empOpsSubNav} pathname={pathname} onClose={() => setEmpOpsOpen(false)} />
+        )}
+
+        {shiftsOpen && (
+          <PopupGrid items={empShiftsSubNav} pathname={pathname} onClose={() => setShiftsOpen(false)} />
+        )}
+
+        <nav
+          className="lg:hidden fixed bottom-0 inset-x-0 z-50 flex items-stretch"
+          style={{
+            background: "var(--background)",
+            borderTop: "1px solid var(--border-soft)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
+        >
+          <NavTab href="/customer-feedback" icon={MessageSquare} label="Feed" pathname={pathname} />
+
+          <button
+            onClick={() => { setEmpOpsOpen(o => !o); setShiftsOpen(false); }}
+            className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            style={{ height: 60, color: (empOpsActive || empOpsOpen) ? "var(--accent)" : "var(--foreground-dim)" }}
+          >
+            <Layers size={18} strokeWidth={(empOpsActive || empOpsOpen) ? 2 : 1.5} />
+            <span className="text-[10px] font-medium">Ops</span>
+          </button>
+
+          <HomeTab pathname={pathname} />
+
+          <button
+            onClick={() => { setShiftsOpen(o => !o); setEmpOpsOpen(false); }}
+            className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
+            style={{ height: 60, color: (empShiftsActive || shiftsOpen) ? "var(--accent)" : "var(--foreground-dim)" }}
+          >
+            <CalendarDays size={18} strokeWidth={(empShiftsActive || shiftsOpen) ? 2 : 1.5} />
+            <span className="text-[10px] font-medium">Shifts</span>
+          </button>
+
+          <NavTab href="/account" icon={User} label="Compte" pathname={pathname} />
+        </nav>
+      </>
     );
   }
 
-  const opsActive = opsRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
+  /* ── Manager / Owner nav ── */
+  const opsActive  = opsRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
   const teamActive = teamRoutes.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const anyOpen = opsOpen || teamOpen;
+  const anyOpen    = opsOpen || teamOpen;
 
   return (
     <>
@@ -171,7 +232,7 @@ export function BottomNav({ role }: BottomNavProps) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <NavTab href="/customer-feedback" icon={MessageSquare}  label="Feed"    pathname={pathname} />
+        <NavTab href="/customer-feedback" icon={MessageSquare} label="Feed" pathname={pathname} />
 
         <button
           onClick={() => { setOpsOpen(o => !o); setTeamOpen(false); }}
@@ -182,29 +243,7 @@ export function BottomNav({ role }: BottomNavProps) {
           <span className="text-[10px] font-medium">Ops</span>
         </button>
 
-        {(() => {
-          const dashActive = pathname === "/dashboard";
-          return (
-            <Link
-              href="/dashboard"
-              className="flex-1 flex flex-col items-center justify-center gap-1 transition-colors"
-              style={{ height: 60 }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: "50%",
-                background: dashActive ? "var(--accent)" : "var(--background-elev)",
-                border: dashActive ? "none" : "1px solid var(--border)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: dashActive ? "0 0 14px rgba(6,182,212,0.35)" : "none",
-                transition: "all 0.2s",
-              }}>
-                <LayoutDashboard size={17} strokeWidth={dashActive ? 2 : 1.5}
-                  color={dashActive ? "var(--background)" : "var(--foreground-dim)"} />
-              </div>
-              <span className="text-[10px] font-medium" style={{ color: dashActive ? "var(--accent)" : "var(--foreground-dim)" }}>Accueil</span>
-            </Link>
-          );
-        })()}
+        <HomeTab pathname={pathname} />
 
         <button
           onClick={() => { setTeamOpen(o => !o); setOpsOpen(false); }}
