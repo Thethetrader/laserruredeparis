@@ -89,6 +89,10 @@
     box-sizing: border-box;
   }
 
+  button, a {
+    touch-action: manipulation;
+  }
+
   html, body {
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
