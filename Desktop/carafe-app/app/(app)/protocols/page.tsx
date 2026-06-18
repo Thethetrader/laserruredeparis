@@ -1316,7 +1316,6 @@ function ProtocolForm({
   fileInputRef, handleFileChange,
   isEditing, submitting, onSubmit, onCancel, error,
 }: ProtocolFormProps) {
-  const [extractImage, setExtractImage] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingGallery, setUploadingGallery] = useState(false);
   const [uploadingStepIndex, setUploadingStepIndex] = useState<number | null>(null);
@@ -1401,16 +1400,6 @@ function ProtocolForm({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[11px] font-mono uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Pièce jointe <span style={{ fontWeight: 400, textTransform: "none" }}>PDF ou image (optionnel)</span></label>
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={extractImage}
-                onChange={e => setExtractImage(e.target.checked)}
-                className="rounded"
-                style={{ accentColor: "#A78BFA", width: 13, height: 13 }}
-              />
-              <span className="text-[11px]" style={{ color: "#A78BFA" }}>Extraire les étapes avec l'IA</span>
-            </label>
           </div>
           <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
             onChange={handleFileChange} className="hidden" />
@@ -1442,7 +1431,7 @@ function ProtocolForm({
                 <div className="space-y-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {previewUrl && <img src={previewUrl} alt="Aperçu" className="w-full rounded-md object-cover" style={{ maxHeight: 180 }} />}
-                  {extractImage && formSteps.length === 0 && (
+                  {formSteps.length === 0 && (
                     <button onClick={onExtractSteps} disabled={extracting}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-opacity"
                       style={{
