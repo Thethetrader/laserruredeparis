@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Users, Settings,
   CalendarDays, Clock, Trophy, CalendarCheck2, Zap, MessageSquare,
@@ -59,8 +59,6 @@ function NavTab({
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname();
   const [teamOpen, setTeamOpen] = useState(false);
-
-  useEffect(() => { setTeamOpen(false); }, [pathname]);
 
   if (role === "employee") {
     return (
