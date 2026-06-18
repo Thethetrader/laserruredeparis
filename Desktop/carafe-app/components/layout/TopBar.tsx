@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import { LiveAvatar } from "@/components/layout/LiveAvatar";
 import type { Profile, EstablishmentWithRole } from "@/lib/types/database";
 
@@ -46,6 +46,20 @@ export function TopBar({ profile, establishment, establishments }: TopBarProps) 
           </span>
         )}
       </div>
+
+      {/* Right: chat bubble */}
+      <Link
+        href="/chat"
+        className="flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+        style={{
+          width: 34,
+          height: 34,
+          background: "var(--background-elev)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <MessageCircle size={16} strokeWidth={1.8} style={{ color: "var(--foreground-muted)" }} />
+      </Link>
     </header>
   );
 }
