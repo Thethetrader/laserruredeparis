@@ -340,8 +340,8 @@ export default function ProtocolsPage() {
     if (DEV_MODE) return;
     const pid = profileId || (await supabase.auth.getUser()).data.user?.id;
     if (!pid) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("protocol_reads") as any).upsert({ protocol_id: protocolId, profile_id: pid });
+    const { error } = await supabase.from("protocol_reads").insert({ protocol_id: protocolId, profile_id: pid });
+    if (error && error.code !== "23505") console.error("protocol_reads:", error.message);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
