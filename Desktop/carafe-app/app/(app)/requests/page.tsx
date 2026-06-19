@@ -30,14 +30,14 @@ interface StaffRequest {
   confirmed_by_employee_at: string | null;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────────────────────────── */
 const TYPE_LABELS: Record<RequestType, string> = {
-  leave: "CONGÉ",
-  unavailability: "INDISPO",
-  late: "RETARD",
-  early_leave: "DÉPART",
-  shift_swap: "ÉCHANGE",
-  other: "AUTRE",
+  leave: "Congé",
+  unavailability: "Indispo",
+  late: "Retard",
+  early_leave: "Départ",
+  shift_swap: "Échange",
+  other: "Autre",
 };
 
 const TYPE_COLORS: Record<RequestType, string> = {
@@ -48,6 +48,21 @@ const TYPE_COLORS: Record<RequestType, string> = {
   shift_swap: "#06B6D4",
   other: "#71717A",
 };
+
+function fmtDateShort(dates: string[] | null) {
+  if (!dates?.length) return "—";
+  if (dates.length === 1) {
+    const d = new Date(dates[0] + "T12:00:00");
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  }
+  const first = new Date(dates[0] + "T12:00:00");
+  const last = new Date(dates[dates.length - 1] + "T12:00:00");
+  const sameMonth = first.getMonth() === last.getMonth();
+  if (sameMonth) {
+    return `${first.getDate()}–${last.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
+  }
+  return `${first.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} → ${last.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
+}
 
 function fmtDates(dates: string[] | null) {
   if (!dates?.length) return null;
@@ -74,8 +89,8 @@ function avatarBg(name: string) {
   return `hsl(${hues[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % hues.length]},55%,40%)`;
 }
 
-/* ── Avatar ──────────────────────────────────────────────────────────────────── */
-function EmpAvatar({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: string | null; size?: number }) {
+/* ── Sub-components ─────────────────────────────────────────────────────────── */
+function EmpAvatar({ name, avatarUrl, size = 24 }: { name: string; avatarUrl?: string | null; size?: number }) {
   return avatarUrl ? (
     <img src={avatarUrl} alt={name} className="rounded-full object-cover flex-shrink-0"
       style={{ width: size, height: size }} />
@@ -87,27 +102,35 @@ function EmpAvatar({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: s
   );
 }
 
-/* ── Type badge ──────────────────────────────────────────────────────────────── */
 function TypeBadge({ type }: { type: RequestType }) {
   const color = TYPE_COLORS[type];
   return (
-    <span className="font-mono text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded flex-shrink-0"
-      style={{ background: `${color}18`, color, border: `1px solid ${color}28` }}>
+    <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap"
+      style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
       {TYPE_LABELS[type]}
     </span>
   );
 }
 
-/* ── Status chip ─────────────────────────────────────────────────────────────── */
-const STATUS_MAP: Record<RequestStatus, { label: string; color: string; dot: string }> = {
-  pending_employee_confirmation: { label: "En attente", color: "var(--foreground-dim)", dot: "rgba(113,113,122,0.5)" },
-  pending_manager: { label: "À traiter", color: "var(--warning)", dot: "var(--warning)" },
-  approved: { label: "Validée", color: "var(--success)", dot: "var(--success)" },
-  rejected: { label: "Refusée", color: "var(--danger)", dot: "var(--danger)" },
-  cancelled: { label: "Annulée", color: "var(--foreground-dim)", dot: "rgba(113,113,122,0.3)" },
+const STATUS_MAP: Record<RequestStatus, { label: string; color: string; bg: string }> = {
+  pending_employee_confirmation: { label: "Attente", color: "var(--foreground-dim)", bg: "transparent" },
+  pending_manager: { label: "À traiter", color: "#F59E0B", bg: "rgba(245,158,11,0.1)" },
+  approved: { label: "Validée", color: "var(--success)", bg: "rgba(34,197,94,0.1)" },
+  rejected: { label: "Refusée", color: "var(--danger)", bg: "rgba(239,68,68,0.1)" },
+  cancelled: { label: "Annulée", color: "var(--foreground-dim)", bg: "transparent" },
 };
 
-/* ── Weekly recap (compact) ──────────────────────────────────────────────────── */
+function StatusChip({ status }: { status: RequestStatus }) {
+  const s = STATUS_MAP[status];
+  return (
+    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md whitespace-nowrap"
+      style={{ background: s.bg, color: s.color }}>
+      {s.label}
+    </span>
+  );
+}
+
+/* ── Weekly recap ────────────────────────────────────────────────────────────── */
 function WeeklyRecap({ requests }: { requests: StaffRequest[] }) {
   const approved = requests.filter(r => r.status === "approved" && r.dates?.length);
   if (!approved.length) return null;
@@ -152,60 +175,120 @@ function WeeklyRecap({ requests }: { requests: StaffRequest[] }) {
   );
 }
 
-/* ── Compact list row ────────────────────────────────────────────────────────── */
-function RequestRow({ req, onOpen }: { req: StaffRequest; onOpen: () => void }) {
-  const isPending = req.status === "pending_manager";
-  const statusInfo = STATUS_MAP[req.status];
-  const datesStr = fmtDates(req.dates);
+/* ── Table ───────────────────────────────────────────────────────────────────── */
+function RequestsTable({
+  rows,
+  showActions,
+  onOpen,
+  onQuickApprove,
+  onQuickRefuse,
+}: {
+  rows: StaffRequest[];
+  showActions: boolean;
+  onOpen: (r: StaffRequest) => void;
+  onQuickApprove?: (r: StaffRequest) => void;
+  onQuickRefuse?: (r: StaffRequest) => void;
+}) {
+  if (!rows.length) return null;
 
   return (
-    <button
-      onClick={onOpen}
-      className="w-full flex items-center gap-2.5 px-4 text-left transition-all active:opacity-60"
-      style={{
-        height: 52,
-        borderBottom: "1px solid var(--border-soft)",
-        background: isPending ? "rgba(245,158,11,0.025)" : "transparent",
-      }}>
-      {/* Left accent line */}
-      <div className="w-0.5 h-7 rounded-full flex-shrink-0" style={{ background: TYPE_COLORS[req.request_type] }} />
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse" style={{ minWidth: showActions ? 560 : 480 }}>
+        <thead>
+          <tr style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+            <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 110 }}>Employé</th>
+            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 72 }}>Type</th>
+            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 88 }}>Dates</th>
+            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Résumé</th>
+            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 70 }}>Statut</th>
+            {showActions && (
+              <th className="text-right px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 72 }}>Actions</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((req, i) => {
+            const color = TYPE_COLORS[req.request_type];
+            const isLast = i === rows.length - 1;
+            return (
+              <tr
+                key={req.id}
+                onClick={() => onOpen(req)}
+                className="cursor-pointer transition-colors"
+                style={{
+                  borderBottom: isLast ? "none" : "1px solid var(--border-soft)",
+                  height: 42,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
 
-      {/* Avatar */}
-      <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={28} />
+                {/* Employé */}
+                <td className="px-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={22} />
+                    <span className="text-[12px] font-semibold truncate" style={{ color: "var(--foreground)", maxWidth: 58 }}>
+                      {req.employee_name.split(" ")[0]}
+                    </span>
+                  </div>
+                </td>
 
-      {/* Name — fixed width */}
-      <p className="text-[12px] font-semibold truncate flex-shrink-0" style={{ width: 72, color: "var(--foreground)" }}>
-        {req.employee_name.split(" ")[0]}
-      </p>
+                {/* Type */}
+                <td className="px-2">
+                  <TypeBadge type={req.request_type} />
+                </td>
 
-      {/* Type badge */}
-      <TypeBadge type={req.request_type} />
+                {/* Dates */}
+                <td className="px-2">
+                  <span className="text-[11px] font-mono tabular-nums" style={{ color: "var(--foreground-muted)" }}>
+                    {fmtDateShort(req.dates)}
+                    {req.time_requested && (
+                      <span className="ml-1" style={{ color: "var(--foreground-dim)" }}>{req.time_requested}</span>
+                    )}
+                  </span>
+                </td>
 
-      {/* Summary + dates */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] truncate" style={{ color: "var(--foreground-muted)" }}>{req.summary}</p>
-        {datesStr && (
-          <p className="text-[9px] truncate" style={{ color: "var(--foreground-dim)" }}>{datesStr}</p>
-        )}
-      </div>
+                {/* Résumé */}
+                <td className="px-2" style={{ maxWidth: 0 }}>
+                  <p className="text-[11px] truncate" style={{ color: "var(--foreground-muted)" }}>{req.summary}</p>
+                </td>
 
-      {/* Status + time */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {isPending ? (
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(245,158,11,0.12)", color: "var(--warning)" }}>
-            À traiter
-          </span>
-        ) : (
-          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: statusInfo.dot }} />
-        )}
-        <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>{fmtTime(req.created_at)}</span>
-        <ChevronRight size={11} style={{ color: "var(--foreground-dim)" }} />
-      </div>
-    </button>
+                {/* Statut */}
+                <td className="px-2">
+                  <StatusChip status={req.status} />
+                </td>
+
+                {/* Actions */}
+                {showActions && (
+                  <td className="px-3 text-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => onQuickApprove?.(req)}
+                        className="flex items-center justify-center rounded-lg transition-all active:scale-95"
+                        style={{ width: 26, height: 26, background: "rgba(34,197,94,0.12)", color: "var(--success)" }}
+                        title="Valider">
+                        <Check size={12} strokeWidth={2.5} />
+                      </button>
+                      <button
+                        onClick={() => onOpen(req)}
+                        className="flex items-center justify-center rounded-lg transition-all active:scale-95"
+                        style={{ width: 26, height: 26, background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}
+                        title="Refuser">
+                        <X size={12} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
-/* ── Detail + Action modal ───────────────────────────────────────────────────── */
+/* ── Detail modal ────────────────────────────────────────────────────────────── */
 function RequestDetailModal({
   req,
   myId,
@@ -243,14 +326,11 @@ function RequestDetailModal({
           boxShadow: "0 -8px 48px rgba(0,0,0,0.25)",
           maxHeight: "80vh",
         }}>
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-8 h-1 rounded-full" style={{ background: "var(--border-strong)" }} />
         </div>
 
-        {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-5 pb-2">
-          {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex items-center gap-3">
               <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={42} />
@@ -258,10 +338,7 @@ function RequestDetailModal({
                 <p className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>{req.employee_name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <TypeBadge type={req.request_type} />
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: statusInfo.dot }} />
-                    <span className="text-[10px] font-semibold" style={{ color: statusInfo.color }}>{statusInfo.label}</span>
-                  </div>
+                  <span className="text-[10px] font-semibold" style={{ color: statusInfo.color }}>{statusInfo.label}</span>
                 </div>
               </div>
             </div>
@@ -270,10 +347,8 @@ function RequestDetailModal({
             </button>
           </div>
 
-          {/* Summary */}
           <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--background-elev)", border: `1px solid ${color}22`, borderLeft: `3px solid ${color}` }}>
             <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{req.summary}</p>
-
             {datesStr && (
               <div className="flex items-center gap-1.5 mt-2">
                 <Calendar size={11} style={{ color: "var(--foreground-dim)" }} />
@@ -291,7 +366,6 @@ function RequestDetailModal({
             )}
           </div>
 
-          {/* Manager note (if rejected) */}
           {req.manager_note && (
             <div className="rounded-xl px-3 py-2.5 mb-3"
               style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
@@ -299,14 +373,10 @@ function RequestDetailModal({
             </div>
           )}
 
-          {/* Meta */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-              Soumis {fmtTime(req.created_at)}
-            </span>
+          <div className="mb-3">
+            <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Soumis {fmtTime(req.created_at)}</span>
           </div>
 
-          {/* Original message toggle */}
           <button
             onClick={() => setShowOriginal(s => !s)}
             className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest mb-2"
@@ -322,7 +392,6 @@ function RequestDetailModal({
             </p>
           )}
 
-          {/* Refuse note input */}
           {refusing && (
             <div className="mb-3">
               <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
@@ -341,7 +410,6 @@ function RequestDetailModal({
           )}
         </div>
 
-        {/* Action bar — sticky bottom */}
         {isPending && (
           <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)" }}>
             {!refusing ? (
@@ -349,15 +417,15 @@ function RequestDetailModal({
                 <button
                   onClick={async () => { setActing(true); await onApprove(); setActing(false); onClose(); }}
                   disabled={acting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold"
                   style={{ background: "var(--success)", color: "white", opacity: acting ? 0.6 : 1 }}>
                   <Check size={14} strokeWidth={2.5} />
-                  Valider la demande
+                  Valider
                 </button>
                 <button
                   onClick={() => setRefusing(true)}
                   disabled={acting}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all"
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold"
                   style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
                   <X size={14} strokeWidth={2.5} />
                   Refuser
@@ -368,14 +436,14 @@ function RequestDetailModal({
                 <button
                   onClick={() => { setRefusing(false); setNote(""); }}
                   disabled={acting}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold"
+                  className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
                   style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
                   <ArrowLeft size={14} />
                 </button>
                 <button
                   onClick={async () => { setActing(true); await onRefuse(note); setActing(false); onClose(); }}
                   disabled={acting}
-                  className="flex-1 py-3 rounded-2xl text-[13px] font-bold transition-all"
+                  className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
                   style={{ background: "var(--danger)", color: "white", opacity: acting ? 0.6 : 1 }}>
                   {acting ? "Refus en cours…" : "Confirmer le refus"}
                 </button>
@@ -388,7 +456,7 @@ function RequestDetailModal({
   );
 }
 
-/* ── Main ────────────────────────────────────────────────────────────────────── */
+/* ── Page ────────────────────────────────────────────────────────────────────── */
 export default function RequestsPage() {
   const supabase = createClient();
   const [requests, setRequests] = useState<StaffRequest[]>([]);
@@ -473,7 +541,6 @@ export default function RequestsPage() {
   const history = requests.filter(r => !["pending_manager", "pending_employee_confirmation"].includes(r.status));
   const filteredHistory = histFilter === "all" ? history : history.filter(r => r.status === histFilter);
 
-  // Stats
   const approvedCount = history.filter(r => r.status === "approved").length;
   const rejectedCount = history.filter(r => r.status === "rejected").length;
 
@@ -487,28 +554,25 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
         <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "var(--accent)" }}>Team</p>
         <h1 className="text-[26px] font-bold leading-none" style={{ color: "var(--foreground)" }}>Demandes</h1>
-        <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>
-          Détectées automatiquement dans le chat
-        </p>
+        <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>Détectées automatiquement dans le chat</p>
       </div>
 
-      {/* Stats band */}
+      {/* Stats */}
       {requests.length > 0 && (
-        <div className="mx-4 mb-4 grid grid-cols-3 rounded-2xl overflow-hidden"
-          style={{ border: "1px solid var(--border)" }}>
+        <div className="mx-4 mb-4 grid grid-cols-3 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
           {[
-            { label: "En attente", value: pending.length, color: pending.length > 0 ? "var(--warning)" : "var(--foreground-dim)" },
+            { label: "En attente", value: pending.length, color: pending.length > 0 ? "#F59E0B" : "var(--foreground-dim)" },
             { label: "Validées", value: approvedCount, color: approvedCount > 0 ? "var(--success)" : "var(--foreground-dim)" },
             { label: "Refusées", value: rejectedCount, color: rejectedCount > 0 ? "var(--danger)" : "var(--foreground-dim)" },
           ].map((s, i) => (
-            <div key={s.label} className="flex flex-col items-center py-3 px-2"
+            <div key={s.label} className="flex flex-col items-center py-3"
               style={{ borderRight: i < 2 ? "1px solid var(--border)" : "none", background: "var(--background-elev)" }}>
-              <p className="text-[20px] font-bold" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[22px] font-bold" style={{ color: s.color }}>{s.value}</p>
               <p className="text-[9px] font-mono uppercase tracking-widest mt-0.5" style={{ color: "var(--foreground-dim)" }}>{s.label}</p>
             </div>
           ))}
@@ -521,7 +585,7 @@ export default function RequestsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex px-4 gap-1.5 mb-0.5">
+      <div className="flex px-4 gap-1.5 mb-3">
         {([
           { key: "pending", label: "À traiter", count: pending.length },
           { key: "history", label: "Historique", count: history.length },
@@ -538,7 +602,10 @@ export default function RequestsPage() {
             {t.label}
             {t.count > 0 && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: tab === t.key ? "rgba(255,255,255,0.3)" : (t.key === "pending" && t.count > 0 ? "var(--warning)" : "var(--border)"), color: tab === t.key ? "white" : (t.key === "pending" && t.count > 0 ? "var(--background)" : "var(--foreground-dim)") }}>
+                style={{
+                  background: tab === t.key ? "rgba(255,255,255,0.3)" : (t.key === "pending" ? "#F59E0B" : "var(--border)"),
+                  color: tab === t.key ? "white" : (t.key === "pending" ? "var(--background)" : "var(--foreground-dim)"),
+                }}>
                 {t.count}
               </span>
             )}
@@ -546,10 +613,10 @@ export default function RequestsPage() {
         ))}
       </div>
 
-      {/* List container */}
-      <div className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+      {/* Table container */}
+      <div className="mx-4 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
 
-        {/* ── À traiter tab ── */}
+        {/* ── À traiter ── */}
         {tab === "pending" && (
           pending.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-30">
@@ -557,22 +624,17 @@ export default function RequestsPage() {
               <p className="text-[13px] font-medium" style={{ color: "var(--foreground-dim)" }}>Aucune demande en attente</p>
             </div>
           ) : (
-            <>
-              <div className="px-4 py-2.5 flex items-center justify-between"
-                style={{ background: "rgba(245,158,11,0.05)", borderBottom: "1px solid rgba(245,158,11,0.15)" }}>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--warning)" }}>
-                  {pending.length} demande{pending.length > 1 ? "s" : ""} à traiter
-                </p>
-                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Appuyez pour traiter</p>
-              </div>
-              {pending.map(req => (
-                <RequestRow key={req.id} req={req} onOpen={() => setSelected(req)} />
-              ))}
-            </>
+            <RequestsTable
+              rows={pending}
+              showActions
+              onOpen={setSelected}
+              onQuickApprove={req => approve(req)}
+              onQuickRefuse={req => setSelected(req)}
+            />
           )
         )}
 
-        {/* ── Historique tab ── */}
+        {/* ── Historique ── */}
         {tab === "history" && (
           history.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-30">
@@ -581,8 +643,7 @@ export default function RequestsPage() {
             </div>
           ) : (
             <>
-              {/* Sub-filters */}
-              <div className="flex gap-1.5 px-3 py-2.5" style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
+              <div className="flex items-center gap-1.5 px-3 py-2" style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
                 {([
                   { key: "all", label: "Tout" },
                   { key: "approved", label: "Validées" },
@@ -599,26 +660,27 @@ export default function RequestsPage() {
                     {f.label}
                   </button>
                 ))}
-                <span className="ml-auto text-[10px] self-center" style={{ color: "var(--foreground-dim)" }}>
-                  {filteredHistory.length} demande{filteredHistory.length !== 1 ? "s" : ""}
+                <span className="ml-auto text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                  {filteredHistory.length} résultat{filteredHistory.length !== 1 ? "s" : ""}
                 </span>
               </div>
-
               {filteredHistory.length === 0 ? (
                 <div className="py-10 text-center">
-                  <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucune demande dans cette catégorie</p>
+                  <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucune demande ici</p>
                 </div>
               ) : (
-                filteredHistory.map(req => (
-                  <RequestRow key={req.id} req={req} onOpen={() => setSelected(req)} />
-                ))
+                <RequestsTable
+                  rows={filteredHistory}
+                  showActions={false}
+                  onOpen={setSelected}
+                />
               )}
             </>
           )
         )}
       </div>
 
-      <div className="h-6" />
+      <div className="h-8" />
 
       {/* Detail modal */}
       {selected && (
