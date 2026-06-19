@@ -1772,10 +1772,9 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
           </div>
         )}
       </div>
-    </div>
 
-    {/* Score detail popup */}
-    {scoreDetailMember && (
+      {/* Score detail popup */}
+      {scoreDetailMember && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
         style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
         onClick={e => { if (e.target === e.currentTarget) setScoreDetailMember(null); }}>
@@ -1846,6 +1845,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
         </div>
       </div>
     )}
+    </div>
   );
 }
 
