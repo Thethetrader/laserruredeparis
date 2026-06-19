@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Check, X, Calendar, Clock, ChevronRight, MessageSquare, Users, ArrowLeft } from "lucide-react";
+import { Check, X, Calendar, Clock, ChevronRight, MessageSquare, Users, ArrowLeft, Pencil } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 type RequestType = "leave" | "unavailability" | "late" | "early_leave" | "shift_swap" | "other";
@@ -282,33 +282,65 @@ function RequestsTable({
   );
 }
 
+/* ── helpers ─────────────────────────────────────────────────────────────────── */
+function dateRange(start: string, end: string): string[] {
+  if (!start) return [];
+  if (!end || start === end) return [start];
+  const result: string[] = [];
+  const cur = new Date(start + "T12:00:00");
+  const endDate = new Date(end + "T12:00:00");
+  while (cur <= endDate) {
+    result.push(cur.toISOString().split("T")[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return result;
+}
+
 /* ── Detail modal ────────────────────────────────────────────────────────────── */
 function RequestDetailModal({
   req,
   myId,
   onApprove,
   onRefuse,
+  onSave,
   onClose,
 }: {
   req: StaffRequest;
   myId: string;
   onApprove: () => Promise<void>;
   onRefuse: (note: string) => Promise<void>;
+  onSave: (updates: { request_type: RequestType; dates: string[] }) => Promise<void>;
   onClose: () => void;
 }) {
-  const [refusing, setRefusing] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit" | "refuse">("view");
   const [note, setNote] = useState("");
   const [acting, setActing] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+
+  /* edit fields */
+  const [editType, setEditType] = useState<RequestType>(req.request_type);
+  const [editDateStart, setEditDateStart] = useState(req.dates?.[0] ?? "");
+  const [editDateEnd, setEditDateEnd] = useState(req.dates?.[req.dates.length - 1] ?? "");
 
   const isPending = req.status === "pending_manager";
   const color = TYPE_COLORS[req.request_type];
   const statusInfo = STATUS_MAP[req.status];
   const datesStr = fmtDates(req.dates);
 
+  const inputStyle = {
+    background: "var(--background)",
+    border: "1px solid var(--border)",
+    color: "var(--foreground)",
+    borderRadius: 10,
+    padding: "8px 10px",
+    fontSize: 13,
+    width: "100%",
+    outline: "none",
+  } as React.CSSProperties;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
       onClick={e => { if (e.target === e.currentTarget && !acting) onClose(); }}>
       <div
@@ -316,135 +348,219 @@ function RequestDetailModal({
         style={{
           background: "var(--background)",
           border: "1px solid var(--border)",
-          borderRadius: "20px 20px 0 0",
-          boxShadow: "0 -8px 48px rgba(0,0,0,0.25)",
-          maxHeight: "80vh",
+          borderRadius: 20,
+          boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
+          maxHeight: "88vh",
         }}>
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-8 h-1 rounded-full" style={{ background: "var(--border-strong)" }} />
-        </div>
 
-        <div className="overflow-y-auto flex-1 px-5 pb-2">
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3">
-              <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={42} />
-              <div>
-                <p className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>{req.employee_name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <TypeBadge type={req.request_type} />
-                  <span className="text-[10px] font-semibold" style={{ color: statusInfo.color }}>{statusInfo.label}</span>
-                </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={38} />
+            <div>
+              <p className="text-[15px] font-bold" style={{ color: "var(--foreground)" }}>{req.employee_name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <TypeBadge type={mode === "edit" ? editType : req.request_type} />
+                <span className="text-[10px] font-semibold" style={{ color: statusInfo.color }}>{statusInfo.label}</span>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-xl flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>
-              <X size={16} />
+          </div>
+          <div className="flex items-center gap-1">
+            {mode === "view" && (
+              <button onClick={() => setMode("edit")} className="p-2 rounded-xl"
+                style={{ background: "var(--background-elev)", color: "var(--foreground-dim)" }}>
+                <Pencil size={13} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 rounded-xl" style={{ color: "var(--foreground-dim)" }}>
+              <X size={15} />
             </button>
           </div>
+        </div>
 
-          <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--background-elev)", border: `1px solid ${color}22`, borderLeft: `3px solid ${color}` }}>
-            <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{req.summary}</p>
-            {datesStr && (
-              <div className="flex items-center gap-1.5 mt-2">
-                <Calendar size={11} style={{ color: "var(--foreground-dim)" }} />
-                <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{datesStr}</span>
-              </div>
-            )}
-            {req.time_requested && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <Clock size={11} style={{ color: "var(--foreground-dim)" }} />
-                <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{req.time_requested}</span>
-              </div>
-            )}
-            {req.reason && (
-              <p className="text-[12px] mt-2 italic" style={{ color: "var(--foreground-dim)" }}>{req.reason}</p>
-            )}
-          </div>
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 pb-4">
 
-          {req.manager_note && (
-            <div className="rounded-xl px-3 py-2.5 mb-3"
-              style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
-              <p className="text-[11px] italic" style={{ color: "var(--danger)" }}>"{req.manager_note}"</p>
-            </div>
+          {/* ── Vue normale ── */}
+          {mode === "view" && (
+            <>
+              <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--background-elev)", border: `1px solid ${color}22`, borderLeft: `3px solid ${color}` }}>
+                <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>{req.summary}</p>
+                {datesStr && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <Calendar size={11} style={{ color: "var(--foreground-dim)" }} />
+                    <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{datesStr}</span>
+                  </div>
+                )}
+                {req.time_requested && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Clock size={11} style={{ color: "var(--foreground-dim)" }} />
+                    <span className="text-[12px]" style={{ color: "var(--foreground-muted)" }}>{req.time_requested}</span>
+                  </div>
+                )}
+                {req.reason && (
+                  <p className="text-[12px] mt-2 italic" style={{ color: "var(--foreground-dim)" }}>{req.reason}</p>
+                )}
+              </div>
+
+              {req.manager_note && (
+                <div className="rounded-xl px-3 py-2.5 mb-3"
+                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                  <p className="text-[11px] italic" style={{ color: "var(--danger)" }}>"{req.manager_note}"</p>
+                </div>
+              )}
+
+              <p className="text-[10px] mb-3" style={{ color: "var(--foreground-dim)" }}>Soumis {fmtTime(req.created_at)}</p>
+
+              <button onClick={() => setShowOriginal(s => !s)}
+                className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest mb-2"
+                style={{ color: "var(--foreground-dim)" }}>
+                <MessageSquare size={10} />
+                Message original
+                <ChevronRight size={10} style={{ transform: showOriginal ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
+              </button>
+              {showOriginal && (
+                <p className="text-[11px] italic px-3 py-2.5 rounded-xl mb-3"
+                  style={{ background: "var(--background-elev)", color: "var(--foreground-muted)", borderLeft: "2px solid var(--border-strong)" }}>
+                  "{req.original_message}"
+                </p>
+              )}
+            </>
           )}
 
-          <div className="mb-3">
-            <span className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>Soumis {fmtTime(req.created_at)}</span>
-          </div>
+          {/* ── Mode édition ── */}
+          {mode === "edit" && (
+            <>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Type de demande</p>
+              <div className="grid grid-cols-3 gap-1.5 mb-4">
+                {(Object.entries(TYPE_LABELS) as [RequestType, string][]).map(([key, label]) => {
+                  const c = TYPE_COLORS[key];
+                  const active = editType === key;
+                  return (
+                    <button key={key} onClick={() => setEditType(key)}
+                      className="py-2 rounded-xl text-[10px] font-bold transition-all"
+                      style={{
+                        background: active ? `${c}22` : "var(--background-elev)",
+                        color: active ? c : "var(--foreground-dim)",
+                        border: active ? `1px solid ${c}44` : "1px solid var(--border-soft)",
+                      }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
 
-          <button
-            onClick={() => setShowOriginal(s => !s)}
-            className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest mb-2"
-            style={{ color: "var(--foreground-dim)" }}>
-            <MessageSquare size={10} />
-            Message original
-            <ChevronRight size={10} style={{ transform: showOriginal ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
-          </button>
-          {showOriginal && (
-            <p className="text-[11px] italic px-3 py-2.5 rounded-xl mb-3"
-              style={{ background: "var(--background-elev)", color: "var(--foreground-muted)", borderLeft: "2px solid var(--border-strong)" }}>
-              "{req.original_message}"
-            </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Dates</p>
+              <div className="grid grid-cols-2 gap-2 mb-1">
+                <div>
+                  <p className="text-[9px] mb-1" style={{ color: "var(--foreground-dim)" }}>Début</p>
+                  <input type="date" value={editDateStart}
+                    onChange={e => setEditDateStart(e.target.value)}
+                    style={inputStyle} />
+                </div>
+                <div>
+                  <p className="text-[9px] mb-1" style={{ color: "var(--foreground-dim)" }}>Fin <span style={{ opacity: 0.5 }}>(optionnel)</span></p>
+                  <input type="date" value={editDateEnd}
+                    min={editDateStart || undefined}
+                    onChange={e => setEditDateEnd(e.target.value)}
+                    style={inputStyle} />
+                </div>
+              </div>
+              {editDateStart && editDateEnd && editDateStart !== editDateEnd && (
+                <p className="text-[9px] mt-1 mb-2" style={{ color: "var(--foreground-dim)" }}>
+                  {dateRange(editDateStart, editDateEnd).length} jours
+                </p>
+              )}
+            </>
           )}
 
-          {refusing && (
-            <div className="mb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+          {/* ── Mode refus ── */}
+          {mode === "refuse" && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
                 Motif du refus <span className="normal-case font-normal">(optionnel)</span>
               </p>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
+              <textarea value={note} onChange={e => setNote(e.target.value)}
                 placeholder="Ex: Effectif insuffisant ce jour-là…"
-                rows={2}
-                autoFocus
+                rows={3} autoFocus
                 className="w-full rounded-xl px-3 py-2.5 text-[13px] outline-none resize-none"
-                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
-              />
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
             </div>
           )}
         </div>
 
-        {isPending && (
-          <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)" }}>
-            {!refusing ? (
-              <>
-                <button
-                  onClick={async () => { setActing(true); await onApprove(); setActing(false); onClose(); }}
-                  disabled={acting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold"
-                  style={{ background: "var(--success)", color: "white", opacity: acting ? 0.6 : 1 }}>
-                  <Check size={14} strokeWidth={2.5} />
-                  Valider
-                </button>
-                <button
-                  onClick={() => setRefusing(true)}
-                  disabled={acting}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold"
-                  style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                  <X size={14} strokeWidth={2.5} />
-                  Refuser
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => { setRefusing(false); setNote(""); }}
-                  disabled={acting}
-                  className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
-                  style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
-                  <ArrowLeft size={14} />
-                </button>
-                <button
-                  onClick={async () => { setActing(true); await onRefuse(note); setActing(false); onClose(); }}
-                  disabled={acting}
-                  className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
-                  style={{ background: "var(--danger)", color: "white", opacity: acting ? 0.6 : 1 }}>
-                  {acting ? "Refus en cours…" : "Confirmer le refus"}
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        {/* Action bar */}
+        <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)" }}>
+
+          {/* Vue normale — demande en attente */}
+          {mode === "view" && isPending && (
+            <>
+              <button onClick={async () => { setActing(true); await onApprove(); setActing(false); onClose(); }}
+                disabled={acting}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold"
+                style={{ background: "var(--success)", color: "white", opacity: acting ? 0.6 : 1 }}>
+                <Check size={14} strokeWidth={2.5} />
+                Valider
+              </button>
+              <button onClick={() => setMode("refuse")} disabled={acting}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold"
+                style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <X size={14} strokeWidth={2.5} />
+                Refuser
+              </button>
+            </>
+          )}
+
+          {/* Vue normale — déjà traitée */}
+          {mode === "view" && !isPending && (
+            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold"
+              style={{ background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
+              Fermer
+            </button>
+          )}
+
+          {/* Mode édition */}
+          {mode === "edit" && (
+            <>
+              <button onClick={() => setMode("view")} disabled={acting}
+                className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
+                <ArrowLeft size={14} />
+              </button>
+              <button
+                onClick={async () => {
+                  if (!editDateStart) return;
+                  setActing(true);
+                  const dates = dateRange(editDateStart, editDateEnd);
+                  await onSave({ request_type: editType, dates });
+                  setActing(false);
+                  setMode("view");
+                }}
+                disabled={acting || !editDateStart}
+                className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
+                style={{ background: "var(--accent)", color: "var(--background)", opacity: acting ? 0.6 : 1 }}>
+                {acting ? "Enregistrement…" : "Enregistrer les modifications"}
+              </button>
+            </>
+          )}
+
+          {/* Mode refus */}
+          {mode === "refuse" && (
+            <>
+              <button onClick={() => { setMode("view"); setNote(""); }} disabled={acting}
+                className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
+                <ArrowLeft size={14} />
+              </button>
+              <button onClick={async () => { setActing(true); await onRefuse(note); setActing(false); onClose(); }}
+                disabled={acting}
+                className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
+                style={{ background: "var(--danger)", color: "white", opacity: acting ? 0.6 : 1 }}>
+                {acting ? "Refus en cours…" : "Confirmer le refus"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -518,6 +634,15 @@ export default function RequestsPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande validée ✓", body: req.summary, url: "/me/requests" }),
     }).catch(() => {});
+  }
+
+  async function save(req: StaffRequest, updates: { request_type: RequestType; dates: string[] }) {
+    await (supabase.from as any)("staff_requests").update({
+      request_type: updates.request_type,
+      dates: updates.dates.length ? updates.dates : null,
+    }).eq("id", req.id);
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, ...updates } : r));
+    setSelected(s => s && s.id === req.id ? { ...s, ...updates } : s);
   }
 
   async function refuse(req: StaffRequest, note: string) {
@@ -683,6 +808,7 @@ export default function RequestsPage() {
           myId={myId}
           onApprove={async () => { await approve(selected); setSelected(s => s ? { ...s, status: "approved" } : null); }}
           onRefuse={async (note) => { await refuse(selected, note); setSelected(s => s ? { ...s, status: "rejected", manager_note: note || null } : null); }}
+          onSave={async (updates) => { await save(selected, updates); }}
           onClose={() => setSelected(null)}
         />
       )}
