@@ -406,9 +406,6 @@ function ManagerScoringView({ scored, settings, myProfileId, month, estId, onRef
             </div>
           );
         })}
-        <div className="px-5 py-2.5 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-          Score = somme des points gagnés ce mois · protocoles lus, bravos reçus, défis, bonus
-        </div>
       </div>
 
       {/* Action modal */}

@@ -1297,9 +1297,6 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                   </div>
                 );
               })}
-              <div className="px-4 py-2 text-[10px] font-mono" style={{ background: "var(--background-soft)", borderTop: "1px solid var(--border)", color: "var(--foreground-dim)" }}>
-                Score = protocoles + bravos + défis + bonus
-              </div>
             </div>
           )}
 
