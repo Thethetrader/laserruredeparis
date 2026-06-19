@@ -884,6 +884,23 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiContent, setAiContent] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [scoreDetailMember, setScoreDetailMember] = useState<MemberScore | null>(null);
+  const [scoreDetailEvents, setScoreDetailEvents] = useState<any[]>([]);
+  const [scoreDetailLoading, setScoreDetailLoading] = useState(false);
+
+  async function openScoreDetail(member: MemberScore) {
+    setScoreDetailMember(member);
+    setScoreDetailLoading(true);
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const { data } = await supabaseDash.from("score_events")
+      .select("id, source_type, source_label, reason, attributed_by_name, points, created_at")
+      .eq("profile_id", member.profile_id)
+      .gte("created_at", monthStart)
+      .order("created_at", { ascending: false });
+    setScoreDetailEvents(data ?? []);
+    setScoreDetailLoading(false);
+  }
 
   async function runAiAnalysis() {
     setShowAiPanel(true);
@@ -1273,28 +1290,21 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
               {data.leaderboard.map((member, i) => {
                 const b = member.badge ? BADGE_CONFIG[member.badge] : null;
                 return (
-                  <div key={member.profile_id} className="px-4 py-3.5 flex items-center gap-3" style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <button
+                    key={member.profile_id}
+                    onClick={() => openScoreDetail(member)}
+                    className="w-full px-4 py-3 flex items-center gap-3 text-left transition-colors hover:bg-white/[0.02] active:opacity-70"
+                    style={{ background: "var(--background-elev)", borderBottom: i < data.leaderboard.length - 1 ? "1px solid var(--border)" : "none" }}>
                     <div className="w-6 text-center flex-shrink-0">
                       {b ? <BadgeRank rank={b.rank} color={b.color} bg={b.bg} size={22} /> : <span className="text-sm font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>}
                     </div>
                     <KarafAvatar firstName={member.first_name} lastName={member.last_name} avatarUrl={member.avatar_url} size={30} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
-                      </div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px]" style={{ color: member.delays_count === 0 ? "var(--success)" : "var(--warning)" }}>
-                          {member.delays_count === 0 ? "✓" : `${member.delays_count} retard${member.delays_count > 1 ? "s" : ""}`}
-                        </span>
-
-                      </div>
-                      <ScoreBar value={member.score} color={b?.color ?? "var(--foreground-dim)"} />
-                    </div>
+                    <p className="flex-1 text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{member.name}</p>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold" style={{ color: b?.color ?? "var(--foreground-dim)" }}>{member.score}</p>
+                      <p className="text-lg font-bold" style={{ color: "var(--foreground)" }}>{member.score}</p>
                       <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -1763,6 +1773,79 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
         )}
       </div>
     </div>
+
+    {/* Score detail popup */}
+    {scoreDetailMember && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+        onClick={e => { if (e.target === e.currentTarget) setScoreDetailMember(null); }}>
+        <div className="w-full max-w-sm rounded-2xl overflow-hidden flex flex-col"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", maxHeight: "80vh" }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div className="flex items-center gap-3">
+              <KarafAvatar firstName={scoreDetailMember.first_name} lastName={scoreDetailMember.last_name} avatarUrl={scoreDetailMember.avatar_url} size={34} />
+              <div>
+                <p className="text-[14px] font-bold" style={{ color: "var(--foreground)" }}>{scoreDetailMember.name}</p>
+                <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
+                  {scoreDetailMember.score} pts ce mois
+                </p>
+              </div>
+            </div>
+            <button onClick={() => setScoreDetailMember(null)} style={{ color: "var(--foreground-dim)" }}><X size={16} /></button>
+          </div>
+          {/* Events list */}
+          <div className="overflow-y-auto flex-1">
+            {scoreDetailLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+              </div>
+            ) : scoreDetailEvents.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun point ce mois-ci</p>
+              </div>
+            ) : (
+              <div>
+                {scoreDetailEvents.map((ev, i) => {
+                  const isLast = i === scoreDetailEvents.length - 1;
+                  const typeMap: Record<string, { label: string; color: string }> = {
+                    protocol_view: { label: "Protocole lu", color: "#06B6D4" },
+                    kudo_from_manager: { label: "Bravo manager", color: "#8B5CF6" },
+                    kudo_from_peer: { label: "Bravo collègue", color: "#8B5CF6" },
+                    review_received: { label: "Avis client", color: "#F59E0B" },
+                    challenge_won: { label: "Défi gagné", color: "#10B981" },
+                    manual_bonus: { label: "Bonus", color: "#F97316" },
+                  };
+                  const t = typeMap[ev.source_type] ?? { label: ev.source_type, color: "var(--foreground-dim)" };
+                  const d = new Date(ev.created_at);
+                  return (
+                    <div key={ev.id} className="flex items-center gap-3 px-5 py-3"
+                      style={{ borderBottom: isLast ? "none" : "1px solid var(--border-soft)" }}>
+                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: t.color }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold" style={{ color: "var(--foreground)" }}>
+                          {ev.source_label || ev.reason || t.label}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded"
+                            style={{ background: `${t.color}15`, color: t.color }}>
+                            {t.label}
+                          </span>
+                          <span className="text-[9px]" style={{ color: "var(--foreground-dim)" }}>
+                            {d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[13px] font-bold flex-shrink-0" style={{ color: "var(--foreground)" }}>+{ev.points}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
 

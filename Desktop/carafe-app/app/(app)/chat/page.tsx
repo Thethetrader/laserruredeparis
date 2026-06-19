@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ChevronLeft, Send, Users, MessageCircle, Check, CheckCheck,
   CornerDownLeft, X, ChevronDown, Paperclip, FileText,
-  Search, Pin, Trash2, Edit2, BarChart2, Plus, Hash,
+  Search, Pin, Trash2, Edit2, BarChart2, Plus, Hash, Trophy, ChevronRight,
 } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
@@ -39,7 +39,7 @@ interface Conv {
   id: string | null;
   name: string;
   avatar_url?: string | null;
-  type: "general" | "direct";
+  type: "general" | "direct" | "ranking";
   last_message: string;
   last_at: string;
   unread: number;
@@ -1163,6 +1163,148 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
 }
 
 /* ── Conversation list ───────────────────────────────────────────────────────── */
+/* ── Ranking View ────────────────────────────────────────────────────────────── */
+function RankingView({ estId, supabase, onBack }: {
+  estId: string;
+  supabase: ReturnType<typeof createClient>;
+  onBack: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [entries, setEntries] = useState<{ profile_id: string; name: string; avatar_url: string | null; score: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const getMonthBounds = (off: number) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + off);
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    return { start, end, label: d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) };
+  };
+
+  const load = useCallback(async (off: number) => {
+    setLoading(true);
+    const { start, end } = getMonthBounds(off);
+    const [{ data: members }, { data: events }] = await Promise.all([
+      supabase.from("establishment_members")
+        .select("profile_id, profiles(first_name, last_name, avatar_url)")
+        .eq("establishment_id", estId).eq("is_active", true),
+      supabase.from("score_events")
+        .select("profile_id, points")
+        .eq("establishment_id", estId)
+        .gte("created_at", start).lte("created_at", end),
+    ]);
+    const scoreMap: Record<string, number> = {};
+    (events ?? []).forEach((e: any) => { scoreMap[e.profile_id] = (scoreMap[e.profile_id] ?? 0) + e.points; });
+    const ranked = (members ?? [])
+      .map((m: any) => {
+        const p = m.profiles as any;
+        return {
+          profile_id: m.profile_id,
+          name: `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu",
+          avatar_url: p?.avatar_url ?? null,
+          score: scoreMap[m.profile_id] ?? 0,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+    setEntries(ranked);
+    setLoading(false);
+  }, [estId, supabase]);
+
+  useEffect(() => { load(offset); }, [offset, load]);
+
+  const { label } = getMonthBounds(offset);
+  const BADGE_COLORS = ["#F59E0B", "#9CA3AF", "#CD7F32"];
+
+  function avatarBg(name: string) {
+    const hues = [210, 280, 340, 30, 160, 50, 190];
+    return `hsl(${hues[(name.charCodeAt(0) + (name.charCodeAt(1) || 0)) % hues.length]},55%,40%)`;
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background)" }}>
+        <button onClick={onBack} className="p-1.5 rounded-xl lg:hidden" style={{ color: "var(--foreground-dim)" }}>
+          <ChevronLeft size={20} />
+        </button>
+        <Trophy size={16} style={{ color: "#F59E0B" }} />
+        <p className="text-[15px] font-bold flex-1" style={{ color: "var(--foreground)" }}>Classement</p>
+      </div>
+
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--border-soft)", background: "var(--background-elev)" }}>
+        <button onClick={() => setOffset(o => o - 1)}
+          className="p-2 rounded-xl transition-all active:scale-95"
+          style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
+          <ChevronLeft size={14} />
+        </button>
+        <p className="text-[13px] font-semibold capitalize" style={{ color: "var(--foreground)" }}>{label}</p>
+        <button onClick={() => setOffset(o => Math.min(0, o + 1))}
+          disabled={offset === 0}
+          className="p-2 rounded-xl transition-all active:scale-95"
+          style={{
+            background: "var(--background)",
+            border: "1px solid var(--border)",
+            color: offset === 0 ? "var(--border)" : "var(--foreground-muted)",
+          }}>
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="w-6 h-6 rounded-full border-2 animate-spin"
+              style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 opacity-30">
+            <p className="text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucun point ce mois</p>
+          </div>
+        ) : (
+          entries.map((e, i) => {
+            const badgeColor = BADGE_COLORS[i] ?? null;
+            return (
+              <div key={e.profile_id} className="flex items-center gap-3 px-4 py-3.5"
+                style={{ borderBottom: i < entries.length - 1 ? "1px solid var(--border-soft)" : "none" }}>
+                {/* Rank */}
+                <div className="w-7 text-center flex-shrink-0">
+                  {badgeColor
+                    ? <div className="w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[9px] font-black"
+                        style={{ background: `${badgeColor}22`, color: badgeColor, border: `1.5px solid ${badgeColor}` }}>
+                        {i + 1}
+                      </div>
+                    : <span className="text-[12px] font-mono" style={{ color: "var(--foreground-dim)" }}>{i + 1}</span>
+                  }
+                </div>
+                {/* Avatar */}
+                {e.avatar_url
+                  ? <img src={e.avatar_url} alt={e.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  : <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white"
+                      style={{ background: avatarBg(e.name) }}>
+                      {e.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                }
+                {/* Name */}
+                <p className="flex-1 text-[13px] font-semibold truncate" style={{ color: "var(--foreground)" }}>{e.name}</p>
+                {/* Score */}
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[16px] font-bold" style={{ color: badgeColor ?? "var(--foreground)" }}>{e.score}</p>
+                  <p className="text-[8px] font-mono" style={{ color: "var(--foreground-dim)" }}>pts</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ConvList({ convs, selected, onSelect, onlineUsers }: {
   convs: Conv[]; selected: Conv | null;
   onSelect: (c: Conv) => void;
@@ -1202,12 +1344,17 @@ function ConvList({ convs, selected, onSelect, onlineUsers }: {
                 borderBottom: idx < filtered.length - 1 ? "1px solid var(--border-soft)" : "none",
                 borderLeft: `3px solid ${active ? "var(--accent)" : "transparent"}`,
               }}>
-              {conv.id === null
+              {conv.type === "ranking"
                 ? <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: active ? "rgba(6,182,212,0.15)" : "rgba(6,182,212,0.08)", border: `1px solid ${active ? "rgba(6,182,212,0.35)" : "rgba(6,182,212,0.15)"}` }}>
-                    <Hash size={18} style={{ color: "var(--accent)" }} />
+                    style={{ background: active ? "rgba(245,158,11,0.15)" : "rgba(245,158,11,0.08)", border: `1px solid ${active ? "rgba(245,158,11,0.35)" : "rgba(245,158,11,0.15)"}` }}>
+                    <Trophy size={18} style={{ color: "#F59E0B" }} />
                   </div>
-                : <Avatar name={conv.name} size={44} online={isOnline} avatarUrl={conv.avatar_url} />
+                : conv.id === null
+                  ? <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: active ? "rgba(6,182,212,0.15)" : "rgba(6,182,212,0.08)", border: `1px solid ${active ? "rgba(6,182,212,0.35)" : "rgba(6,182,212,0.15)"}` }}>
+                      <Hash size={18} style={{ color: "var(--accent)" }} />
+                    </div>
+                  : <Avatar name={conv.name} size={44} online={isOnline} avatarUrl={conv.avatar_url} />
               }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -1259,6 +1406,12 @@ export default function ChatPage() {
     setMemberCount((members ?? []).length);
 
     const list: Conv[] = [];
+
+    list.push({
+      id: "__ranking__", name: "Classement", type: "ranking",
+      last_message: "Classement mensuel du staff",
+      last_at: "", unread: 0,
+    });
 
     const { data: genMsgs } = await supabase.from("messages").select("content,created_at,sender_id,read_by")
       .eq("establishment_id", eid).is("recipient_id", null).order("created_at", { ascending: false }).limit(50);
@@ -1358,18 +1511,20 @@ export default function ChatPage() {
         <ConvList convs={convs} selected={selected} onSelect={selectConv} onlineUsers={onlineUsers} />
       </div>
       <div className={`flex-1 flex flex-col ${selected ? "flex" : "hidden lg:flex"} overflow-hidden`}>
-        {selected
-          ? <Thread conv={selected} myId={myId} estId={estId} supabase={supabase} onBack={() => setSelected(null)}
-              memberCount={memberCount} isManager={isManager} onlineUsers={onlineUsers} />
-          : <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-25">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: "var(--background-elev)" }}>
-                <MessageCircle size={36} style={{ color: "var(--foreground-dim)" }} />
+        {selected?.type === "ranking"
+          ? <RankingView estId={estId} supabase={supabase} onBack={() => setSelected(null)} />
+          : selected
+            ? <Thread conv={selected} myId={myId} estId={estId} supabase={supabase} onBack={() => setSelected(null)}
+                memberCount={memberCount} isManager={isManager} onlineUsers={onlineUsers} />
+            : <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-25">
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: "var(--background-elev)" }}>
+                  <MessageCircle size={36} style={{ color: "var(--foreground-dim)" }} />
+                </div>
+                <div className="text-center">
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Aucune conversation sélectionnée</p>
+                  <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>Choisissez une conversation à gauche</p>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-[14px] font-semibold" style={{ color: "var(--foreground)" }}>Aucune conversation sélectionnée</p>
-                <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>Choisissez une conversation à gauche</p>
-              </div>
-            </div>
         }
       </div>
     </div>
