@@ -382,6 +382,7 @@ export default function RequestsPage() {
       reviewed_by: myId,
       reviewed_at: new Date().toISOString(),
     }).eq("id", req.id);
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "approved" as const } : r));
 
     // Notify the employee
     fetch("/api/push/send-to-profile", {
@@ -403,6 +404,7 @@ export default function RequestsPage() {
       reviewed_at: new Date().toISOString(),
       manager_note: note || null,
     }).eq("id", req.id);
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "rejected" as const, manager_note: note || null } : r));
 
     fetch("/api/push/send-to-profile", {
       method: "POST",

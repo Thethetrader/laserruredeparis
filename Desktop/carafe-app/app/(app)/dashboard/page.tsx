@@ -353,7 +353,7 @@ export default function DashboardPage() {
       supabase.from("profiles").select("first_name").eq("id", user.id).single(),
       supabase.from("feedback_reads").select("feedback_id").eq("profile_id", user.id),
       supabase.from("task_templates").select("id, title, category, is_active, requires_photo, frequency, target_role").eq("establishment_id", estId).eq("is_active", true),
-      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
+      supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`),
       supabase.from("score_events").select("profile_id, points").eq("establishment_id", estId).gte("created_at", monthStart),
       (supabase.from as any)("staff_requests").select("id, profile_id, request_type, dates, time_requested, reason, summary, created_at, profile:profile_id(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("status", "pending_manager").order("created_at", { ascending: true }),
@@ -876,7 +876,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | "requests" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
   const [pendingRequests, setPendingRequests] = useState<PendingRequestDash[]>(data.pending_requests_list);
-  const [refusingReqId, setRefusingReqId] = useState<string | null>(null);
+  const [refusingReq, setRefusingReq] = useState<PendingRequestDash | null>(null);
   const [refuseNote, setRefuseNote] = useState("");
   const supabaseDash = createClient();
   const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
@@ -924,7 +924,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
     await (supabaseDash.from as any)("staff_requests").update({ status: "rejected", reviewed_by: data.my_profile_id, reviewed_at: new Date().toISOString(), manager_note: note || null }).eq("id", req.id);
     setPendingRequests(prev => prev.filter(r => r.id !== req.id));
     fetch("/api/push/send-to-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande refusée", body: note ? `${req.summary} — "${note}"` : req.summary, url: "/me/requests" }) }).catch(() => {});
-    setRefusingReqId(null);
+    setRefusingReq(null);
     setRefuseNote("");
   }
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
@@ -1211,33 +1211,57 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                           {datesStr && <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{datesStr}</p>}
                         </div>
                       </div>
-                      {refusingReqId === req.id ? (
-                        <div className="px-4 pb-3 flex gap-2 items-center">
-                          <input
-                            value={refuseNote}
-                            onChange={e => setRefuseNote(e.target.value)}
-                            placeholder="Motif (optionnel)"
-                            className="flex-1 text-[11px] rounded-lg px-2.5 py-1.5 outline-none"
-                            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-                          <button onClick={() => refuseRequest(req, refuseNote)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0" style={{ background: "var(--danger)", color: "white" }}>Confirmer</button>
-                          <button onClick={() => { setRefusingReqId(null); setRefuseNote(""); }} className="text-[11px] px-2 py-1.5 rounded-lg" style={{ color: "var(--foreground-dim)" }}>✕</button>
-                        </div>
-                      ) : (
-                        <div className="px-4 pb-3 flex gap-2">
-                          <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "var(--success)", color: "white" }}>
-                            <Check size={11} strokeWidth={2.5} />Valider
-                          </button>
-                          <button onClick={() => { setRefusingReqId(req.id); setRefuseNote(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                            <X size={11} strokeWidth={2.5} />Refuser
-                          </button>
-                        </div>
-                      )}
+                      <div className="px-4 pb-3 flex gap-2">
+                        <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "var(--success)", color: "white" }}>
+                          <Check size={11} strokeWidth={2.5} />Valider
+                        </button>
+                        <button onClick={() => { setRefusingReq(req); setRefuseNote(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                          <X size={11} strokeWidth={2.5} />Refuser
+                        </button>
+                      </div>
                     </div>
                   );
                 })
               )}
             </div>
           </div>
+
+          {/* 4b. Défis en cours */}
+          {data.active_challenges_list.length > 0 && (
+            <button
+              onClick={() => setKpiPopup("challenges")}
+              className="w-full rounded-xl overflow-hidden text-left transition-opacity hover:opacity-90"
+              style={{ border: "1px solid var(--border)" }}>
+              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2">
+                  <Trophy size={14} style={{ color: "#F59E0B" }} />
+                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis en cours</p>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>{data.active_challenges_list.length}</span>
+                </div>
+                <ChevronRight size={14} style={{ color: "var(--foreground-dim)" }} />
+              </div>
+              <div style={{ background: "var(--background-elev)" }}>
+                {data.active_challenges_list.slice(0, 2).map((c, i) => {
+                  const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
+                  const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+                  return (
+                    <div key={c.id} className="px-4 py-3" style={{ borderBottom: i < Math.min(data.active_challenges_list.length, 2) - 1 ? "1px solid var(--border-soft)" : "none" }}>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <p className="text-[12px] font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
+                        {daysLeft !== null && <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>{daysLeft}j</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? "var(--success)" : "#F59E0B" }} />
+                        </div>
+                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{c.current_value}{c.target_value ? `/${c.target_value}` : ""}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </button>
+          )}
 
           {/* 5. Classement équipe */}
           {data.leaderboard.length > 0 && (
@@ -1380,6 +1404,48 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
             </div>
             <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
               <a href="/protocols" className="block w-full text-center text-sm font-medium py-2.5 rounded-xl" style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}>Gérer les protocoles →</a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refuse request modal — centered */}
+      {refusingReq && (
+        <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) { setRefusingReq(null); setRefuseNote(""); } }}>
+          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4"
+            style={{ background: "var(--background)", border: "1px solid var(--border)", boxShadow: "0 24px 48px rgba(0,0,0,0.3)" }}>
+            <div>
+              <p className="text-[16px] font-bold">Refuser la demande</p>
+              <p className="text-[12px] mt-1" style={{ color: "var(--foreground-dim)" }}>
+                {refusingReq.employee_name} · {refusingReq.summary}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold mb-2 uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>
+                Motif <span className="normal-case tracking-normal font-normal">(optionnel)</span>
+              </p>
+              <textarea
+                value={refuseNote}
+                onChange={e => setRefuseNote(e.target.value)}
+                placeholder="Ex: Service complet ce jour-là…"
+                rows={3}
+                className="w-full rounded-2xl px-4 py-3 text-[13px] outline-none resize-none"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setRefusingReq(null); setRefuseNote(""); }}
+                className="flex-1 rounded-2xl py-3 text-[13px] font-semibold"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
+                Annuler
+              </button>
+              <button onClick={() => refuseRequest(refusingReq, refuseNote)}
+                className="flex-1 rounded-2xl py-3 text-[13px] font-bold"
+                style={{ background: "var(--danger)", color: "white" }}>
+                Confirmer le refus
+              </button>
             </div>
           </div>
         </div>
@@ -1571,22 +1637,14 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                                 {req.reason && <p className="text-[11px] mt-0.5 italic" style={{ color: "var(--foreground-dim)" }}>{req.reason}</p>}
                               </div>
                             </div>
-                            {refusingReqId === req.id ? (
-                              <div className="flex gap-2 items-center">
-                                <input value={refuseNote} onChange={e => setRefuseNote(e.target.value)} placeholder="Motif (optionnel)" className="flex-1 text-[12px] rounded-lg px-2.5 py-1.5 outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
-                                <button onClick={() => refuseRequest(req, refuseNote)} className="text-[12px] font-bold px-3 py-1.5 rounded-lg" style={{ background: "var(--danger)", color: "white" }}>Confirmer</button>
-                                <button onClick={() => { setRefusingReqId(null); setRefuseNote(""); }} style={{ color: "var(--foreground-dim)" }}><X size={14} /></button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-2">
-                                <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "var(--success)", color: "white" }}>
-                                  <Check size={12} strokeWidth={2.5} />Valider
-                                </button>
-                                <button onClick={() => { setRefusingReqId(req.id); setRefuseNote(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                                  <X size={12} strokeWidth={2.5} />Refuser
-                                </button>
-                              </div>
-                            )}
+                            <div className="flex gap-2">
+                              <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "var(--success)", color: "white" }}>
+                                <Check size={12} strokeWidth={2.5} />Valider
+                              </button>
+                              <button onClick={() => { setRefusingReq(req); setRefuseNote(""); setKpiPopup(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                                <X size={12} strokeWidth={2.5} />Refuser
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
