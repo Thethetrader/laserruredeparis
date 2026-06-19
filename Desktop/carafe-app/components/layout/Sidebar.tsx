@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles, Zap, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, Clock, Trophy, MessageSquare, Settings, ChevronDown, CalendarCheck2, CalendarRange, CalendarDays, ClipboardList, Sparkles, Zap, Inbox, type LucideIcon } from "lucide-react";
 
 type NavItem = { href: string; icon: LucideIcon; label: string; exact?: boolean };
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
@@ -15,6 +15,7 @@ const managerNav: NavItem[] = [
   { href: "/protocols",          icon: BookOpen,        label: "Protocoles" },
   { href: "/tasks",              icon: ClipboardList,   label: "Tâches" },
   { href: "/team",               icon: Users,           label: "Équipe" },
+  { href: "/requests",           icon: Inbox,           label: "Demandes" },
   { href: "/planning",           icon: Sparkles,        label: "Planning IA" },
   { href: "/shifts/team",        icon: CalendarDays,    label: "Shifts Staff" },
   { href: "/shifts",             icon: CalendarRange,   label: "Mes shifts", exact: true },

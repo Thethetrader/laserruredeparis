@@ -505,6 +505,111 @@ function Bubble({ msg, isMe, showAvatar, showName, memberCount, myId, isManager,
   );
 }
 
+/* ── Detection Bubble ───────────────────────────────────────────────────────── */
+type DetectionState = {
+  msgId: string;
+  status: "analyzing" | "detected" | "confirmed" | "dismissed";
+  data?: {
+    request_type: string;
+    dates: string[];
+    time: string | null;
+    reason: string | null;
+    summary: string;
+  };
+};
+
+const REQ_TYPE_LABELS: Record<string, string> = {
+  leave: "Congé",
+  unavailability: "Indisponibilité",
+  late: "Retard",
+  early_leave: "Départ anticipé",
+  shift_swap: "Échange de service",
+  other: "Demande",
+};
+
+function DetectionBubble({ detection, onConfirm, onDismiss }: {
+  detection: DetectionState;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  if (detection.status === "dismissed") return null;
+
+  if (detection.status === "analyzing") {
+    return (
+      <div className="ml-12 mb-2 flex items-center gap-2 px-3 py-2 rounded-xl w-fit"
+        style={{ background: "rgba(6,182,212,0.05)", border: "1px solid rgba(6,182,212,0.15)" }}>
+        <div className="flex gap-0.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-1 h-1 rounded-full animate-bounce"
+              style={{ background: "var(--accent)", animationDelay: `${i * 0.12}s` }} />
+          ))}
+        </div>
+        <span className="text-[11px]" style={{ color: "var(--accent)" }}>Analyse en cours…</span>
+      </div>
+    );
+  }
+
+  if (detection.status === "confirmed") {
+    return (
+      <div className="ml-12 mb-2 flex items-center gap-2 px-3 py-2 rounded-xl w-fit"
+        style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6l3 3 5-5" stroke="var(--success)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="text-[11px] font-semibold" style={{ color: "var(--success)" }}>
+          Demande envoyée au manager
+        </span>
+      </div>
+    );
+  }
+
+  // detected
+  const { data } = detection;
+  if (!data) return null;
+  const typeLabel = REQ_TYPE_LABELS[data.request_type] ?? "Demande";
+  const datesStr = data.dates?.length
+    ? data.dates.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })).join(", ")
+    : null;
+
+  return (
+    <div className="ml-12 mb-3 rounded-2xl overflow-hidden w-fit max-w-[300px]"
+      style={{
+        background: "rgba(6,182,212,0.05)",
+        border: "1px solid rgba(6,182,212,0.2)",
+        borderLeft: "3px solid var(--accent)",
+      }}>
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v4M6 8v.5" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="6" cy="6" r="5" stroke="var(--accent)" strokeWidth="1" />
+          </svg>
+          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>
+            Demande détectée
+          </span>
+        </div>
+        <p className="font-mono text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>
+          {typeLabel}{datesStr ? ` · ${datesStr}` : ""}{data.reason ? ` · ${data.reason}` : ""}
+        </p>
+      </div>
+      <div className="flex border-t" style={{ borderColor: "rgba(6,182,212,0.15)" }}>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-2.5 text-[11px] font-bold transition-all hover:opacity-80"
+          style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", borderRight: "1px solid rgba(6,182,212,0.15)" }}>
+          ✓ Oui, enregistre
+        </button>
+        <button
+          onClick={onDismiss}
+          className="flex-1 py-2.5 text-[11px] font-medium transition-all hover:opacity-80"
+          style={{ color: "var(--foreground-dim)" }}>
+          ✗ Juste un message
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Thread ──────────────────────────────────────────────────────────────────── */
 function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, onlineUsers }: {
   conv: Conv; myId: string; estId: string; supabase: ReturnType<typeof createClient>;
@@ -522,6 +627,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
+  const [detection, setDetection] = useState<DetectionState | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -662,9 +768,34 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     if (replyTo) payload.reply_to_id = replyTo.id;
     if (pollData) payload.poll = pollData;
     setReplyTo(null);
-    await supabase.from("messages").insert(payload);
+    const { data: inserted } = await supabase.from("messages").insert(payload).select("id").single();
     await fetchMessages();
     scrollToBottom(false);
+
+    // AI request detection — only for employee, text-only, general channel
+    if (!isManager && content && !pollData && inserted?.id && conv.id === null) {
+      const newMsgId = inserted.id as string;
+      setDetection({ msgId: newMsgId, status: "analyzing" });
+      fetch("/api/requests/analyze-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: newMsgId,
+          message_content: content,
+          establishment_id: estId,
+          sent_at: new Date().toISOString(),
+        }),
+      })
+        .then(r => r.json())
+        .then(result => {
+          if (result.is_request) {
+            setDetection({ msgId: newMsgId, status: "detected", data: result });
+          } else {
+            setDetection(null);
+          }
+        })
+        .catch(() => setDetection(null));
+    }
 
     const senderName = (await supabase.from("profiles").select("first_name,last_name").eq("id", myId).maybeSingle()).data;
     const senderDisplay = senderName ? `${senderName.first_name ?? ""} ${senderName.last_name ?? ""}`.trim() : "Nouveau message";
@@ -834,6 +965,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
         {filtered.map((msg, i) => {
           const showSep = i === 0 || !sameDay(filtered[i - 1].created_at, msg.created_at);
           const groupStart = isGroupStart(i);
+          const hasDetection = detection?.msgId === msg.id && detection.status !== "dismissed";
           return (
             <div key={msg.id} ref={el => { if (el) msgRefs.current[msg.id] = el; }} style={{ marginTop: groupStart && i > 0 ? 10 : 2 }}>
               {showSep && <DateSep label={dateSeparatorLabel(msg.created_at)} />}
@@ -852,6 +984,29 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
                 onDelete={deleteMsg}
                 supabase={supabase}
               />
+              {hasDetection && detection && (
+                <DetectionBubble
+                  detection={detection}
+                  onConfirm={async () => {
+                    setDetection(d => d ? { ...d, status: "confirmed" } : null);
+                    await (supabase.from as any)("staff_requests").insert({
+                      establishment_id: estId,
+                      profile_id: myId,
+                      chat_message_id: detection.msgId,
+                      request_type: detection.data?.request_type ?? "other",
+                      dates: detection.data?.dates ?? null,
+                      time_requested: detection.data?.time ?? null,
+                      reason: detection.data?.reason ?? null,
+                      summary: detection.data?.summary ?? msg.content.slice(0, 80),
+                      original_message: msg.content,
+                      status: "pending_manager",
+                      confirmed_by_employee_at: new Date().toISOString(),
+                    });
+                    setTimeout(() => setDetection(null), 3000);
+                  }}
+                  onDismiss={() => setDetection(d => d ? { ...d, status: "dismissed" } : null)}
+                />
+              )}
             </div>
           );
         })}

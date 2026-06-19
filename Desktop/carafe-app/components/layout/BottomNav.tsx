@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Users, Settings,
   CalendarDays, Clock, Trophy, CalendarCheck2, Zap, MessageSquare,
-  Layers, User, Calendar, type LucideIcon,
+  Layers, User, Calendar, Inbox, type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
@@ -21,6 +21,7 @@ const opsRoutes = opsSubNav.map(i => i.href);
 
 const teamSubNav: NavItem[] = [
   { href: "/team",        icon: Users,          label: "Équipe" },
+  { href: "/requests",    icon: Inbox,          label: "Demandes" },
   { href: "/planning",    icon: Zap,            label: "Planning IA" },
   { href: "/shifts/team", icon: CalendarDays,   label: "Calendrier" },
   { href: "/shifts",      icon: CalendarDays,   label: "Mes shifts", exact: true },
@@ -38,12 +39,13 @@ const empOpsSubNav: NavItem[] = [
 const empOpsRoutes = empOpsSubNav.map(i => i.href);
 
 const empShiftsSubNav: NavItem[] = [
-  { href: "/shifts",      icon: CalendarDays,   label: "Mes shifts", exact: true },
-  { href: "/dispo",       icon: Calendar,       label: "Disponibilités" },
-  { href: "/delays",      icon: Clock,          label: "Retards" },
-  { href: "/challenges",  icon: Trophy,         label: "Challenges" },
-  { href: "/scoring",     icon: Zap,            label: "Mon Score" },
-  { href: "/schedule",    icon: CalendarCheck2, label: "RDV" },
+  { href: "/shifts",        icon: CalendarDays,   label: "Mes shifts", exact: true },
+  { href: "/me/requests",   icon: Inbox,          label: "Demandes" },
+  { href: "/dispo",         icon: Calendar,       label: "Disponibilités" },
+  { href: "/delays",        icon: Clock,          label: "Retards" },
+  { href: "/challenges",    icon: Trophy,         label: "Challenges" },
+  { href: "/scoring",       icon: Zap,            label: "Mon Score" },
+  { href: "/schedule",      icon: CalendarCheck2, label: "RDV" },
 ];
 const empShiftsRoutes = empShiftsSubNav.map(i => i.href);
 
