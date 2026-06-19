@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, BookOpen, ClipboardList, Users, Settings,
   CalendarDays, Clock, Trophy, CalendarCheck2, Zap, MessageSquare,
-  Layers, User, type LucideIcon,
+  Layers, User, Calendar, type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types/database";
 
@@ -39,6 +39,7 @@ const empOpsRoutes = empOpsSubNav.map(i => i.href);
 
 const empShiftsSubNav: NavItem[] = [
   { href: "/shifts",      icon: CalendarDays,   label: "Mes shifts", exact: true },
+  { href: "/dispo",       icon: Calendar,       label: "Disponibilités" },
   { href: "/delays",      icon: Clock,          label: "Retards" },
   { href: "/challenges",  icon: Trophy,         label: "Challenges" },
   { href: "/scoring",     icon: Zap,            label: "Mon Score" },

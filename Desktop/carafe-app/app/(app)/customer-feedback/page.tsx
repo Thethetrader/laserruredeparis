@@ -14,7 +14,7 @@ const DEV_ESTABLISHMENT_ID = "dev-establishment";
 type ItemCategory = "plat" | "boisson" | "service" | "ambiance" | "autre";
 type Tonality = "positive" | "negative";
 type OldCategory = "compliment" | "complaint" | "suggestion" | "incident";
-type FilterKey = ItemCategory | "positive" | "negative" | "mine" | "echoed";
+type FilterKey = ItemCategory | "positive" | "negative";
 
 interface FeedbackView {
   id: string;
@@ -330,14 +330,10 @@ export default function CustomerFeedbackPage() {
 
   const catFilters = [...activeFilters].filter(f => ITEM_CATS.some(c => c.key === f)) as ItemCategory[];
   const tonFilters = [...activeFilters].filter(f => f === "positive" || f === "negative") as Tonality[];
-  const showMine = activeFilters.has("mine");
-  const showEchoed = activeFilters.has("echoed");
 
   const filtered = feedbacks.filter(f => {
     if (catFilters.length > 0 && !catFilters.includes(f.item_cat)) return false;
     if (tonFilters.length > 0 && !tonFilters.includes(f.tonality)) return false;
-    if (showMine && !f.is_mine) return false;
-    if (showEchoed && !f.is_echoed) return false;
     return true;
   });
 
@@ -417,20 +413,6 @@ export default function CustomerFeedbackPage() {
               ? { background: "rgba(16,185,129,0.2)", color: "var(--success)", border: "1px solid rgba(16,185,129,0.4)" }
               : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
             ▲ Positifs
-          </button>
-          <button onClick={() => toggleFilter("mine")}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-            style={activeFilters.has("mine")
-              ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
-              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-            Les miens
-          </button>
-          <button onClick={() => toggleFilter("echoed")}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-            style={activeFilters.has("echoed")
-              ? { background: "rgba(6,182,212,0.15)", color: "var(--accent)", border: "1px solid rgba(6,182,212,0.3)" }
-              : { background: "var(--background-elev)", color: "var(--foreground-muted)", border: "1px solid var(--border)" }}>
-            Mes +1
           </button>
         </div>
       </div>

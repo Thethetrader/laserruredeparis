@@ -293,7 +293,10 @@ export default function ProtocolsPage() {
     ]);
 
     setProtocols((protocolData ?? []) as Protocol[]);
-    setReads(new Set(Array.from((readData ?? []).map((r: { protocol_id: string }) => r.protocol_id))));
+    const serverReadIds = (readData ?? []).map((r: { protocol_id: string }) => r.protocol_id);
+    const localKey = `karaf-protocol-reads-${user.id}`;
+    const localReadIds: string[] = JSON.parse(typeof window !== "undefined" ? (localStorage.getItem(localKey) ?? "[]") : "[]");
+    setReads(new Set([...serverReadIds, ...localReadIds]));
     if (estData?.protocol_categories && Array.isArray(estData.protocol_categories)) {
       const cats = estData.protocol_categories as CustomCategory[];
       setCategories(cats);
@@ -337,6 +340,12 @@ export default function ProtocolsPage() {
   const markAsRead = async (protocolId: string) => {
     if (reads.has(protocolId)) return;
     setReads(prev => new Set([...prev, protocolId]));
+    // Persist in localStorage immediately — survives page reloads regardless of server
+    if (profileId && typeof window !== "undefined") {
+      const localKey = `karaf-protocol-reads-${profileId}`;
+      const existing: string[] = JSON.parse(localStorage.getItem(localKey) ?? "[]");
+      localStorage.setItem(localKey, JSON.stringify([...new Set([...existing, protocolId])]));
+    }
     if (DEV_MODE) return;
     await fetch("/api/protocols/mark-read", {
       method: "POST",
@@ -576,8 +585,10 @@ export default function ProtocolsPage() {
       })
     : [];
 
-  const totalUnread = protocols.filter(p => !reads.has(p.id)).length;
-  const totalUnreadMandatory = protocols.filter(p => !reads.has(p.id) && p.is_mandatory).length;
+  const validCatIds = new Set(allCategories);
+  const visibleProtocols = protocols.filter(p => validCatIds.has(p.category));
+  const totalUnread = visibleProtocols.filter(p => !reads.has(p.id)).length;
+  const totalUnreadMandatory = visibleProtocols.filter(p => !reads.has(p.id) && p.is_mandatory).length;
 
   if (loading) {
     return (

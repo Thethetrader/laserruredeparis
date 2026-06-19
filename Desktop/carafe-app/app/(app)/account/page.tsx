@@ -5,24 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/utils/compress-image";
 import { MonoLabel } from "@/components/ui/custom/MonoLabel";
 import { KarafAvatar } from "@/components/ui/custom/KarafAvatar";
-import { Camera, CheckCircle, LogOut, X, Calendar, Check } from "lucide-react";
+import { Camera, CheckCircle, LogOut, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PushNotificationSetup } from "@/components/PushNotificationSetup";
 import { useDevRole } from "@/hooks/useDevRole";
 import { revalidateLayoutCache } from "@/app/actions";
 
 const DEV_MODE = false;
-
-const DAYS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const PERIODS_FR = ["Matin", "Après-midi", "Soir"];
-const HOURS_FR = ["7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"];
-
-interface AvailabilitySlot {
-  day: string;
-  period: string;
-  hour_start?: string;
-  hour_end?: string;
-}
 
 interface ProfileData {
   id: string;
@@ -41,7 +30,6 @@ export default function AccountPage() {
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [establishmentId, setEstablishmentId] = useState<string | null>(null);
-  const [memberId, setMemberId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -53,17 +41,7 @@ export default function AccountPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Contrat + disponibilités
   const [contractType, setContractType] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
-  const [savingAvail, setSavingAvail] = useState(false);
-  const [savedAvail, setSavedAvail] = useState(false);
-
-  // Éditeur de slot en cours
-  const [editDay, setEditDay] = useState(DAYS_FR[4]); // Vendredi par défaut
-  const [editPeriod, setEditPeriod] = useState(PERIODS_FR[2]); // Soir
-  const [editHourStart, setEditHourStart] = useState("18h");
-  const [editHourEnd, setEditHourEnd] = useState("23h");
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -73,12 +51,7 @@ export default function AccountPage() {
       setLastName(mock.last_name ?? "");
       setEstablishmentId("dev-establishment");
       // Simuler un contrat extra avec des dispos existantes
-      const isEmployee = devRole === "employee";
-      setContractType(isEmployee ? "extra" : "cdi");
-      setAvailability(isEmployee ? [
-        { day: "Vendredi", period: "Soir", hour_start: "18h", hour_end: "23h" },
-        { day: "Samedi", period: "Soir", hour_start: "18h", hour_end: "23h" },
-      ] : []);
+      setContractType(devRole === "employee" ? "extra" : "cdi");
       setLoading(false);
       return;
     }
@@ -90,7 +63,7 @@ export default function AccountPage() {
     if (!user) { router.push("/login"); return; }
 
     const [profileRes, memberRes] = await Promise.all([
-      supabase.from("profiles").select("id, first_name, last_name, avatar_url, phone, contract_type, availability").eq("id", user.id).single(),
+      supabase.from("profiles").select("id, first_name, last_name, avatar_url, phone, contract_type").eq("id", user.id).single(),
       supabase.from("establishment_members")
         .select("id, establishment_id")
         .eq("profile_id", user.id).eq("is_active", true).single(),
@@ -103,11 +76,9 @@ export default function AccountPage() {
       setLastName(p.last_name ?? "");
       setPhone((profileRes.data as any).phone ?? "");
       setContractType((profileRes.data as any).contract_type ?? null);
-      setAvailability((profileRes.data as any).availability ?? []);
     }
     if (memberRes.data) {
       setEstablishmentId(memberRes.data.establishment_id);
-      setMemberId(memberRes.data.id);
     }
     setLoading(false);
   }
@@ -161,22 +132,6 @@ export default function AccountPage() {
     await supabase.from("profiles").update({ first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim() || null } as any).eq("id", profile.id);
     setProfile(prev => prev ? { ...prev, first_name: firstName, last_name: lastName } : prev);
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2500);
-  };
-
-  const addSlot = () => {
-    const already = availability.some(s => s.day === editDay && s.period === editPeriod);
-    if (already) return;
-    setAvailability(prev => [...prev, { day: editDay, period: editPeriod, hour_start: editHourStart, hour_end: editHourEnd }]);
-  };
-
-  const removeSlot = (i: number) => setAvailability(prev => prev.filter((_, idx) => idx !== i));
-
-  const saveAvailability = async () => {
-    setSavingAvail(true);
-    if (!DEV_MODE && profile) {
-      await supabase.from("profiles").update({ availability } as any).eq("id", profile.id);
-    }
-    setSavingAvail(false); setSavedAvail(true); setTimeout(() => setSavedAvail(false), 2500);
   };
 
   const signOut = async () => {
@@ -255,95 +210,6 @@ export default function AccountPage() {
           {saved && <span className="text-[12px]" style={{ color: "var(--success)" }}>✓ Sauvegardé</span>}
         </div>
       </div>
-
-      {/* Disponibilités */}
-      <div className="rounded-xl p-5 mb-4" style={{ background: "var(--background-elev)", border: "1px solid rgba(6,182,212,0.3)" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <Calendar size={14} style={{ color: "var(--accent)" }} />
-            <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Mes disponibilités</p>
-          </div>
-          <p className="text-[11px] mb-4" style={{ color: "var(--foreground-dim)" }}>
-            Le manager peut consulter tes créneaux disponibles pour planifier les services.
-          </p>
-
-          {/* Créneaux existants */}
-          {availability.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {availability.map((slot, i) => (
-                <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-                  style={{ background: "rgba(6,182,212,0.1)", border: "1px solid rgba(6,182,212,0.25)" }}>
-                  <div className="text-left">
-                    <p className="text-[11px] font-semibold" style={{ color: "var(--accent)" }}>{slot.day}</p>
-                    <p className="text-[10px]" style={{ color: "var(--foreground-dim)" }}>
-                      {slot.period}{slot.hour_start && slot.hour_end ? ` · ${slot.hour_start}–${slot.hour_end}` : ""}
-                    </p>
-                  </div>
-                  <button onClick={() => removeSlot(i)} className="ml-1 flex-shrink-0" style={{ color: "rgba(6,182,212,0.6)" }}>
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {availability.length === 0 && (
-            <p className="text-[12px] mb-4 text-center py-3 rounded-lg" style={{ color: "var(--foreground-dim)", background: "var(--background-soft)", border: "1px dashed var(--border)" }}>
-              Aucun créneau ajouté
-            </p>
-          )}
-
-          {/* Ajouter un créneau */}
-          <div className="rounded-xl p-3 mb-3" style={{ background: "var(--background-soft)", border: "1px solid var(--border)" }}>
-            <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>Ajouter un créneau</p>
-
-            {/* Jours */}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {DAYS_FR.map(d => (
-                <button key={d} onClick={() => setEditDay(d)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors"
-                  style={{ background: editDay === d ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: editDay === d ? "var(--accent)" : "var(--foreground-dim)", border: editDay === d ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
-                  {d.slice(0, 3)}
-                </button>
-              ))}
-            </div>
-
-            {/* Périodes */}
-            <div className="flex gap-1.5 mb-2">
-              {PERIODS_FR.map(p => (
-                <button key={p} onClick={() => setEditPeriod(p)}
-                  className="flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-                  style={{ background: editPeriod === p ? "rgba(6,182,212,0.15)" : "var(--background-elev)", color: editPeriod === p ? "var(--accent)" : "var(--foreground-dim)", border: editPeriod === p ? "1px solid rgba(6,182,212,0.35)" : "1px solid var(--border)" }}>
-                  {p}
-                </button>
-              ))}
-            </div>
-
-            {/* Heures */}
-            <div className="flex items-center gap-2 mb-3">
-              <select value={editHourStart} onChange={e => setEditHourStart(e.target.value)} className="flex-1 px-2 py-1.5 text-[12px] rounded-lg outline-none" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                {HOURS_FR.map(h => <option key={h} value={h}>{h}</option>)}
-              </select>
-              <span className="text-[11px]" style={{ color: "var(--foreground-dim)" }}>→</span>
-              <select value={editHourEnd} onChange={e => setEditHourEnd(e.target.value)} className="flex-1 px-2 py-1.5 text-[12px] rounded-lg outline-none" style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
-                {HOURS_FR.map(h => <option key={h} value={h}>{h}</option>)}
-              </select>
-            </div>
-
-            <button onClick={addSlot}
-              disabled={availability.some(s => s.day === editDay && s.period === editPeriod)}
-              className="w-full py-2 text-[12px] font-semibold rounded-lg transition-opacity"
-              style={{ background: "var(--accent)", color: "#fff", opacity: availability.some(s => s.day === editDay && s.period === editPeriod) ? 0.4 : 1 }}>
-              {availability.some(s => s.day === editDay && s.period === editPeriod) ? "Créneau déjà ajouté" : `+ Ajouter ${editDay.slice(0, 3)} ${editPeriod} ${editHourStart}–${editHourEnd}`}
-            </button>
-          </div>
-
-          {/* Sauvegarder */}
-          <button onClick={saveAvailability} disabled={savingAvail}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-opacity"
-            style={{ background: savedAvail ? "rgba(16,185,129,0.9)" : "var(--accent)", color: "#fff", opacity: savingAvail ? 0.6 : 1 }}>
-            {savedAvail ? <><Check size={14} /> Disponibilités enregistrées</> : savingAvail ? "Enregistrement…" : "Enregistrer mes disponibilités"}
-          </button>
-        </div>
 
       {/* Notifications */}
       {establishmentId && (
