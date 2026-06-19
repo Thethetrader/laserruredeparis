@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Check, X, Calendar, Clock, ChevronRight, MessageSquare, Users, ArrowLeft, Pencil } from "lucide-react";
+import { Check, X, Calendar, Clock, ChevronRight, MessageSquare, Users, ArrowLeft, Pencil, Send } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────────────────────────────── */
 type RequestType = "leave" | "unavailability" | "late" | "early_leave" | "shift_swap" | "other";
@@ -300,22 +300,29 @@ function dateRange(start: string, end: string): string[] {
 function RequestDetailModal({
   req,
   myId,
+  managerName,
   onApprove,
   onRefuse,
   onSave,
+  onMessage,
   onClose,
 }: {
   req: StaffRequest;
   myId: string;
-  onApprove: () => Promise<void>;
-  onRefuse: (note: string) => Promise<void>;
+  managerName: string;
+  onApprove: () => void;
+  onRefuse: (note: string) => void;
   onSave: (updates: { request_type: RequestType; dates: string[] }) => Promise<void>;
+  onMessage: (text: string) => Promise<void>;
   onClose: () => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "refuse">("view");
   const [note, setNote] = useState("");
-  const [acting, setActing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [msgText, setMsgText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentBubbles, setSentBubbles] = useState<string[]>([]);
 
   /* edit fields */
   const [editType, setEditType] = useState<RequestType>(req.request_type);
@@ -489,20 +496,87 @@ function RequestDetailModal({
           )}
         </div>
 
+          {/* ── Bulle chat ── visible en mode vue */}
+          {mode === "view" && (
+            <div className="mt-2 mb-1">
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--foreground-dim)" }}>
+                Message au serveur
+              </p>
+              {/* Bulles envoyées */}
+              {(req.manager_note || sentBubbles.length > 0) && (
+                <div className="flex flex-col gap-1.5 mb-2">
+                  {req.manager_note && !sentBubbles.includes(req.manager_note) && (
+                    <div className="self-end max-w-[80%] px-3 py-2 rounded-2xl rounded-br-sm text-[12px]"
+                      style={{ background: "var(--accent)", color: "var(--background)" }}>
+                      {req.manager_note}
+                      <p className="text-[8px] mt-0.5 opacity-60">{managerName}</p>
+                    </div>
+                  )}
+                  {sentBubbles.map((b, i) => (
+                    <div key={i} className="self-end max-w-[80%] px-3 py-2 rounded-2xl rounded-br-sm text-[12px]"
+                      style={{ background: "var(--accent)", color: "var(--background)" }}>
+                      {b}
+                      <p className="text-[8px] mt-0.5 opacity-60">{managerName}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Input d'envoi */}
+              <div className="flex items-center gap-2 rounded-2xl px-3 py-2"
+                style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
+                <input
+                  value={msgText}
+                  onChange={e => setMsgText(e.target.value)}
+                  onKeyDown={async e => {
+                    if (e.key === "Enter" && msgText.trim() && !sending) {
+                      const txt = msgText.trim();
+                      setMsgText("");
+                      setSentBubbles(b => [...b, txt]);
+                      setSending(true);
+                      await onMessage(txt);
+                      setSending(false);
+                    }
+                  }}
+                  placeholder={`Écrire à ${req.employee_name.split(" ")[0]}…`}
+                  className="flex-1 text-[12px] outline-none bg-transparent"
+                  style={{ color: "var(--foreground)" }}
+                />
+                <button
+                  disabled={!msgText.trim() || sending}
+                  onClick={async () => {
+                    const txt = msgText.trim();
+                    if (!txt) return;
+                    setMsgText("");
+                    setSentBubbles(b => [...b, txt]);
+                    setSending(true);
+                    await onMessage(txt);
+                    setSending(false);
+                  }}
+                  className="rounded-xl p-1.5 transition-all"
+                  style={{
+                    background: msgText.trim() ? "var(--accent)" : "transparent",
+                    color: msgText.trim() ? "var(--background)" : "var(--foreground-dim)",
+                  }}>
+                  <Send size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Action bar */}
         <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)" }}>
 
           {/* Vue normale — demande en attente */}
           {mode === "view" && isPending && (
             <>
-              <button onClick={async () => { setActing(true); await onApprove(); setActing(false); onClose(); }}
-                disabled={acting}
+              <button onClick={() => { onApprove(); onClose(); }}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-bold"
-                style={{ background: "var(--success)", color: "white", opacity: acting ? 0.6 : 1 }}>
+                style={{ background: "var(--success)", color: "white" }}>
                 <Check size={14} strokeWidth={2.5} />
                 Valider
               </button>
-              <button onClick={() => setMode("refuse")} disabled={acting}
+              <button onClick={() => setMode("refuse")}
                 className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-semibold"
                 style={{ background: "rgba(239,68,68,0.08)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
                 <X size={14} strokeWidth={2.5} />
@@ -522,7 +596,7 @@ function RequestDetailModal({
           {/* Mode édition */}
           {mode === "edit" && (
             <>
-              <button onClick={() => setMode("view")} disabled={acting}
+              <button onClick={() => setMode("view")} disabled={saving}
                 className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
                 style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
                 <ArrowLeft size={14} />
@@ -530,16 +604,16 @@ function RequestDetailModal({
               <button
                 onClick={async () => {
                   if (!editDateStart) return;
-                  setActing(true);
+                  setSaving(true);
                   const dates = dateRange(editDateStart, editDateEnd);
                   await onSave({ request_type: editType, dates });
-                  setActing(false);
+                  setSaving(false);
                   setMode("view");
                 }}
-                disabled={acting || !editDateStart}
+                disabled={saving || !editDateStart}
                 className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
-                style={{ background: "var(--accent)", color: "var(--background)", opacity: acting ? 0.6 : 1 }}>
-                {acting ? "Enregistrement…" : "Enregistrer les modifications"}
+                style={{ background: "var(--accent)", color: "var(--background)", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Enregistrement…" : "Enregistrer"}
               </button>
             </>
           )}
@@ -547,16 +621,15 @@ function RequestDetailModal({
           {/* Mode refus */}
           {mode === "refuse" && (
             <>
-              <button onClick={() => { setMode("view"); setNote(""); }} disabled={acting}
+              <button onClick={() => { setMode("view"); setNote(""); }}
                 className="flex items-center justify-center px-4 py-3 rounded-2xl text-[13px] font-semibold"
                 style={{ background: "var(--background-elev)", border: "1px solid var(--border)", color: "var(--foreground-muted)" }}>
                 <ArrowLeft size={14} />
               </button>
-              <button onClick={async () => { setActing(true); await onRefuse(note); setActing(false); onClose(); }}
-                disabled={acting}
+              <button onClick={() => { onRefuse(note); onClose(); }}
                 className="flex-1 py-3 rounded-2xl text-[13px] font-bold"
-                style={{ background: "var(--danger)", color: "white", opacity: acting ? 0.6 : 1 }}>
-                {acting ? "Refus en cours…" : "Confirmer le refus"}
+                style={{ background: "var(--danger)", color: "white" }}>
+                Confirmer le refus
               </button>
             </>
           )}
@@ -576,6 +649,7 @@ export default function RequestsPage() {
   const [selected, setSelected] = useState<StaffRequest | null>(null);
   const [estId, setEstId] = useState("");
   const [myId, setMyId] = useState("");
+  const [managerName, setManagerName] = useState("");
 
   const loadRequests = useCallback(async (eid: string) => {
     const { data } = await (supabase.from as any)("staff_requests")
@@ -601,6 +675,8 @@ export default function RequestsPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         setMyId(user.id);
+        const { data: prof } = await supabase.from("profiles").select("first_name, last_name").eq("id", user.id).maybeSingle();
+        if (prof) setManagerName(`${prof.first_name ?? ""} ${prof.last_name ?? ""}`.trim());
         const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const cookieMatch = typeof document !== "undefined" ? document.cookie.match(/(?:^|; )active_establishment_id=([^;]*)/) : null;
         const validActiveId = cookieMatch && uuidRe.test(cookieMatch[1]) ? cookieMatch[1] : null;
@@ -625,15 +701,17 @@ export default function RequestsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [estId, loadRequests]);
 
-  async function approve(req: StaffRequest) {
-    await (supabase.from as any)("staff_requests").update({
-      status: "approved", reviewed_by: myId, reviewed_at: new Date().toISOString(),
-    }).eq("id", req.id);
+  function approve(req: StaffRequest) {
     setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "approved" as const } : r));
-    fetch("/api/push/send-to-profile", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande validée ✓", body: req.summary, url: "/me/requests" }),
-    }).catch(() => {});
+    setSelected(s => s?.id === req.id ? { ...s, status: "approved" } : s);
+    (supabase.from as any)("staff_requests").update({
+      status: "approved", reviewed_by: myId, reviewed_at: new Date().toISOString(),
+    }).eq("id", req.id).then(() => {
+      fetch("/api/push/send-to-profile", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande validée ✓", body: req.summary, url: "/me/requests" }),
+      }).catch(() => {});
+    });
   }
 
   async function save(req: StaffRequest, updates: { request_type: RequestType; dates: string[] }) {
@@ -645,14 +723,25 @@ export default function RequestsPage() {
     setSelected(s => s && s.id === req.id ? { ...s, ...updates } : s);
   }
 
-  async function refuse(req: StaffRequest, note: string) {
-    await (supabase.from as any)("staff_requests").update({
-      status: "rejected", reviewed_by: myId, reviewed_at: new Date().toISOString(), manager_note: note || null,
-    }).eq("id", req.id);
+  function refuse(req: StaffRequest, note: string) {
     setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "rejected" as const, manager_note: note || null } : r));
+    setSelected(s => s?.id === req.id ? { ...s, status: "rejected", manager_note: note || null } : s);
+    (supabase.from as any)("staff_requests").update({
+      status: "rejected", reviewed_by: myId, reviewed_at: new Date().toISOString(), manager_note: note || null,
+    }).eq("id", req.id).then(() => {
+      fetch("/api/push/send-to-profile", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande refusée", body: note ? `${req.summary} — "${note}"` : req.summary, url: "/me/requests" }),
+      }).catch(() => {});
+    });
+  }
+
+  async function sendMessage(req: StaffRequest, text: string) {
+    await (supabase.from as any)("staff_requests").update({ manager_note: text }).eq("id", req.id);
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, manager_note: text } : r));
     fetch("/api/push/send-to-profile", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande refusée", body: note ? `${req.summary} — "${note}"` : req.summary, url: "/me/requests" }),
+      body: JSON.stringify({ targetProfileId: req.profile_id, title: `Message de ${managerName || "votre manager"}`, body: text, url: "/me/requests" }),
     }).catch(() => {});
   }
 
@@ -806,9 +895,11 @@ export default function RequestsPage() {
         <RequestDetailModal
           req={selected}
           myId={myId}
-          onApprove={async () => { await approve(selected); setSelected(s => s ? { ...s, status: "approved" } : null); }}
-          onRefuse={async (note) => { await refuse(selected, note); setSelected(s => s ? { ...s, status: "rejected", manager_note: note || null } : null); }}
+          managerName={managerName}
+          onApprove={() => approve(selected)}
+          onRefuse={(note) => refuse(selected, note)}
           onSave={async (updates) => { await save(selected, updates); }}
+          onMessage={async (text) => { await sendMessage(selected, text); }}
           onClose={() => setSelected(null)}
         />
       )}
