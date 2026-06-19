@@ -9,7 +9,7 @@ import {
   Trophy, Clock, MessageSquare, BookOpen, TrendingUp, AlertCircle, ChevronRight,
   Star, X, Plus, ThumbsUp, Check, UtensilsCrossed, Wine, Users, ShieldCheck,
   Sunrise, Sunset, Sparkles, LayoutGrid, ArrowLeft, CheckCircle2, Circle, Zap,
-  BarChart2, Sun, Moon, BrainCircuit, Loader2,
+  BarChart2, Sun, Moon, BrainCircuit, Loader2, Inbox,
 } from "lucide-react";
 import { useDevRole } from "@/hooks/useDevRole";
 import { useTheme } from "@/components/ThemeProvider";
@@ -69,6 +69,19 @@ interface FeedbackSummary {
   total: number;
 }
 
+interface PendingRequestDash {
+  id: string;
+  profile_id: string;
+  employee_name: string;
+  employee_avatar: string | null;
+  request_type: string;
+  dates: string[] | null;
+  time_requested: string | null;
+  reason: string | null;
+  summary: string;
+  created_at: string;
+}
+
 interface ChallengeItem {
   id: string;
   title: string;
@@ -102,6 +115,8 @@ interface DashboardData {
   today_feedback: number;
   active_challenges: number;
   active_challenges_list: ChallengeItem[];
+  pending_requests: number;
+  pending_requests_list: PendingRequestDash[];
   unread_mandatory: number;
   unread_total: number;
   task_stats: TaskStat[];
@@ -217,6 +232,11 @@ const DEV_DATA_MANAGER: DashboardData = {
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
+  pending_requests: 1,
+  pending_requests_list: [
+    { id: "r1", profile_id: "profile-3", employee_name: "Rayan Dupont", employee_avatar: null, request_type: "leave", dates: [new Date(Date.now() + 5 * 86400000).toISOString().split("T")[0]], time_requested: null, reason: "mariage", summary: "Congé samedi prochain (mariage)", created_at: new Date().toISOString() },
+  ],
+  tips_this_month: 0, tip_mode: "self",
   task_stats: DEV_TASK_STATS,
   overdue_weekly_tasks: [],
 };
@@ -243,6 +263,9 @@ const DEV_DATA_EMPLOYEE: DashboardData = {
     { id: "c1", title: "100 avis Google ce mois", description: null, target_value: 100, current_value: 63, unit: "avis", ends_at: new Date(Date.now() + 7 * 86400000).toISOString() },
     { id: "c2", title: "Zéro retard cette semaine", description: null, target_value: 5, current_value: 3, unit: "jours sans retard", ends_at: new Date(Date.now() + 3 * 86400000).toISOString() },
   ],
+  pending_requests: 0,
+  pending_requests_list: [],
+  tips_this_month: 0, tip_mode: "self",
   overdue_weekly_tasks: [],
   task_stats: [
     {
@@ -320,7 +343,7 @@ export default function DashboardPage() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes, scoreEventsRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes, scoreEventsRes, pendingReqRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, category, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
@@ -333,6 +356,7 @@ export default function DashboardPage() {
       supabase.from("task_completions").select("task_template_id").eq("establishment_id", estId).eq("service_date", today),,
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`),
       supabase.from("score_events").select("profile_id, points").eq("establishment_id", estId).gte("created_at", monthStart),
+      (supabase.from as any)("staff_requests").select("id, profile_id, request_type, dates, time_requested, reason, summary, created_at, profile:profile_id(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("status", "pending_manager").order("created_at", { ascending: true }),
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
@@ -463,6 +487,11 @@ export default function DashboardPage() {
       today_feedback: todayFeedbackCount,
       active_challenges: challengesRes.data?.length ?? 0,
       active_challenges_list: (challengesRes.data ?? []) as ChallengeItem[],
+      pending_requests: (pendingReqRes.data ?? []).length,
+      pending_requests_list: (pendingReqRes.data ?? []).map((r: any) => {
+        const p = r.profile as any;
+        return { ...r, employee_name: `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu", employee_avatar: p?.avatar_url ?? null };
+      }) as PendingRequestDash[],
       unread_mandatory: unreadMandatory, unread_total: unreadTotal,
       task_stats,
       overdue_weekly_tasks,
@@ -844,8 +873,12 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   const [showAddProtocol, setShowAddProtocol] = useState(false);
   const [protocols, setProtocols] = useState<Protocol[]>(data.protocols);
   const [taskGaugePopup, setTaskGaugePopup] = useState<TaskStat | null>(null);
-  const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | null>(null);
+  const [kpiPopup, setKpiPopup] = useState<"delays" | "feedback" | "challenges" | "protocols" | "requests" | null>(null);
   const [protocolPopup, setProtocolPopup] = useState<Protocol | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<PendingRequestDash[]>(data.pending_requests_list);
+  const [refusingReqId, setRefusingReqId] = useState<string | null>(null);
+  const [refuseNote, setRefuseNote] = useState("");
+  const supabaseDash = createClient();
   const [stepsTaken, setStepsTaken] = useState<Set<string>>(new Set());
   const [stepsDone, setStepsDone] = useState<Set<string>>(new Set());
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -880,6 +913,20 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
   }
 
   const handleProtocolAdded = (p: Protocol) => setProtocols(prev => [p, ...prev]);
+
+  async function approveRequest(req: PendingRequestDash) {
+    await (supabaseDash.from as any)("staff_requests").update({ status: "approved", reviewed_by: data.my_profile_id, reviewed_at: new Date().toISOString() }).eq("id", req.id);
+    setPendingRequests(prev => prev.filter(r => r.id !== req.id));
+    fetch("/api/push/send-to-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande validée ✓", body: req.summary, url: "/me/requests" }) }).catch(() => {});
+  }
+
+  async function refuseRequest(req: PendingRequestDash, note: string) {
+    await (supabaseDash.from as any)("staff_requests").update({ status: "rejected", reviewed_by: data.my_profile_id, reviewed_at: new Date().toISOString(), manager_note: note || null }).eq("id", req.id);
+    setPendingRequests(prev => prev.filter(r => r.id !== req.id));
+    fetch("/api/push/send-to-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetProfileId: req.profile_id, title: "Demande refusée", body: note ? `${req.summary} — "${note}"` : req.summary, url: "/me/requests" }) }).catch(() => {});
+    setRefusingReqId(null);
+    setRefuseNote("");
+  }
   const modalItems = feedbackModal ? data.feedback_items.filter(f => f.category === feedbackModal) : [];
   const modalMeta = feedbackModal ? CATEGORY_META[feedbackModal] : null;
 
@@ -971,7 +1018,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
         {[
           { icon: Clock, value: data.today_delays, label: "Retards aujourd'hui", warn: data.today_delays > 0, popup: "delays" as const },
           { icon: MessageSquare, value: data.today_feedback, label: "Avis clients aujourd'hui", warn: false, popup: "feedback" as const },
-          { icon: Trophy, value: data.active_challenges, label: "Défis actifs", warn: false, popup: "challenges" as const },
+          { icon: Inbox, value: pendingRequests.length, label: "Demandes en attente", warn: pendingRequests.length > 0, popup: "requests" as const },
           { icon: BookOpen, value: data.leaderboard.reduce((s, m) => s + Math.max(0, m.protocols_total - m.protocols_read), 0), label: "Lectures en attente", warn: true, popup: "protocols" as const },
         ].map(({ icon: Icon, value, label, warn, popup }) => (
           <button key={label} onClick={() => setKpiPopup(popup)} className="rounded-xl p-4 text-left transition-opacity hover:opacity-75 active:scale-[0.98]" style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
@@ -1130,38 +1177,67 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
         {/* Colonne droite : Défis + Classement + Ponctualité */}
         <div className="space-y-6">
 
-          {/* 4. Défis en cours */}
-          {data.active_challenges_list.length > 0 && (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-              <div className="px-5 py-4 flex items-center justify-between" style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-                <div className="flex items-center gap-2">
-                  <Trophy size={14} style={{ color: "#F59E0B" }} />
-                  <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis en cours</p>
-                </div>
-                <a href="/challenges" className="text-[11px]" style={{ color: "var(--accent)" }}>Voir tout</a>
+          {/* 4. Demandes d'absence */}
+          <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${pendingRequests.length > 0 ? "rgba(245,158,11,0.3)" : "var(--border)"}` }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ background: pendingRequests.length > 0 ? "rgba(245,158,11,0.05)" : "var(--background-elev)", borderBottom: `1px solid ${pendingRequests.length > 0 ? "rgba(245,158,11,0.2)" : "var(--border)"}` }}>
+              <div className="flex items-center gap-2">
+                <Inbox size={14} style={{ color: pendingRequests.length > 0 ? "var(--warning)" : "var(--accent)" }} />
+                <p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Demandes d'absence</p>
+                {pendingRequests.length > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "var(--warning)", color: "var(--background)" }}>{pendingRequests.length}</span>
+                )}
               </div>
-              <div style={{ background: "var(--background-elev)" }}>
-                {data.active_challenges_list.map((c, i) => {
-                  const pct = c.target_value && c.target_value > 0 ? Math.min(100, Math.round((c.current_value / c.target_value) * 100)) : 0;
-                  const daysLeft = c.ends_at ? Math.max(0, Math.ceil((new Date(c.ends_at).getTime() - Date.now()) / 86400000)) : null;
+              <a href="/requests" className="text-[11px]" style={{ color: "var(--accent)" }}>Tout voir</a>
+            </div>
+            <div style={{ background: "var(--background-elev)" }}>
+              {pendingRequests.length === 0 ? (
+                <p className="px-5 py-4 text-[13px]" style={{ color: "var(--foreground-dim)" }}>Aucune demande en attente</p>
+              ) : (
+                pendingRequests.map((req, i) => {
+                  const TYPE_COLORS: Record<string, string> = { leave: "#8B5CF6", unavailability: "#F59E0B", late: "#EF4444", early_leave: "#F97316", shift_swap: "#06B6D4", other: "#71717A" };
+                  const TYPE_LABELS: Record<string, string> = { leave: "Congé", unavailability: "Indispo", late: "Retard", early_leave: "Départ", shift_swap: "Échange", other: "Autre" };
+                  const color = TYPE_COLORS[req.request_type] ?? "#71717A";
+                  const datesStr = req.dates?.length ? req.dates.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })).join(", ") : null;
                   return (
-                    <div key={c.id} className="px-4 py-3.5" style={{ borderBottom: i < data.active_challenges_list.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{c.title}</p>
-                        {daysLeft !== null && <span className="text-[9px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: daysLeft <= 2 ? "rgba(239,68,68,0.1)" : "rgba(245,158,11,0.1)", color: daysLeft <= 2 ? "var(--danger)" : "var(--warning)" }}>{daysLeft}j</span>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 3, background: "var(--background-soft)" }}>
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? "var(--success)" : "#F59E0B" }} />
+                    <div key={req.id} style={{ borderBottom: i < pendingRequests.length - 1 ? "1px solid var(--border-soft)" : "none" }}>
+                      <div className="px-4 py-3 flex items-start gap-2.5">
+                        <div className="w-1.5 self-stretch rounded-full flex-shrink-0 mt-0.5" style={{ background: color }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                            <span className="text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>{req.employee_name}</span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold" style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>{TYPE_LABELS[req.request_type] ?? req.request_type}</span>
+                          </div>
+                          <p className="text-[11px]" style={{ color: "var(--foreground-muted)" }}>{req.summary}</p>
+                          {datesStr && <p className="text-[10px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{datesStr}</p>}
                         </div>
-                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "var(--foreground-dim)" }}>{c.current_value}{c.target_value ? `/${c.target_value}` : ""}</span>
                       </div>
+                      {refusingReqId === req.id ? (
+                        <div className="px-4 pb-3 flex gap-2 items-center">
+                          <input
+                            value={refuseNote}
+                            onChange={e => setRefuseNote(e.target.value)}
+                            placeholder="Motif (optionnel)"
+                            className="flex-1 text-[11px] rounded-lg px-2.5 py-1.5 outline-none"
+                            style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                          <button onClick={() => refuseRequest(req, refuseNote)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0" style={{ background: "var(--danger)", color: "white" }}>Confirmer</button>
+                          <button onClick={() => { setRefusingReqId(null); setRefuseNote(""); }} className="text-[11px] px-2 py-1.5 rounded-lg" style={{ color: "var(--foreground-dim)" }}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="px-4 pb-3 flex gap-2">
+                          <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "var(--success)", color: "white" }}>
+                            <Check size={11} strokeWidth={2.5} />Valider
+                          </button>
+                          <button onClick={() => { setRefusingReqId(req.id); setRefuseNote(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                            <X size={11} strokeWidth={2.5} />Refuser
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
-                })}
-              </div>
+                })
+              )}
             </div>
-          )}
+          </div>
 
           {/* 5. Classement équipe */}
           {data.leaderboard.length > 0 && (
@@ -1324,6 +1400,7 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                 {kpiPopup === "feedback" && <><MessageSquare size={14} style={{ color: "var(--accent)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Avis clients aujourd'hui</p></>}
                 {kpiPopup === "challenges" && <><Trophy size={14} style={{ color: "var(--warning)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Défis actifs</p></>}
                 {kpiPopup === "protocols" && <><BookOpen size={14} style={{ color: "var(--accent)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Lectures en attente</p></>}
+                {kpiPopup === "requests" && <><Inbox size={14} style={{ color: "var(--warning)" }} /><p className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>Demandes en attente</p></>}
               </div>
               <button onClick={() => setKpiPopup(null)} style={{ color: "var(--foreground-dim)" }}><X size={18} /></button>
             </div>
@@ -1465,12 +1542,64 @@ function ManagerDashboard({ data, onTaskValidated }: { data: DashboardData; onTa
                   )}
                 </div>
               )}
+
+              {/* DEMANDES EN ATTENTE */}
+              {kpiPopup === "requests" && (
+                <div>
+                  {pendingRequests.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <p className="text-2xl mb-1">✓</p>
+                      <p className="text-sm font-medium" style={{ color: "var(--success)" }}>Aucune demande en attente</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                      {pendingRequests.map(req => {
+                        const TYPE_COLORS: Record<string, string> = { leave: "#8B5CF6", unavailability: "#F59E0B", late: "#EF4444", early_leave: "#F97316", shift_swap: "#06B6D4", other: "#71717A" };
+                        const TYPE_LABELS: Record<string, string> = { leave: "CONGÉ", unavailability: "INDISPO", late: "RETARD", early_leave: "DÉPART", shift_swap: "ÉCHANGE", other: "AUTRE" };
+                        const color = TYPE_COLORS[req.request_type] ?? "#71717A";
+                        const datesStr = req.dates?.length ? req.dates.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })).join(", ") : null;
+                        return (
+                          <div key={req.id} className="px-5 py-4">
+                            <div className="flex items-start gap-2 mb-2.5">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>{req.employee_name}</span>
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold" style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>{TYPE_LABELS[req.request_type] ?? req.request_type}</span>
+                                </div>
+                                <p className="text-[13px]" style={{ color: "var(--foreground-muted)" }}>{req.summary}</p>
+                                {datesStr && <p className="text-[11px] mt-0.5" style={{ color: "var(--foreground-dim)" }}>{datesStr}</p>}
+                                {req.reason && <p className="text-[11px] mt-0.5 italic" style={{ color: "var(--foreground-dim)" }}>{req.reason}</p>}
+                              </div>
+                            </div>
+                            {refusingReqId === req.id ? (
+                              <div className="flex gap-2 items-center">
+                                <input value={refuseNote} onChange={e => setRefuseNote(e.target.value)} placeholder="Motif (optionnel)" className="flex-1 text-[12px] rounded-lg px-2.5 py-1.5 outline-none" style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+                                <button onClick={() => refuseRequest(req, refuseNote)} className="text-[12px] font-bold px-3 py-1.5 rounded-lg" style={{ background: "var(--danger)", color: "white" }}>Confirmer</button>
+                                <button onClick={() => { setRefusingReqId(null); setRefuseNote(""); }} style={{ color: "var(--foreground-dim)" }}><X size={14} /></button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button onClick={() => approveRequest(req)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "var(--success)", color: "white" }}>
+                                  <Check size={12} strokeWidth={2.5} />Valider
+                                </button>
+                                <button onClick={() => { setRefusingReqId(req.id); setRefuseNote(""); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold" style={{ background: "rgba(239,68,68,0.1)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                                  <X size={12} strokeWidth={2.5} />Refuser
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Footer — lien vers la page complète */}
             <div className="px-5 py-3 flex-shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
               <a
-                href={kpiPopup === "delays" ? "/delays" : kpiPopup === "feedback" ? "/customer-feedback" : kpiPopup === "challenges" ? "/challenges" : "/protocols"}
+                href={kpiPopup === "delays" ? "/delays" : kpiPopup === "feedback" ? "/customer-feedback" : kpiPopup === "challenges" ? "/challenges" : kpiPopup === "requests" ? "/requests" : "/protocols"}
                 className="block w-full py-2.5 text-center text-sm font-semibold rounded-lg"
                 style={{ background: "var(--accent)", color: "var(--primary-foreground)" }}
                 onClick={() => setKpiPopup(null)}>

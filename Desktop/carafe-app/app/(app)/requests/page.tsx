@@ -328,13 +328,13 @@ export default function RequestsPage() {
 
   const loadRequests = useCallback(async (eid: string) => {
     const { data } = await (supabase.from as any)("staff_requests")
-      .select("*, profiles(first_name, last_name, avatar_url)")
+      .select("*, profile:profile_id(first_name, last_name, avatar_url)")
       .eq("establishment_id", eid)
       .neq("status", "pending_employee_confirmation")
       .order("created_at", { ascending: false });
 
     const resolved: StaffRequest[] = (data ?? []).map((r: any) => {
-      const p = r.profiles as any;
+      const p = r.profile as any;
       return {
         ...r,
         employee_name: `${p?.first_name ?? ""} ${p?.last_name ?? ""}`.trim() || "Inconnu",

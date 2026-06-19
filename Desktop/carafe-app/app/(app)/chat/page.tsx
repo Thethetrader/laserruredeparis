@@ -527,11 +527,26 @@ const REQ_TYPE_LABELS: Record<string, string> = {
   other: "Demande",
 };
 
+const REQ_TYPE_OPTIONS = [
+  { value: "leave", label: "Congé" },
+  { value: "unavailability", label: "Indisponibilité" },
+  { value: "late", label: "Retard" },
+  { value: "early_leave", label: "Départ anticipé" },
+  { value: "shift_swap", label: "Échange de service" },
+  { value: "other", label: "Autre" },
+];
+
 function DetectionBubble({ detection, onConfirm, onDismiss }: {
   detection: DetectionState;
-  onConfirm: () => void;
+  onConfirm: (data: NonNullable<DetectionState['data']>) => Promise<void>;
   onDismiss: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [editType, setEditType] = useState(detection.data?.request_type ?? "other");
+  const [editDates, setEditDates] = useState((detection.data?.dates ?? []).join(", "));
+  const [editReason, setEditReason] = useState(detection.data?.reason ?? "");
+  const [confirming, setConfirming] = useState(false);
+
   if (detection.status === "dismissed") return null;
 
   if (detection.status === "analyzing") {
@@ -563,9 +578,23 @@ function DetectionBubble({ detection, onConfirm, onDismiss }: {
     );
   }
 
-  // detected
   const { data } = detection;
   if (!data) return null;
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    const parsedDates = editDates.trim()
+      ? editDates.split(/[,\s]+/).map(d => d.trim()).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : [];
+    await onConfirm({
+      request_type: editType,
+      dates: parsedDates.length ? parsedDates : (data.dates ?? []),
+      time: data.time ?? null,
+      reason: editReason.trim() || null,
+      summary: data.summary,
+    });
+  };
+
   const typeLabel = REQ_TYPE_LABELS[data.request_type] ?? "Demande";
   const datesStr = data.dates?.length
     ? data.dates.map(d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })).join(", ")
@@ -579,24 +608,62 @@ function DetectionBubble({ detection, onConfirm, onDismiss }: {
         borderLeft: "3px solid var(--accent)",
       }}>
       <div className="px-3 pt-3 pb-2">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v4M6 8v.5" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
-            <circle cx="6" cy="6" r="5" stroke="var(--accent)" strokeWidth="1" />
-          </svg>
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>
-            Demande détectée
-          </span>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v4M6 8v.5" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="6" cy="6" r="5" stroke="var(--accent)" strokeWidth="1" />
+            </svg>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>
+              Demande détectée
+            </span>
+          </div>
+          <button
+            onClick={() => setEditing(e => !e)}
+            className="text-[10px] font-medium px-2 py-0.5 rounded-lg transition-all"
+            style={{ background: editing ? "rgba(6,182,212,0.15)" : "rgba(6,182,212,0.06)", color: "var(--accent)" }}>
+            {editing ? "Annuler" : "Modifier"}
+          </button>
         </div>
-        <p className="font-mono text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>
-          {typeLabel}{datesStr ? ` · ${datesStr}` : ""}{data.reason ? ` · ${data.reason}` : ""}
-        </p>
+
+        {!editing ? (
+          <p className="font-mono text-[12px] font-semibold" style={{ color: "var(--foreground)" }}>
+            {typeLabel}{datesStr ? ` · ${datesStr}` : ""}{data.reason ? ` · ${data.reason}` : ""}
+          </p>
+        ) : (
+          <div className="space-y-2 mt-1">
+            <select
+              value={editType}
+              onChange={e => setEditType(e.target.value)}
+              className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}>
+              {REQ_TYPE_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={editDates}
+              onChange={e => setEditDates(e.target.value)}
+              placeholder="Dates (AAAA-MM-JJ, ...)"
+              className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+            <input
+              type="text"
+              value={editReason}
+              onChange={e => setEditReason(e.target.value)}
+              placeholder="Motif (optionnel)"
+              className="w-full text-[11px] rounded-lg px-2 py-1.5 outline-none"
+              style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} />
+          </div>
+        )}
       </div>
       <div className="flex border-t" style={{ borderColor: "rgba(6,182,212,0.15)" }}>
         <button
-          onClick={onConfirm}
+          onClick={handleConfirm}
+          disabled={confirming}
           className="flex-1 py-2.5 text-[11px] font-bold transition-all hover:opacity-80"
-          style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", borderRight: "1px solid rgba(6,182,212,0.15)" }}>
+          style={{ background: "rgba(6,182,212,0.08)", color: "var(--accent)", borderRight: "1px solid rgba(6,182,212,0.15)", opacity: confirming ? 0.6 : 1 }}>
           ✓ Oui, enregistre
         </button>
         <button
@@ -639,9 +706,10 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
   const msgRefs = useRef<Record<string, HTMLDivElement>>({});
 
   const pinnedMsg = messages.find(m => m.is_pinned && !m.deleted_at) ?? null;
+  const visibleMessages = messages.filter(m => !m.deleted_at);
   const filtered = searchQuery.trim()
-    ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
-    : messages;
+    ? visibleMessages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    : visibleMessages;
 
   const fetchMessages = useCallback(async () => {
     const { data: members } = await supabase
@@ -987,22 +1055,27 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
               {hasDetection && detection && (
                 <DetectionBubble
                   detection={detection}
-                  onConfirm={async () => {
-                    setDetection(d => d ? { ...d, status: "confirmed" } : null);
+                  onConfirm={async (editedData) => {
+                    const msgId = detection.msgId;
+                    setDetection(d => d ? { ...d, status: "confirmed", data: editedData } : null);
+                    // Optimistically hide the original message
+                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted_at: new Date().toISOString() } : m));
                     await (supabase.from as any)("staff_requests").insert({
                       establishment_id: estId,
                       profile_id: myId,
-                      chat_message_id: detection.msgId,
-                      request_type: detection.data?.request_type ?? "other",
-                      dates: detection.data?.dates ?? null,
-                      time_requested: detection.data?.time ?? null,
-                      reason: detection.data?.reason ?? null,
-                      summary: detection.data?.summary ?? msg.content.slice(0, 80),
+                      chat_message_id: msgId,
+                      request_type: editedData.request_type ?? "other",
+                      dates: editedData.dates?.length ? editedData.dates : null,
+                      time_requested: editedData.time ?? null,
+                      reason: editedData.reason ?? null,
+                      summary: editedData.summary ?? msg.content.slice(0, 80),
                       original_message: msg.content,
                       status: "pending_manager",
                       confirmed_by_employee_at: new Date().toISOString(),
                     });
-                    setTimeout(() => setDetection(null), 3000);
+                    // Soft-delete the message from the chat
+                    await supabase.from("messages").update({ deleted_at: new Date().toISOString() }).eq("id", msgId);
+                    setTimeout(() => setDetection(null), 2000);
                   }}
                   onDismiss={() => setDetection(d => d ? { ...d, status: "dismissed" } : null)}
                 />
@@ -1059,8 +1132,8 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
       )}
 
       {/* Input bar */}
-      <div className="px-3 py-3 flex-shrink-0"
-        style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)", paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
+      <div className="px-3 py-2 flex-shrink-0"
+        style={{ borderTop: "1px solid var(--border-soft)", background: "var(--background)" }}>
         <input ref={fileRef} type="file" accept="image/*,application/pdf,video/mp4" className="hidden" onChange={onFileChange} />
         <div className="flex items-end gap-2 rounded-2xl px-3 py-2"
           style={{ background: "var(--background-elev)", border: "1px solid var(--border)" }}>
