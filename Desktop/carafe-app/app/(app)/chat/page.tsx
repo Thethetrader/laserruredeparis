@@ -773,7 +773,7 @@ function Thread({ conv, myId, estId, supabase, onBack, memberCount, isManager, o
     scrollToBottom(false);
 
     // AI request detection — only for employee, text-only, general channel
-    if (!isManager && content && !pollData && inserted?.id && conv.id === null) {
+    if (!isManager && content && !pollData && inserted?.id) {
       const newMsgId = inserted.id as string;
       setDetection({ msgId: newMsgId, status: "analyzing" });
       fetch("/api/requests/analyze-message", {
