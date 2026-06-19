@@ -192,99 +192,93 @@ function RequestsTable({
   if (!rows.length) return null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse" style={{ minWidth: showActions ? 560 : 480 }}>
-        <thead>
-          <tr style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
-            <th className="text-left px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 110 }}>Employé</th>
-            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 72 }}>Type</th>
-            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 88 }}>Dates</th>
-            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)" }}>Résumé</th>
-            <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 70 }}>Statut</th>
-            {showActions && (
-              <th className="text-right px-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: 72 }}>Actions</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((req, i) => {
-            const color = TYPE_COLORS[req.request_type];
-            const isLast = i === rows.length - 1;
-            return (
-              <tr
-                key={req.id}
-                onClick={() => onOpen(req)}
-                className="cursor-pointer transition-colors"
-                style={{
-                  borderBottom: isLast ? "none" : "1px solid var(--border-soft)",
-                  height: 42,
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+    <table className="w-full border-collapse">
+      <thead>
+        <tr style={{ background: "var(--background-elev)", borderBottom: "1px solid var(--border)" }}>
+          <th className="text-left pl-3 pr-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: "30%" }}>Employé</th>
+          <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: "18%" }}>Type</th>
+          <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: "24%" }}>Dates</th>
+          <th className="text-left px-2 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: showActions ? "14%" : "28%" }}>Statut</th>
+          {showActions && (
+            <th className="text-right pr-3 py-2 text-[9px] font-bold uppercase tracking-widest" style={{ color: "var(--foreground-dim)", width: "14%" }}>Act.</th>
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((req, i) => {
+          const color = TYPE_COLORS[req.request_type];
+          const isLast = i === rows.length - 1;
+          return (
+            <tr
+              key={req.id}
+              onClick={() => onOpen(req)}
+              className="cursor-pointer transition-colors"
+              style={{
+                borderBottom: isLast ? "none" : "1px solid var(--border-soft)",
+                height: 44,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
 
-                {/* Employé */}
-                <td className="px-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: color }} />
-                    <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={22} />
-                    <span className="text-[12px] font-semibold truncate" style={{ color: "var(--foreground)", maxWidth: 58 }}>
-                      {req.employee_name.split(" ")[0]}
-                    </span>
+              {/* Employé */}
+              <td className="pl-3 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-0.5 h-5 rounded-full flex-shrink-0" style={{ background: color }} />
+                  <EmpAvatar name={req.employee_name} avatarUrl={req.employee_avatar} size={22} />
+                  <span className="text-[12px] font-semibold truncate" style={{ color: "var(--foreground)" }}>
+                    {req.employee_name.split(" ")[0]}
+                  </span>
+                </div>
+              </td>
+
+              {/* Type */}
+              <td className="px-2">
+                <TypeBadge type={req.request_type} />
+              </td>
+
+              {/* Dates */}
+              <td className="px-2">
+                <div>
+                  <p className="text-[11px] font-mono tabular-nums leading-tight" style={{ color: "var(--foreground-muted)" }}>
+                    {fmtDateShort(req.dates)}
+                  </p>
+                  {req.time_requested && (
+                    <p className="text-[9px] font-mono" style={{ color: "var(--foreground-dim)" }}>{req.time_requested}</p>
+                  )}
+                </div>
+              </td>
+
+              {/* Statut */}
+              <td className="px-2">
+                <StatusChip status={req.status} />
+              </td>
+
+              {/* Actions */}
+              {showActions && (
+                <td className="pr-3 text-right" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => onQuickApprove?.(req)}
+                      className="flex items-center justify-center rounded-lg active:scale-95"
+                      style={{ width: 26, height: 26, background: "rgba(34,197,94,0.12)", color: "var(--success)" }}
+                      title="Valider">
+                      <Check size={12} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={() => onOpen(req)}
+                      className="flex items-center justify-center rounded-lg active:scale-95"
+                      style={{ width: 26, height: 26, background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}
+                      title="Refuser">
+                      <X size={12} strokeWidth={2.5} />
+                    </button>
                   </div>
                 </td>
-
-                {/* Type */}
-                <td className="px-2">
-                  <TypeBadge type={req.request_type} />
-                </td>
-
-                {/* Dates */}
-                <td className="px-2">
-                  <span className="text-[11px] font-mono tabular-nums" style={{ color: "var(--foreground-muted)" }}>
-                    {fmtDateShort(req.dates)}
-                    {req.time_requested && (
-                      <span className="ml-1" style={{ color: "var(--foreground-dim)" }}>{req.time_requested}</span>
-                    )}
-                  </span>
-                </td>
-
-                {/* Résumé */}
-                <td className="px-2" style={{ maxWidth: 0 }}>
-                  <p className="text-[11px] truncate" style={{ color: "var(--foreground-muted)" }}>{req.summary}</p>
-                </td>
-
-                {/* Statut */}
-                <td className="px-2">
-                  <StatusChip status={req.status} />
-                </td>
-
-                {/* Actions */}
-                {showActions && (
-                  <td className="px-3 text-right" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => onQuickApprove?.(req)}
-                        className="flex items-center justify-center rounded-lg transition-all active:scale-95"
-                        style={{ width: 26, height: 26, background: "rgba(34,197,94,0.12)", color: "var(--success)" }}
-                        title="Valider">
-                        <Check size={12} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        onClick={() => onOpen(req)}
-                        className="flex items-center justify-center rounded-lg transition-all active:scale-95"
-                        style={{ width: 26, height: 26, background: "rgba(239,68,68,0.1)", color: "var(--danger)" }}
-                        title="Refuser">
-                        <X size={12} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              )}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
