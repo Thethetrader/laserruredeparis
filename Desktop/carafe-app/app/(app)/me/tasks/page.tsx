@@ -207,8 +207,8 @@ export default function MyTasksPage() {
       if (t.assigned_to === userId) return true;
       if (t.assigned_to) return false;
       if (t.target_role === "all") return true;
-      if (isEmployee) return jobTitle ? t.target_role === jobTitle : t.target_role !== "manager";
-      return t.target_role === "manager";
+      if (isEmployee) return t.target_role !== "manager";
+      return t.target_role === "manager" || t.target_role === "all";
     };
 
     const [{ data: tmpl }, { data: comp }, { data: yesterday }, { data: shots }, { data: protos }] = await Promise.all([

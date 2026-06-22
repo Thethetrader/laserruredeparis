@@ -343,7 +343,7 @@ export default function DashboardPage() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const today = now.toISOString().split("T")[0];
 
-    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes, scoreEventsRes, pendingReqRes] = await Promise.all([
+    const [membersRes, delaysRes, protocolsRes, readsRes, feedbackRes, challengesRes, profileRes, confirmedRes, taskTmplRes, taskCompRes, shiftsRes, scoreEventsRes, pendingReqRes, allReadsApiRes] = await Promise.all([
       supabase.from("establishment_members").select("profile_id, role, job_title, profiles(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("is_active", true),
       supabase.from("delays").select("employee_id, shift_date").eq("establishment_id", estId).gte("shift_date", monthStart.split("T")[0]),
       supabase.from("protocols").select("id, title, content, is_mandatory, show_on_dashboard, category, steps, attachment_url, attachment_type, created_at").eq("establishment_id", estId),
@@ -357,11 +357,13 @@ export default function DashboardPage() {
       supabase.from("shifts").select("tips, tips_2").eq("user_id", user.id).eq("establishment_id", estId).gte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`).lte("shift_date", `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${new Date(now.getFullYear(),now.getMonth()+1,0).getDate()}`),
       supabase.from("score_events").select("profile_id, points").eq("establishment_id", estId).gte("created_at", monthStart),
       (supabase.from as any)("staff_requests").select("id, profile_id, request_type, dates, time_requested, reason, summary, created_at, profile:profile_id(first_name, last_name, avatar_url)").eq("establishment_id", estId).eq("status", "pending_manager").order("created_at", { ascending: true }),
+      fetch('/api/protocols/read-counts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ establishment_id: estId }) }).then(r => r.ok ? r.json() : { reads: [] }).catch(() => ({ reads: [] })),
     ]);
     const members = (membersRes.data ?? []) as Array<{ profile_id: string; role: string; job_title: string | null; profiles: { first_name: string | null; last_name: string | null; avatar_url: string | null } | null }>;
     const delays = (delaysRes.data ?? []) as Array<{ employee_id: string; shift_date: string }>;
     const rawProtocols = (protocolsRes.data ?? []) as Array<{ id: string; title: string; content?: string; is_mandatory: boolean; show_on_dashboard?: boolean; category?: string | null; steps?: unknown; attachment_url?: string | null; attachment_type?: string | null; created_at?: string | null }>;
     const reads = (readsRes.data ?? []) as Array<{ protocol_id: string; profile_id: string }>;
+    const allReads = ((allReadsApiRes as { reads?: Array<{ protocol_id: string; profile_id: string }> })?.reads ?? reads);
     const rawFeedback = (feedbackRes.data ?? []) as Array<{ id: string; category: string; content: string; table_number: string | null; created_at: string }>;
     const myFirstName = (profileRes.data?.first_name ?? "");
     const myConfirmed = (confirmedRes.data ?? []).map((r: { feedback_id: string }) => r.feedback_id);
@@ -371,7 +373,7 @@ export default function DashboardPage() {
     // For employees, only show tasks matching their job or "all"; managers see everything
     const myJobTitle = (memberData as unknown as { job_title?: string | null }).job_title ?? null;
     const relevantTasks = memberData.role === "employee"
-      ? rawTasks.filter(t => t.target_role === "all" || (myJobTitle ? t.target_role === myJobTitle : t.target_role !== "manager"))
+      ? rawTasks.filter(t => t.target_role === "all" || t.target_role !== "manager")
       : rawTasks;
 
     // Compute overdue weekly tasks (not completed since Monday)
@@ -398,17 +400,13 @@ export default function DashboardPage() {
     const todayDelayCounts: Record<string, number> = {};
     delays.filter(d => d.shift_date === today).forEach(d => { todayDelayCounts[d.employee_id] = (todayDelayCounts[d.employee_id] ?? 0) + 1; });
 
-    // Only count protocols whose category still exists in the establishment's protocol_categories
-    const estProtoCats = ((memberData as unknown as { establishments?: { protocol_categories?: Array<{ id: string }> } }).establishments?.protocol_categories ?? []);
-    const validCatIds = new Set(estProtoCats.map(c => c.id));
-    const visibleRawProtocols = validCatIds.size > 0
-      ? rawProtocols.filter(p => p.category && validCatIds.has(p.category))
-      : rawProtocols;
+    // Show all protocols from the establishment (no category filtering — avoids hiding newly created protocols)
+    const visibleRawProtocols = rawProtocols;
 
     // Only count active (visible) protocols for reads KPI — hidden ones don't create pending reads
     const activeProtocolIds = new Set(visibleRawProtocols.filter(p => p.show_on_dashboard).map(p => p.id));
     const readsByProfile: Record<string, number> = {};
-    reads.forEach(r => { if (activeProtocolIds.has(r.protocol_id)) readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
+    allReads.forEach(r => { if (activeProtocolIds.has(r.protocol_id)) readsByProfile[r.profile_id] = (readsByProfile[r.profile_id] ?? 0) + 1; });
 
     const myReadIds = new Set(reads.filter(r => r.profile_id === user.id).map(r => r.protocol_id));
     const totalProtocols = activeProtocolIds.size;
@@ -417,7 +415,7 @@ export default function DashboardPage() {
 
     const totalNonOwners = members.filter(m => m.role === "employee").length;
     const readCountByProtocol: Record<string, number> = {};
-    reads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
+    allReads.forEach(r => { readCountByProtocol[r.protocol_id] = (readCountByProtocol[r.protocol_id] ?? 0) + 1; });
 
     const protocols: Protocol[] = visibleRawProtocols.map(p => ({
       id: p.id, title: p.title, content: p.content ?? "", is_mandatory: p.is_mandatory,
@@ -1932,9 +1930,11 @@ function EmployeeDashboard({ data, onTaskValidated }: { data: DashboardData; onT
     if (!readProtocols.has(p.id)) {
       setReadProtocols(prev => new Set([...prev, p.id]));
       if (!DEV_MODE) {
-        const sb = createClient();
-        const { data: { user } } = await sb.auth.getUser();
-        if (user) await (sb.from("protocol_reads") as unknown as { upsert: (v: object) => Promise<unknown> }).upsert({ protocol_id: p.id, profile_id: user.id });
+        fetch('/api/protocols/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ protocol_id: p.id }),
+        }).catch(() => {});
       }
     }
   };
