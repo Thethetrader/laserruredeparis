@@ -349,7 +349,7 @@ function RequestDetailModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
-      onClick={e => { if (e.target === e.currentTarget && !acting) onClose(); }}>
+      onClick={e => { if (e.target === e.currentTarget && !(saving || sending)) onClose(); }}>
       <div
         className="w-full max-w-md flex flex-col"
         style={{
@@ -562,7 +562,6 @@ function RequestDetailModal({
               </div>
             </div>
           )}
-        </div>
 
         {/* Action bar */}
         <div className="flex gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid var(--border-soft)" }}>
