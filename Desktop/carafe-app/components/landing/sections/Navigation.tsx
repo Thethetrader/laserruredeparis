@@ -79,19 +79,19 @@ export default function Navigation() {
             {navLinks.map(l => <NavLink key={l.href} {...l} />)}
           </nav>
 
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             <a
               href="/login"
-              className="text-sm px-3 py-1.5 transition-colors duration-150 group flex items-center gap-1"
-              style={{ color: "var(--foreground-muted)" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "var(--foreground)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "var(--foreground-muted)")}
+              className="text-sm font-medium px-4 py-2 rounded-xl flex items-center gap-1 transition-colors duration-150 active:scale-[0.98]"
+              style={{ color: "var(--foreground)", border: "1.5px solid var(--border)" }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--foreground-dim)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
             >
-              Se connecter <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">→</span>
+              Se connecter →
             </a>
             <a
               href="/signup"
-              className="btn-shine text-sm font-medium px-4 py-2 rounded-md flex items-center gap-1.5 group active:scale-[0.98] transition-transform duration-100"
+              className="btn-shine text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 group active:scale-[0.98] transition-transform duration-100"
               style={{ background: "var(--accent)", color: "#fafaf7" }}
             >
               Commencer

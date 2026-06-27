@@ -75,29 +75,29 @@ export default function HeroSection() {
             Karaf remplace votre groupe WhatsApp par un vrai outil de management.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-start gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
             <a
               href="/signup"
-              className="btn-shine inline-flex items-center gap-2 font-medium px-6 py-3.5 rounded-md text-sm group active:scale-[0.98] transition-transform duration-100"
-              style={{ background: "var(--accent)", color: "#fafaf7", borderRadius: 6 }}
+              className="btn-shine inline-flex items-center justify-center gap-2 font-semibold px-6 py-3.5 rounded-xl text-sm group active:scale-[0.98] transition-transform duration-100"
+              style={{ background: "var(--accent)", color: "#fafaf7" }}
             >
               Commencer
               <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
             </a>
             <a
               href="/login"
-              className="inline-flex items-center gap-2 text-sm px-5 py-3.5 rounded-lg transition-colors duration-150"
-              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)" }}
-              onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground-muted)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+              className="inline-flex items-center justify-center gap-2 text-sm px-6 py-3.5 rounded-xl font-medium transition-colors duration-150 active:scale-[0.98]"
+              style={{ color: "var(--foreground)", border: "1.5px solid var(--border)" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--foreground-dim)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
             >
-              Se connecter <span className="inline-block">→</span>
+              Se connecter →
             </a>
             <InstallPWAButton
               label="Télécharger l'app"
               showIcon
-              className="inline-flex items-center gap-2 font-medium text-sm px-5 py-3.5 rounded-lg active:scale-[0.98] transition-all duration-100"
-              style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+              className="inline-flex items-center justify-center gap-2 font-medium text-sm px-6 py-3.5 rounded-xl active:scale-[0.98] transition-all duration-100"
+              style={{ color: "var(--foreground-muted)", border: "1.5px solid var(--border-soft)", background: "var(--background-soft)" }}
             />
           </div>
 
