@@ -18,7 +18,7 @@ function KarafLogo() {
       <img
         src="/FONDCLAIRLOGO.png"
         alt="Karaf"
-        style={{ height: 52, width: "auto", mixBlendMode: "multiply", filter: "brightness(1.4)" }}
+        style={{ height: 52, width: "auto", filter: "brightness(0)" }}
       />
     </a>
   );
@@ -133,21 +133,27 @@ export default function Navigation() {
                 </a>
               ))}
             </nav>
-            <div className="mt-12 flex flex-col gap-4">
-              <a href="/login" className="text-base" style={{ color: "var(--foreground-muted)" }}>Se connecter →</a>
+            <div className="mt-12 flex flex-col gap-3">
               <a
                 href="/signup"
                 onClick={() => setMenuOpen(false)}
-                className="font-medium px-6 py-3 rounded-md text-center text-sm"
+                className="w-full font-semibold px-6 py-4 rounded-xl text-center text-base active:scale-[0.98] transition-transform duration-100"
                 style={{ background: "var(--accent)", color: "#fafaf7" }}
               >
-                Commencer
+                Commencer →
+              </a>
+              <a
+                href="/login"
+                className="w-full font-medium px-6 py-4 rounded-xl text-center text-base active:scale-[0.98] transition-transform duration-100"
+                style={{ border: "1.5px solid var(--border)", color: "var(--foreground)", background: "transparent" }}
+              >
+                Se connecter
               </a>
               <InstallPWAButton
                 label="Télécharger l'app"
                 showIcon
-                className="font-medium px-6 py-3 rounded-md text-center text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-100"
-                style={{ color: "var(--foreground-muted)", border: "1px solid var(--border)", background: "transparent" }}
+                className="w-full font-medium px-6 py-4 rounded-xl text-center text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-transform duration-100"
+                style={{ color: "var(--foreground-muted)", border: "1.5px solid var(--border-soft)", background: "var(--background-soft)" }}
               />
             </div>
             <p className="mt-auto mb-8 font-mono text-[11px]" style={{ color: "var(--foreground-dim)" }}>v0.1 · BETA</p>
