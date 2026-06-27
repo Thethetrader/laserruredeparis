@@ -18,7 +18,7 @@ function KarafLogo() {
       <img
         src="/favicon-16.PNG"
         alt="Karaf"
-        style={{ height: 40, width: "auto" }}
+        style={{ height: 40, width: "auto", mixBlendMode: "multiply" }}
       />
     </a>
   );
