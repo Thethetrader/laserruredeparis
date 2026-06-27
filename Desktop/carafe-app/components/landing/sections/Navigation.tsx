@@ -16,9 +16,9 @@ function KarafLogo() {
     <a href="#" className="flex items-center focus:outline-none" style={{ flexShrink: 0 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/favicon-16.PNG"
+        src="/logo-transparent.PNG"
         alt="Karaf"
-        style={{ height: 40, width: "auto", mixBlendMode: "multiply" }}
+        style={{ height: 40, width: "auto" }}
       />
     </a>
   );
