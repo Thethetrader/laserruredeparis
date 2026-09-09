@@ -1,14 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { adminClient as admin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { stripe, getPriceId } from "@/lib/stripe";
-
-const admin = createSupabaseClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
 

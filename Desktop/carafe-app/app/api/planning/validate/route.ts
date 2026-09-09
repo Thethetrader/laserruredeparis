@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient as service } from "@/lib/supabase/admin";
 
 function calcHours(start: string, end: string): number {
   const [sh, sm] = start.split(":").map(Number);
@@ -16,12 +16,6 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-
-    // Service client bypasses RLS for writing shifts
-    const service = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     // Verify user is owner/manager of this planning week's establishment
     const { data: pw } = await service

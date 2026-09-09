@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { adminClient as admin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
@@ -20,11 +20,6 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (!member) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
-
-  const admin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 
   // Get all protocol IDs for this establishment
   const { data: protocols } = await admin

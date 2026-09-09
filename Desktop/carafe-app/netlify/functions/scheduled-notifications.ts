@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { createClient } from "@supabase/supabase-js";
+import { adminClient } from "../../lib/supabase/admin";
 
 interface Schedule {
   id: string;
@@ -23,16 +23,14 @@ interface Member {
 }
 
 export const handler = async () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const vapidPublic = process.env.VAPID_PUBLIC_KEY;
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey || !vapidPublic || !vapidPrivate) {
+  if (!vapidPublic || !vapidPrivate) {
     return { statusCode: 500, body: "Missing env vars" };
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  const supabase = adminClient;
 
   webpush.setVapidDetails(
     "mailto:brey.theodore4@gmail.com",
