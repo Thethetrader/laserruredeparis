@@ -1,0 +1,317 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fond rose pâle avec montagnes violettes */
+.hero-background {
+  background: linear-gradient(180deg, #fdf2f8 0%, #fce7f3 100%);
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.mountain-divider {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: #c562c9;
+  z-index: 10;
+  clip-path: polygon(
+    0% 100%,
+    5% 80%,
+    10% 90%,
+    15% 70%,
+    20% 85%,
+    25% 75%,
+    30% 90%,
+    35% 65%,
+    40% 80%,
+    45% 70%,
+    50% 85%,
+    55% 75%,
+    60% 90%,
+    65% 70%,
+    70% 85%,
+    75% 75%,
+    80% 90%,
+    85% 65%,
+    90% 80%,
+    95% 70%,
+    100% 85%,
+    100% 100%
+  );
+}
+
+/* Version mobile pour les montagnes */
+@media (max-width: 768px) {
+  .mountain-divider {
+    height: 80px;
+    clip-path: polygon(
+      0% 100%,
+      10% 80%,
+      20% 90%,
+      30% 70%,
+      40% 85%,
+      50% 75%,
+      60% 90%,
+      70% 70%,
+      80% 85%,
+      90% 75%,
+      100% 90%,
+      100% 100%
+    );
+  }
+}
+
+/* Custom grid columns */
+.grid-cols-15 {
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+/* Animation pour le défilement d'images */
+@keyframes slide-up {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 30s linear infinite;
+}
+
+/* Animation pour le défilement vertical mobile */
+@keyframes slide-up-mobile {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-75%);
+  }
+}
+
+.animate-slide-up-mobile {
+  animation: slide-up-mobile 180s linear infinite;
+}
+
+@media (orientation: landscape) {
+  .animate-slide-up-mobile {
+    animation-duration: 180s !important;
+  }
+}
+
+/* Effet de lumière au survol */
+.shadow-glow {
+  box-shadow: 
+    0 0 20px rgba(255, 255, 255, 1),
+    0 0 40px rgba(255, 255, 255, 1),
+    0 0 80px rgba(255, 255, 255, 1),
+    0 0 120px rgba(255, 255, 255, 0.9),
+    0 0 160px rgba(255, 255, 255, 0.8),
+    0 0 200px rgba(255, 255, 255, 0.7);
+  transform: scale(1.08);
+  filter: brightness(1.2) contrast(1.1);
+}
+
+/* Effet d'ombre noir au survol */
+.shadow-black-glow {
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.1) !important;
+  animation: bounce-shadow 0.8s ease-in-out infinite !important;
+}
+
+/* Animation de pulsation visible */
+@keyframes bounce-shadow {
+  0% {
+    transform: scale(1.1);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 35px 70px rgba(0, 0, 0, 1);
+  }
+  100% {
+    transform: scale(1.1);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Animation pour la bande défilante */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 30s linear infinite;
+}
+
+/* Animation pour le défilement horizontal desktop */
+@keyframes scroll-horizontal {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll-horizontal {
+  animation: scroll-horizontal 45s linear infinite;
+}
+
+@keyframes scroll-vertical {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.animate-scroll-vertical {
+  animation: scroll-vertical 30s linear infinite;
+}
+
+/* Effet de lettres tordues */
+.twisted-text span {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.letter-1 { transform: rotate(-5deg) scale(1.1); }
+.letter-2 { transform: rotate(3deg) scale(0.9); }
+.letter-3 { transform: rotate(-2deg) skew(5deg); }
+.letter-4 { transform: rotate(4deg) scale(1.05); }
+.letter-5 { transform: rotate(-3deg) scale(0.95); }
+.letter-6 { transform: rotate(2deg) skew(-3deg); }
+.letter-7 { transform: rotate(-4deg) scale(1.1); }
+.letter-8 { transform: rotate(5deg) scale(0.9); }
+.letter-9 { transform: rotate(-1deg) skew(4deg); }
+.letter-10 { transform: rotate(3deg) scale(1.05); }
+.letter-11 { transform: rotate(-6deg) scale(0.95); }
+
+.letter-12 { transform: rotate(4deg) skew(-2deg); }
+.letter-13 { transform: rotate(-3deg) scale(1.1); }
+.letter-14 { transform: rotate(2deg) scale(0.9); }
+.letter-15 { transform: rotate(-5deg) skew(3deg); }
+.letter-16 { transform: rotate(1deg) scale(1.05); }
+.letter-17 { transform: rotate(-2deg) scale(0.95); }
+.letter-18 { transform: rotate(6deg) skew(-4deg); }
+.letter-19 { transform: rotate(-4deg) scale(1.1); }
+.letter-20 { transform: rotate(3deg) scale(0.9); }
+.letter-21 { transform: rotate(-1deg) skew(2deg); }
+.letter-22 { transform: rotate(5deg) scale(1.05); }
+.letter-23 { transform: rotate(-3deg) scale(0.95); }
+.letter-24 { transform: rotate(2deg) skew(-5deg); }
+
+.letter-25 { transform: rotate(-4deg) scale(1.1); }
+.letter-26 { transform: rotate(3deg) scale(0.9); }
+.letter-27 { transform: rotate(-2deg) skew(4deg); }
+.letter-28 { transform: rotate(5deg) scale(1.05); }
+.letter-29 { transform: rotate(-1deg) scale(0.95); }
+.letter-30 { transform: rotate(4deg) skew(-3deg); }
+.letter-31 { transform: rotate(-5deg) scale(1.1); }
+.letter-32 { transform: rotate(2deg) scale(0.9); }
+.letter-33 { transform: rotate(-3deg) skew(5deg); }
+.letter-34 { transform: rotate(6deg) scale(1.05); }
+.letter-35 { transform: rotate(-2deg) scale(0.95); }
+.letter-36 { transform: rotate(1deg) skew(-2deg); }
+
+@keyframes border-spin {
+  0% {
+    filter: hue-rotate(0deg) brightness(1.2);
+    transform: rotate(0deg) scale(1.05);
+  }
+  50% {
+    filter: hue-rotate(180deg) brightness(1.4);
+    transform: rotate(2deg) scale(1.12);
+  }
+  100% {
+    filter: hue-rotate(360deg) brightness(1.2);
+    transform: rotate(-2deg) scale(1.05);
+  }
+}
+
+.animate-border-spin {
+  animation: border-spin 0.7s linear infinite;
+} 
+
+/* Effet hover pour les cartes de témoignages */
+.hover\:shadow-black-glow:hover {
+  animation: black-glow-pulse 2s infinite !important;
+}
+
+@keyframes black-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(1.05) !important;
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6) !important;
+    transform: scale(1.1) !important;
+  }
+}
+
+/* Animation des étoiles dans les témoignages */
+.hover\:shadow-black-glow:hover svg {
+  animation: star-glow 0.5s ease-in-out !important;
+}
+
+@keyframes star-glow {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 2px rgba(255, 193, 7, 0.3));
+  }
+  50% {
+    filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 193, 7, 0.8));
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 2px rgba(255, 193, 7, 0.3));
+  }
+}
+
+/* Animation des avatars dans les témoignages */
+.hover\:shadow-black-glow:hover .w-10.h-10 {
+  animation: avatar-bounce 0.6s ease-in-out !important;
+}
+
+@keyframes avatar-bounce {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+/* Gold shadow glow */
+.logo-glow {
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.35), 0 0 20px rgba(255, 215, 0, 0.2);
+  transition: box-shadow 0.3s ease;
+}
+.logo-glow:hover {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 25px rgba(255, 215, 0, 0.4);
+}
