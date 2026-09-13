@@ -65,10 +65,15 @@ function LoginForm() {
         password: data.password,
       })
       if (error) {
+        const msg = error.message
+        const emailTaken =
+          msg.includes('already registered') ||
+          msg.includes('Database error finding user') ||
+          msg.includes('User already registered')
         toast.error(
-          error.message.includes('already registered')
+          emailTaken
             ? 'Cet email est déjà utilisé. Essayez de vous connecter.'
-            : error.message
+            : msg
         )
         return
       }
