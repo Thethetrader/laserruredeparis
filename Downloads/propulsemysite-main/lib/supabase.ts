@@ -10,4 +10,4 @@ if (supabaseUrl && supabaseAnonKey) {
   safeClient = createClient(supabaseUrl, supabaseAnonKey, { db: { schema: 'propulsemysite' } })
 }
 
-export const supabase = safeClient 
+export const supabase = safeClient as SupabaseClient 
