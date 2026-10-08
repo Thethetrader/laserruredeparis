@@ -1,19 +1,15 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 
-const schema = z.object({
-  email: z.string().email("Adresse email invalide"),
-  password: z.string().min(1, "Mot de passe requis"),
-});
-
-type FormData = z.infer<typeof schema>;
+type FormData = {
+  email: string;
+  password: string;
+};
 
 const DEV_MODE = false;
 
@@ -21,12 +17,11 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
-  const supabase = createClient();
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
 
   const onSubmit = async (data: FormData) => {
     setServerError(null);
@@ -70,7 +65,7 @@ function LoginForm() {
             Email
           </label>
           <input
-            {...register("email")}
+            {...register("email", { required: "Adresse email invalide", pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Adresse email invalide" } })}
             type="email"
             autoComplete="email"
             placeholder="vous@restaurant.fr"
@@ -92,7 +87,7 @@ function LoginForm() {
             </Link>
           </div>
           <input
-            {...register("password")}
+            {...register("password", { required: "Mot de passe requis" })}
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
