@@ -1,0 +1,262 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Carafe Design Tokens — light (default) */
+    --background:        #fafaf7;
+    --background-soft:   #f0efe8;
+    --background-elev:   #ffffff;
+    --background-hover:  #e8e7df;
+    --border:            #e2e0d8;
+    --border-soft:       #ebe9e0;
+    --border-strong:     #ccc9be;
+    --foreground:        #1a1a18;
+    --foreground-muted:  #6b6b5f;
+    --foreground-dim:    #9b9b8f;
+    --accent:            #0f5132;
+    --accent-glow:       #1a7a4c;
+    --accent-deep:       #0a3b24;
+    --accent-bg:         rgba(15, 81, 50, 0.08);
+    --success:           #10B981;
+    --warning:           #c9a961;
+    --danger:            #c0392b;
+
+    --radius-sm: 4px;
+    --radius-base: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    /* shadcn compatibility — mapped to our tokens */
+    --radius: 0.5rem;
+    --card:              #ffffff;
+    --card-foreground:   #1a1a18;
+    --popover:           #ffffff;
+    --popover-foreground: #1a1a18;
+    --primary:           #0f5132;
+    --primary-foreground: #fafaf7;
+    --secondary:         #f0efe8;
+    --secondary-foreground: #1a1a18;
+    --muted:             #f0efe8;
+    --muted-foreground:  #6b6b5f;
+    --destructive:       #c0392b;
+    --destructive-foreground: #fafaf7;
+    --input:             #e2e0d8;
+    --ring:              #0f5132;
+  }
+
+  /* Mode sombre (optionnel) */
+  html[data-theme="dark"], [data-theme="dark"] {
+    --background:        #09090B;
+    --background-soft:   #111114;
+    --background-elev:   #1A1A1F;
+    --background-hover:  #18181D;
+    --border:            #27272A;
+    --border-soft:       #1F1F23;
+    --border-strong:     #3F3F46;
+    --foreground:        #FAFAFA;
+    --foreground-muted:  #A1A1AA;
+    --foreground-dim:    #71717A;
+    --accent:            #06B6D4;
+    --accent-glow:       #22D3EE;
+    --accent-deep:       #0891B2;
+    --accent-bg:         rgba(6, 182, 212, 0.08);
+    --success:           #10B981;
+    --warning:           #F59E0B;
+    --danger:            #EF4444;
+
+    /* shadcn compatibility */
+    --card:              var(--background-soft);
+    --card-foreground:   var(--foreground);
+    --popover:           var(--background-elev);
+    --popover-foreground: var(--foreground);
+    --primary:           var(--accent);
+    --primary-foreground: #09090B;
+    --secondary:         var(--background-soft);
+    --secondary-foreground: var(--foreground);
+    --muted:             var(--background-elev);
+    --muted-foreground:  var(--foreground-dim);
+    --destructive:       var(--danger);
+    --destructive-foreground: var(--foreground);
+    --input:             var(--border);
+    --ring:              var(--accent);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button, a {
+    touch-action: manipulation;
+  }
+
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Empêche Safari iOS d'agrandir la typo en paysage */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+    /* Normalise le rendu des polices variables sur Safari */
+    font-synthesis: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--foreground-dim); }
+}
+
+@layer utilities {
+  /* TopBar height = 56px + iOS status bar safe area */
+  .topbar-safe-height {
+    height: calc(56px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Main content offset to clear TopBar on mobile */
+  .pt-topbar-safe {
+    padding-top: calc(56px + env(safe-area-inset-top));
+  }
+  @media (min-width: 1024px) {
+    .pt-topbar-safe { padding-top: 0; }
+  }
+
+  /* Mobile: accounts for BottomNav (60px) + safe area */
+  .app-main-safe-pb {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  /* Chat: full-height flex container, anchored — no scroll drift */
+  .chat-fullscreen {
+    display: flex;
+    overflow: hidden;
+    height: calc(100dvh - 56px - env(safe-area-inset-top, 0px) - 60px - env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 1024px) {
+    .chat-fullscreen { height: 100dvh; }
+  }
+  @media (min-width: 1024px) {
+    .app-main-safe-pb { padding-bottom: 0; }
+  }
+
+  /* Backdrop blur avec préfixe Safari */
+  .backdrop-blur-overlay {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+
+  .mono {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .glow-cyan {
+    animation: glow-pulse 6s ease-in-out infinite;
+    will-change: box-shadow;
+  }
+
+  .breathe-glow {
+    animation: breathe-glow 3s ease-in-out infinite;
+    will-change: box-shadow;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .btn-shine { position: relative; overflow: hidden; }
+  .btn-shine::after {
+    content: '';
+    position: absolute;
+    inset-y: 0; left: 0;
+    width: 32%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    animation: shine-sweep 4s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+
+  .arrow-pulse { animation: arrow-pulse 2s ease-in-out infinite; }
+}
+
+html { scroll-behavior: smooth; }
+
+::selection {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--foreground);
+}
+
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes kudos-particle {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-24px) scale(0.5); opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 60px 0 rgba(6, 182, 212, 0.12); }
+  50%       { box-shadow: 0 0 80px 0 rgba(6, 182, 212, 0.22); }
+}
+
+@keyframes shine-sweep {
+  0%   { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(400%) skewX(-12deg); }
+}
+
+@keyframes scroll-msgs {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(3px); }
+}
+
+@keyframes particle-up {
+  0%   { transform: translateY(0) translateX(0);    opacity: 0; }
+  10%  { opacity: 0.28; }
+  90%  { opacity: 0.1; }
+  100% { transform: translateY(-110px) translateX(12px); opacity: 0; }
+}
+
+@keyframes breathe-glow {
+  0%, 100% { box-shadow: 0 0 60px 0 rgba(6,182,212,0.08), 0 0 0 0 rgba(6,182,212,0); }
+  50%       { box-shadow: 0 0 90px 0 rgba(6,182,212,0.18), 0 0 0 1px rgba(6,182,212,0.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-cyan { animation: none; }
+  .btn-shine::after { animation: none; }
+  .arrow-pulse { animation: none; }
+  .breathe-glow { animation: none; }
+}

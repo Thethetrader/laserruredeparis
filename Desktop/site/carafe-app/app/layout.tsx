@@ -51,15 +51,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             var t = localStorage.getItem('karaf-theme');
-            if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
           })();
         `}} />
         <style dangerouslySetInnerHTML={{ __html: `
-          body { background: #09090B; }
-          html[data-theme="light"] body { background: #fafaf7; }
+          body { background: #fafaf7; }
+          html[data-theme="dark"] body { background: #09090B; }
           #splash {
             position: fixed; inset: 0; z-index: 99999;
-            background: #09090B;
+            background: #fafaf7;
             display: flex; align-items: center; justify-content: center;
             transition: opacity 0.4s ease;
           }

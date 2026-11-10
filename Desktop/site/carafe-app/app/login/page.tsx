@@ -11,7 +11,7 @@ type FormData = {
   password: string;
 };
 
-const DEV_MODE = false;
+const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
 function LoginForm() {
   const router = useRouter();
@@ -20,6 +20,23 @@ function LoginForm() {
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
   const [serverError, setServerError] = useState<string | null>(null);
+  const [devLoading, setDevLoading] = useState(false);
+
+  const handleDevLogin = async () => {
+    setDevLoading(true);
+    setServerError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: "demo@karaf.fr",
+        password: "123456",
+      });
+      if (error) { setServerError(error.message); return; }
+      router.push(inviteToken ? `/invite/${inviteToken}` : "/dashboard");
+      router.refresh();
+    } finally {
+      setDevLoading(false);
+    }
+  };
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>();
 
@@ -44,12 +61,13 @@ function LoginForm() {
       {DEV_MODE && (
         <div className="mb-6">
           <button
-            onClick={() => router.push("/dashboard")}
+            onClick={handleDevLogin}
+            disabled={devLoading}
             className="w-full py-2.5 text-sm font-medium rounded-base flex items-center justify-center gap-2 transition-colors"
-            style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)", color: "var(--accent)" }}
+            style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.25)", color: "var(--accent)", opacity: devLoading ? 0.6 : 1 }}
           >
             <span className="font-mono text-[10px] tracking-widest uppercase">DEV</span>
-            Accès direct sans identifiant
+            {devLoading ? "Connexion…" : "Accès direct sans identifiant"}
           </button>
           <div className="flex items-center gap-3 mt-5 mb-1">
             <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
@@ -135,7 +153,7 @@ export default function LoginPage() {
         </Link>
         <div className="mb-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/FONDCLAIRLOGO.png" alt="Karaf" style={{ height: 64, width: "auto", marginBottom: 8, mixBlendMode: "multiply" }} />
+          <img src="/logo-transparent.PNG" alt="Karaf" style={{ height: 48, width: "auto", marginBottom: 8 }} />
           <p className="text-[13px] mt-1.5" style={{ color: "var(--foreground-dim)" }}>
             Connexion à votre espace
           </p>
